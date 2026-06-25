@@ -111,12 +111,7 @@ function StartPage() {
             </div>
             <span className="font-semibold tracking-tight">Valuation</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/advisor">Advisor</Link>
-            </Button>
-            <span className="text-xs text-muted-foreground">Confidential · ~10 min</span>
-          </div>
+          <span className="text-xs text-muted-foreground">Confidential · ~10 min</span>
         </div>
       </header>
 
