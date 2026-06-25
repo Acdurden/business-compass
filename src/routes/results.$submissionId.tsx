@@ -149,6 +149,8 @@ function ResultsPage() {
   }
 
   const obj = result?.objective;
+  const adj = result?.adjusted;
+  const hasAdvisory = responses.some((r) => r.questionnaire_type === "advisory");
 
   return (
     <main className="min-h-screen pb-24">
@@ -253,46 +255,104 @@ function ResultsPage() {
           </table>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-card p-5">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Market position
-            </p>
-            <p className="mt-2 text-lg font-semibold leading-tight">
-              {obj?.marketPosition || "—"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Objective score {result?.objectiveScore ?? 0}
-            </p>
+        <ResultBlock
+          eyebrow="Objective"
+          subtitle={`Based on the client questionnaire · Score ${result?.objectiveScore ?? 0}`}
+          marketPosition={obj?.marketPosition}
+          multiple={obj?.multiple}
+          estimatedValuation={obj?.estimatedValuation}
+          amount={amount}
+          inputType={inputType}
+        />
+
+        {hasAdvisory ? (
+          <ResultBlock
+            eyebrow="Adjusted (ValScore)"
+            subtitle={`Objective ${result?.objectiveScore ?? 0} + Advisor ${result?.advisoryScore ?? 0} = ${result?.valScore ?? 0}`}
+            marketPosition={adj?.marketPosition}
+            multiple={adj?.multiple}
+            estimatedValuation={adj?.estimatedValuation}
+            amount={amount}
+            inputType={inputType}
+            accent
+          />
+        ) : (
+          <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+            Adjusted ValScore results will appear once an advisor completes the advisor
+            questionnaire for this submission.{" "}
+            <Link
+              to="/advisor/$submissionId"
+              params={{ submissionId }}
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              Open advisor questionnaire →
+            </Link>
           </div>
-          <div className="rounded-xl border border-border bg-card p-5">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Valuation multiple
-            </p>
-            <p className="mt-2 text-3xl font-semibold tabular-nums">
-              {obj ? `${obj.multiple.toFixed(4)}x` : "—"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {inputType === "ebitda" ? "EBITDA basis" : "Net Fee Income basis"}
-            </p>
-          </div>
-          <div className="rounded-xl border border-primary/40 bg-primary/5 p-5">
-            <p className="text-[11px] uppercase tracking-wide text-primary/80">
-              Estimated valuation
-            </p>
-            <p className="mt-2 text-3xl font-semibold tabular-nums">
-              {obj ? fmtCurrency(obj.estimatedValuation) : "—"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {amount > 0 ? `Based on ${fmtCurrency(amount)}` : "Enter an amount above"}
-            </p>
-          </div>
-        </section>
+        )}
 
         <p className="text-xs text-muted-foreground text-center">
           Submission ID {submissionId}
         </p>
       </div>
     </main>
+  );
+}
+
+function ResultBlock(props: {
+  eyebrow: string;
+  subtitle: string;
+  marketPosition?: string;
+  multiple?: number;
+  estimatedValuation?: number;
+  amount: number;
+  inputType: InputType;
+  accent?: boolean;
+}) {
+  const { eyebrow, subtitle, marketPosition, multiple, estimatedValuation, amount, inputType, accent } = props;
+  return (
+    <section>
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide">{eyebrow}</h2>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Market position
+          </p>
+          <p className="mt-2 text-lg font-semibold leading-tight">
+            {marketPosition || "—"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Valuation multiple
+          </p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums">
+            {multiple != null ? `${multiple.toFixed(4)}x` : "—"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {inputType === "ebitda" ? "EBITDA basis" : "Net Fee Income basis"}
+          </p>
+        </div>
+        <div
+          className={
+            accent
+              ? "rounded-xl border border-primary bg-primary/10 p-5"
+              : "rounded-xl border border-primary/40 bg-primary/5 p-5"
+          }
+        >
+          <p className="text-[11px] uppercase tracking-wide text-primary/80">
+            Estimated valuation
+          </p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums">
+            {estimatedValuation != null ? fmtCurrency(estimatedValuation) : "—"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {amount > 0 ? `Based on ${fmtCurrency(amount)}` : "Enter an amount above"}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
