@@ -12,8 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
-import { Route as ResultsSubmissionIdRouteImport } from './routes/results.$submissionId'
-import { Route as QuestionnaireSubmissionIdRouteImport } from './routes/questionnaire.$submissionId'
+import { Route as ResultsTokenRouteImport } from './routes/results.$token'
+import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
 import { Route as AdminSubmissionsRouteImport } from './routes/admin.submissions'
 
@@ -32,17 +32,16 @@ const AdvisorIndexRoute = AdvisorIndexRouteImport.update({
   path: '/advisor/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResultsSubmissionIdRoute = ResultsSubmissionIdRouteImport.update({
-  id: '/results/$submissionId',
-  path: '/results/$submissionId',
+const ResultsTokenRoute = ResultsTokenRouteImport.update({
+  id: '/results/$token',
+  path: '/results/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const QuestionnaireSubmissionIdRoute =
-  QuestionnaireSubmissionIdRouteImport.update({
-    id: '/questionnaire/$submissionId',
-    path: '/questionnaire/$submissionId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const QTokenRoute = QTokenRouteImport.update({
+  id: '/q/$token',
+  path: '/q/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdvisorSubmissionIdRoute = AdvisorSubmissionIdRouteImport.update({
   id: '/advisor/$submissionId',
   path: '/advisor/$submissionId',
@@ -59,8 +58,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
-  '/questionnaire/$submissionId': typeof QuestionnaireSubmissionIdRoute
-  '/results/$submissionId': typeof ResultsSubmissionIdRoute
+  '/q/$token': typeof QTokenRoute
+  '/results/$token': typeof ResultsTokenRoute
   '/advisor/': typeof AdvisorIndexRoute
 }
 export interface FileRoutesByTo {
@@ -68,8 +67,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
-  '/questionnaire/$submissionId': typeof QuestionnaireSubmissionIdRoute
-  '/results/$submissionId': typeof ResultsSubmissionIdRoute
+  '/q/$token': typeof QTokenRoute
+  '/results/$token': typeof ResultsTokenRoute
   '/advisor': typeof AdvisorIndexRoute
 }
 export interface FileRoutesById {
@@ -78,8 +77,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
-  '/questionnaire/$submissionId': typeof QuestionnaireSubmissionIdRoute
-  '/results/$submissionId': typeof ResultsSubmissionIdRoute
+  '/q/$token': typeof QTokenRoute
+  '/results/$token': typeof ResultsTokenRoute
   '/advisor/': typeof AdvisorIndexRoute
 }
 export interface FileRouteTypes {
@@ -89,8 +88,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin/submissions'
     | '/advisor/$submissionId'
-    | '/questionnaire/$submissionId'
-    | '/results/$submissionId'
+    | '/q/$token'
+    | '/results/$token'
     | '/advisor/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -98,8 +97,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin/submissions'
     | '/advisor/$submissionId'
-    | '/questionnaire/$submissionId'
-    | '/results/$submissionId'
+    | '/q/$token'
+    | '/results/$token'
     | '/advisor'
   id:
     | '__root__'
@@ -107,8 +106,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin/submissions'
     | '/advisor/$submissionId'
-    | '/questionnaire/$submissionId'
-    | '/results/$submissionId'
+    | '/q/$token'
+    | '/results/$token'
     | '/advisor/'
   fileRoutesById: FileRoutesById
 }
@@ -117,8 +116,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   AdminSubmissionsRoute: typeof AdminSubmissionsRoute
   AdvisorSubmissionIdRoute: typeof AdvisorSubmissionIdRoute
-  QuestionnaireSubmissionIdRoute: typeof QuestionnaireSubmissionIdRoute
-  ResultsSubmissionIdRoute: typeof ResultsSubmissionIdRoute
+  QTokenRoute: typeof QTokenRoute
+  ResultsTokenRoute: typeof ResultsTokenRoute
   AdvisorIndexRoute: typeof AdvisorIndexRoute
 }
 
@@ -145,18 +144,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdvisorIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/results/$submissionId': {
-      id: '/results/$submissionId'
-      path: '/results/$submissionId'
-      fullPath: '/results/$submissionId'
-      preLoaderRoute: typeof ResultsSubmissionIdRouteImport
+    '/results/$token': {
+      id: '/results/$token'
+      path: '/results/$token'
+      fullPath: '/results/$token'
+      preLoaderRoute: typeof ResultsTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/questionnaire/$submissionId': {
-      id: '/questionnaire/$submissionId'
-      path: '/questionnaire/$submissionId'
-      fullPath: '/questionnaire/$submissionId'
-      preLoaderRoute: typeof QuestionnaireSubmissionIdRouteImport
+    '/q/$token': {
+      id: '/q/$token'
+      path: '/q/$token'
+      fullPath: '/q/$token'
+      preLoaderRoute: typeof QTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/advisor/$submissionId': {
@@ -181,8 +180,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   AdminSubmissionsRoute: AdminSubmissionsRoute,
   AdvisorSubmissionIdRoute: AdvisorSubmissionIdRoute,
-  QuestionnaireSubmissionIdRoute: QuestionnaireSubmissionIdRoute,
-  ResultsSubmissionIdRoute: ResultsSubmissionIdRoute,
+  QTokenRoute: QTokenRoute,
+  ResultsTokenRoute: ResultsTokenRoute,
   AdvisorIndexRoute: AdvisorIndexRoute,
 }
 export const routeTree = rootRouteImport

@@ -48,6 +48,7 @@ export function QuestionnaireRunner({
   const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState("");
+  const [clientToken, setClientToken] = useState<string | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [options, setOptions] = useState<AnswerOption[]>([]);
@@ -63,7 +64,7 @@ export function QuestionnaireRunner({
         await Promise.all([
           supabase
             .from("submissions")
-            .select("company_name")
+            .select("company_name,client_token")
             .eq("submission_id", submissionId)
             .maybeSingle(),
           supabase
@@ -91,6 +92,7 @@ export function QuestionnaireRunner({
         return;
       }
       setCompanyName(submissionRes.data.company_name);
+      setClientToken(submissionRes.data.client_token as string);
 
       const qs = (questionsRes.data ?? []) as Question[];
       setSections((sectionsRes.data ?? []) as Section[]);
@@ -197,7 +199,11 @@ export function QuestionnaireRunner({
       toast.error("Couldn't finalize submission");
       return;
     }
-    navigate({ to: "/results/$submissionId", params: { submissionId } });
+    if (!clientToken) {
+      toast.error("Missing token");
+      return;
+    }
+    navigate({ to: "/results/$token", params: { token: clientToken } });
   }
 
   return (

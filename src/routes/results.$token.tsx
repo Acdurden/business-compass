@@ -8,7 +8,7 @@ import { computeValuation } from "@/lib/valscore_calc.js";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/results/$submissionId")({
+export const Route = createFileRoute("/results/$token")({
   ssr: false,
   component: ResultsPage,
   errorComponent: ({ error }) => (
@@ -60,10 +60,11 @@ function formatCurrencyInput(raw: string) {
 }
 
 function ResultsPage() {
-  const { submissionId } = Route.useParams();
+  const { token } = Route.useParams();
   const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState("");
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
@@ -76,12 +77,31 @@ function ResultsPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [subRes, sRes, qRes, rRes] = await Promise.all([
-        supabase
-          .from("submissions")
-          .select("company_name,valuation_input_type,valuation_input_amount,target_valuation")
-          .eq("submission_id", submissionId)
-          .maybeSingle(),
+      const subRes = await supabase
+        .from("submissions")
+        .select("submission_id,company_name,valuation_input_type,valuation_input_amount,target_valuation")
+        .eq("client_token", token)
+        .maybeSingle();
+      if (cancelled) return;
+      if (subRes.error || !subRes.data) {
+        toast.error("This link is invalid or has expired");
+        navigate({ to: "/" });
+        return;
+      }
+      const sid = subRes.data.submission_id;
+      setSubmissionId(sid);
+      setCompanyName(subRes.data.company_name);
+      if (subRes.data.valuation_input_type) {
+        setInputType(subRes.data.valuation_input_type as InputType);
+      }
+      if (subRes.data.valuation_input_amount != null) {
+        setAmountStr(formatCurrencyInput(String(subRes.data.valuation_input_amount)));
+      }
+      if (subRes.data.target_valuation != null) {
+        setTargetStr(formatCurrencyInput(String(subRes.data.target_valuation)));
+      }
+
+      const [sRes, qRes, rRes] = await Promise.all([
         supabase
           .from("sections")
           .select("section_id,section_name,sort_order,questionnaire_type")
@@ -93,24 +113,9 @@ function ResultsPage() {
         supabase
           .from("responses")
           .select("question_id,section_id,questionnaire_type,points_awarded")
-          .eq("submission_id", submissionId),
+          .eq("submission_id", sid),
       ]);
       if (cancelled) return;
-      if (subRes.error || !subRes.data) {
-        toast.error("Submission not found");
-        navigate({ to: "/" });
-        return;
-      }
-      setCompanyName(subRes.data.company_name);
-      if (subRes.data.valuation_input_type) {
-        setInputType(subRes.data.valuation_input_type as InputType);
-      }
-      if (subRes.data.valuation_input_amount != null) {
-        setAmountStr(formatCurrencyInput(String(subRes.data.valuation_input_amount)));
-      }
-      if (subRes.data.target_valuation != null) {
-        setTargetStr(formatCurrencyInput(String(subRes.data.target_valuation)));
-      }
       setSections((sRes.data ?? []) as Section[]);
       setQuestions((qRes.data ?? []) as Question[]);
       setResponses((rRes.data ?? []) as Response[]);
@@ -120,7 +125,7 @@ function ResultsPage() {
     return () => {
       cancelled = true;
     };
-  }, [submissionId, navigate]);
+  }, [token, navigate]);
 
   const amount = useMemo(() => {
     const n = parseFloat(amountStr.replace(/[^0-9.]/g, ""));
@@ -143,7 +148,7 @@ function ResultsPage() {
 
   // Persist input changes (debounced lightly)
   useEffect(() => {
-    if (loading) return;
+    if (loading || !submissionId) return;
     const t = setTimeout(() => {
       void supabase
         .from("submissions")
@@ -182,7 +187,7 @@ function ResultsPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild size="sm">
-              <Link to="/questionnaire/$submissionId" params={{ submissionId }}>
+              <Link to="/q/$token" params={{ token }}>
                 Edit Answers
               </Link>
             </Button>
@@ -304,14 +309,7 @@ function ResultsPage() {
         ) : (
           <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
             Adjusted ValScore results will appear once an advisor completes the advisor
-            questionnaire for this submission.{" "}
-            <Link
-              to="/advisor/$submissionId"
-              params={{ submissionId }}
-              className="underline underline-offset-4 hover:text-foreground"
-            >
-              Open advisor questionnaire →
-            </Link>
+            questionnaire for this submission.
           </div>
         )}
 
@@ -358,7 +356,7 @@ function ResultsPage() {
         </section>
 
         <p className="text-xs text-muted-foreground text-center">
-          Submission ID {submissionId}
+          Keep this link private — anyone with it can view these results.
         </p>
       </div>
     </main>

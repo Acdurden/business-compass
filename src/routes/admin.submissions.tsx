@@ -17,14 +17,15 @@ export const Route = createFileRoute("/admin/submissions")({
 
 type Row = {
   submission_id: string;
+  client_token: string;
   company_name: string;
   client_status: string;
   advisor_status: string;
   updated_at: string;
 };
 
-function clientPath(id: string) {
-  return `/questionnaire/${id}`;
+function clientPath(token: string) {
+  return `/q/${token}`;
 }
 function advisorPath(id: string) {
   return `/advisor/${id}`;
@@ -56,7 +57,7 @@ function AdminSubmissionsPage() {
     setOrigin(window.location.origin);
     void supabase
       .from("submissions")
-      .select("submission_id,company_name,client_status,advisor_status,updated_at")
+      .select("submission_id,client_token,company_name,client_status,advisor_status,updated_at")
       .order("updated_at", { ascending: false })
       .then(({ data, error }) => {
         if (error) toast.error("Failed to load submissions");
@@ -99,7 +100,7 @@ function AdminSubmissionsPage() {
         ) : (
           <ul className="space-y-3">
             {rows.map((r) => {
-              const cUrl = `${origin}${clientPath(r.submission_id)}`;
+              const cUrl = `${origin}${clientPath(r.client_token)}`;
               const aUrl = `${origin}${advisorPath(r.submission_id)}`;
               return (
                 <li
@@ -120,20 +121,8 @@ function AdminSubmissionsPage() {
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-3">
-                    <LinkBox
-                      title="Client link"
-                      subtitle="Objective questions"
-                      url={cUrl}
-                      to="/questionnaire/$submissionId"
-                      submissionId={r.submission_id}
-                    />
-                    <LinkBox
-                      title="Advisor link"
-                      subtitle="Advisory questions"
-                      url={aUrl}
-                      to="/advisor/$submissionId"
-                      submissionId={r.submission_id}
-                    />
+                    <ClientLinkBox url={cUrl} token={r.client_token} />
+                    <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
                   </div>
                 </li>
               );
@@ -145,47 +134,54 @@ function AdminSubmissionsPage() {
   );
 }
 
-function LinkBox({
-  title,
-  subtitle,
-  url,
-  to,
-  submissionId,
-}: {
-  title: string;
-  subtitle: string;
-  url: string;
-  to: "/questionnaire/$submissionId" | "/advisor/$submissionId";
-  submissionId: string;
-}) {
+function ClientLinkBox({ url, token }: { url: string; token: string }) {
   return (
     <div className="rounded-lg border border-border bg-background p-3">
       <div className="flex items-center justify-between mb-1.5">
         <div>
-          <p className="text-xs font-semibold">{title}</p>
+          <p className="text-xs font-semibold">Client link</p>
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            {subtitle}
+            Objective questions
           </p>
         </div>
         <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => void copy(url, title)}
-            title="Copy link"
-          >
+          <Button size="sm" variant="ghost" onClick={() => void copy(url, "Client link")} title="Copy link">
             <Copy className="h-3.5 w-3.5" />
           </Button>
           <Button size="sm" variant="ghost" asChild title="Open">
-            <Link to={to} params={{ submissionId }}>
+            <Link to="/q/$token" params={{ token }}>
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           </Button>
         </div>
       </div>
-      <p className="text-[11px] font-mono text-muted-foreground break-all">
-        {url}
-      </p>
+      <p className="text-[11px] font-mono text-muted-foreground break-all">{url}</p>
+    </div>
+  );
+}
+
+function AdvisorLinkBox({ url, submissionId }: { url: string; submissionId: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-background p-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <div>
+          <p className="text-xs font-semibold">Advisor link</p>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Advisory questions (login required)
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" onClick={() => void copy(url, "Advisor link")} title="Copy link">
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="ghost" asChild title="Open">
+            <Link to="/advisor/$submissionId" params={{ submissionId }}>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+      <p className="text-[11px] font-mono text-muted-foreground break-all">{url}</p>
     </div>
   );
 }
