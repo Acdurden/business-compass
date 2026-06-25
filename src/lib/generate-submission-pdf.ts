@@ -2,6 +2,11 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { computeValuation } from "@/lib/valscore_calc.js";
+import {
+  DEFAULT_TARGET_VALUATION,
+  DEFAULT_VALUATION_INPUT_AMOUNT,
+  DEFAULT_VALUATION_INPUT_TYPE,
+} from "@/lib/valuation-defaults";
 
 type InputType = "netfeeincome" | "ebitda";
 
@@ -70,9 +75,9 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
     points_awarded: number | null;
   }>;
 
-  const inputType = (sub.valuation_input_type as InputType | null) ?? "netfeeincome";
-  const amount = Number(sub.valuation_input_amount ?? 0);
-  const target = Number(sub.target_valuation ?? 0);
+  const inputType = (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
+  const amount = Number(sub.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
+  const target = Number(sub.target_valuation ?? DEFAULT_TARGET_VALUATION);
 
   const result = computeValuation(responses, questions, {
     valuationInputType: inputType,

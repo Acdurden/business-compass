@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { computeValuation } from "@/lib/valscore_calc.js";
+import {
+  DEFAULT_TARGET_VALUATION,
+  DEFAULT_VALUATION_INPUT_AMOUNT,
+  DEFAULT_VALUATION_INPUT_TYPE,
+} from "@/lib/valuation-defaults";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -69,9 +74,13 @@ function ResultsPage() {
   const [responses, setResponses] = useState<Response[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [inputType, setInputType] = useState<InputType>("netfeeincome");
-  const [amountStr, setAmountStr] = useState("");
-  const [targetStr, setTargetStr] = useState("");
+  const [inputType, setInputType] = useState<InputType>(DEFAULT_VALUATION_INPUT_TYPE);
+  const [amountStr, setAmountStr] = useState(() =>
+    formatCurrencyInput(String(DEFAULT_VALUATION_INPUT_AMOUNT)),
+  );
+  const [targetStr, setTargetStr] = useState(() =>
+    formatCurrencyInput(String(DEFAULT_TARGET_VALUATION)),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -91,18 +100,28 @@ function ResultsPage() {
         navigate({ to: "/" });
         return;
       }
-      setCompanyName(row.company_name);
-      if (row.valuation_input_type) {
-        setInputType(row.valuation_input_type as InputType);
-      }
-      if (row.valuation_input_amount != null) {
-        setAmountStr(formatCurrencyInput(String(row.valuation_input_amount)));
-      }
-      if (row.target_valuation != null) {
-        setTargetStr(formatCurrencyInput(String(row.target_valuation)));
-      }
+      const savedInputType =
+        row.valuation_input_type === "ebitda" || row.valuation_input_type === "netfeeincome"
+          ? (row.valuation_input_type as InputType)
+          : DEFAULT_VALUATION_INPUT_TYPE;
+      const savedAmount =
+        row.valuation_input_amount != null
+          ? Number(row.valuation_input_amount)
+          : DEFAULT_VALUATION_INPUT_AMOUNT;
+      const savedTarget =
+        row.target_valuation != null ? Number(row.target_valuation) : DEFAULT_TARGET_VALUATION;
 
-      const [sRes, qRes, rRes] = await Promise.all([
+      setCompanyName(row.company_name);
+      setInputType(savedInputType);
+      setAmountStr(formatCurrencyInput(String(savedAmount)));
+      setTargetStr(formatCurrencyInput(String(savedTarget)));
+
+      const shouldSaveDefaults =
+        row.valuation_input_type == null ||
+        row.valuation_input_amount == null ||
+        row.target_valuation == null;
+
+      const [sRes, qRes, rRes, defaultSaveRes] = await Promise.all([
         supabase
           .from("sections")
           .select("section_id,section_name,sort_order,questionnaire_type")
@@ -112,8 +131,19 @@ function ResultsPage() {
           .select("question_id,section_id,questionnaire_type,max_score")
           .eq("active", true),
         supabase.rpc("get_client_responses", { p_token: token }),
+        shouldSaveDefaults
+          ? supabase.rpc("update_client_valuation_inputs", {
+              p_token: token,
+              p_input_type: savedInputType,
+              p_input_amount: savedAmount,
+              p_target: savedTarget,
+            })
+          : Promise.resolve(null),
       ]);
       if (cancelled) return;
+      if (defaultSaveRes?.error) {
+        console.error("Failed to save default valuation inputs", defaultSaveRes.error);
+      }
       setSections((sRes.data ?? []) as Section[]);
       setQuestions((qRes.data ?? []) as Question[]);
       setResponses((rRes.data ?? []) as Response[]);
@@ -153,6 +183,8 @@ function ResultsPage() {
         p_input_type: inputType,
         p_input_amount: (amount || null) as unknown as number,
         p_target: (target || null) as unknown as number,
+      }).then(({ error }) => {
+        if (error) console.error("Failed to save valuation inputs", error);
       });
     }, 400);
     return () => clearTimeout(t);
