@@ -300,6 +300,48 @@ function ResultsPage() {
           </div>
         )}
 
+        {/* Target Valuation */}
+        <section className="rounded-xl border border-border/70 bg-muted/30 p-6">
+          <h2 className="text-base font-semibold mb-1">Target Valuation</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            What would it take to reach your target? Enter a number and see the gap.
+          </p>
+          <div className="max-w-sm">
+            <Label htmlFor="target" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Target Valuation (USD)
+            </Label>
+            <Input
+              id="target"
+              inputMode="decimal"
+              placeholder="e.g. 2,000,000"
+              value={targetStr}
+              onChange={(e) => setTargetStr(e.target.value)}
+              className="mt-1.5 text-lg font-medium"
+            />
+          </div>
+
+          {target > 0 && obj?.target && (
+            <div className="mt-6">
+              <TargetAnalysisBlock
+                eyebrow="Objective target gap"
+                target={obj.target}
+                currentScore={result?.objectiveScore ?? 0}
+              />
+            </div>
+          )}
+
+          {target > 0 && hasAdvisory && adj?.target && (
+            <div className="mt-4">
+              <TargetAnalysisBlock
+                eyebrow="Adjusted (ValScore) target gap"
+                target={adj.target}
+                currentScore={result?.valScore ?? 0}
+                accent
+              />
+            </div>
+          )}
+        </section>
+
         <p className="text-xs text-muted-foreground text-center">
           Submission ID {submissionId}
         </p>
