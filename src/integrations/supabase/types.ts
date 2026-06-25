@@ -16,28 +16,43 @@ export type Database = {
     Tables: {
       answer_options: {
         Row: {
+          active: boolean
           answer_text: string
-          created_at: string
           id: string
           option_order: number
-          points: number
+          points: number | null
           question_id: string
+          section_id: string | null
+          unique_id_responses: string | null
+          value_max: number | null
+          value_min: number | null
+          value_type: string | null
         }
         Insert: {
+          active?: boolean
           answer_text: string
-          created_at?: string
-          id?: string
-          option_order?: number
-          points?: number
+          id: string
+          option_order: number
+          points?: number | null
           question_id: string
+          section_id?: string | null
+          unique_id_responses?: string | null
+          value_max?: number | null
+          value_min?: number | null
+          value_type?: string | null
         }
         Update: {
+          active?: boolean
           answer_text?: string
-          created_at?: string
           id?: string
           option_order?: number
-          points?: number
+          points?: number | null
           question_id?: string
+          section_id?: string | null
+          unique_id_responses?: string | null
+          value_max?: number | null
+          value_min?: number | null
+          value_type?: string | null
         }
         Relationships: [
           {
@@ -45,16 +60,94 @@ export type Database = {
             columns: ["question_id"]
             isOneToOne: false
             referencedRelation: "questions"
-            referencedColumns: ["id"]
+            referencedColumns: ["question_id"]
           },
         ]
+      }
+      multiple_schedule: {
+        Row: {
+          adjusted_multiple: number | null
+          adjusted_multiple_band_id: number | null
+          adjusted_points_available: number | null
+          adjusted_score: number | null
+          adjusted_score_points_increments: number | null
+          adjusted_score_range: number | null
+          adjusted_target_multiple: number | null
+          adjusted_target_multiple_band: number | null
+          adjusted_target_multiple_id: number | null
+          adjusted_target_score: number | null
+          ebitda_multiple: number | null
+          multiple: number | null
+          net_fee_income_multiple: number | null
+          objective_multiple: number | null
+          objective_multiple_band_id: number | null
+          objective_point_increments: number | null
+          objective_points_available: number | null
+          objective_score: number | null
+          objective_score_range: number | null
+          objective_target_multiple: number | null
+          objective_target_multiple_band: number | null
+          objective_target_multiple_id: number | null
+          objective_target_score: number | null
+        }
+        Insert: {
+          adjusted_multiple?: number | null
+          adjusted_multiple_band_id?: number | null
+          adjusted_points_available?: number | null
+          adjusted_score?: number | null
+          adjusted_score_points_increments?: number | null
+          adjusted_score_range?: number | null
+          adjusted_target_multiple?: number | null
+          adjusted_target_multiple_band?: number | null
+          adjusted_target_multiple_id?: number | null
+          adjusted_target_score?: number | null
+          ebitda_multiple?: number | null
+          multiple?: number | null
+          net_fee_income_multiple?: number | null
+          objective_multiple?: number | null
+          objective_multiple_band_id?: number | null
+          objective_point_increments?: number | null
+          objective_points_available?: number | null
+          objective_score?: number | null
+          objective_score_range?: number | null
+          objective_target_multiple?: number | null
+          objective_target_multiple_band?: number | null
+          objective_target_multiple_id?: number | null
+          objective_target_score?: number | null
+        }
+        Update: {
+          adjusted_multiple?: number | null
+          adjusted_multiple_band_id?: number | null
+          adjusted_points_available?: number | null
+          adjusted_score?: number | null
+          adjusted_score_points_increments?: number | null
+          adjusted_score_range?: number | null
+          adjusted_target_multiple?: number | null
+          adjusted_target_multiple_band?: number | null
+          adjusted_target_multiple_id?: number | null
+          adjusted_target_score?: number | null
+          ebitda_multiple?: number | null
+          multiple?: number | null
+          net_fee_income_multiple?: number | null
+          objective_multiple?: number | null
+          objective_multiple_band_id?: number | null
+          objective_point_increments?: number | null
+          objective_points_available?: number | null
+          objective_score?: number | null
+          objective_score_range?: number | null
+          objective_target_multiple?: number | null
+          objective_target_multiple_band?: number | null
+          objective_target_multiple_id?: number | null
+          objective_target_score?: number | null
+        }
+        Relationships: []
       }
       questions: {
         Row: {
           active: boolean
-          created_at: string
-          id: string
-          max_score: number
+          max_score: number | null
+          question_id: string
+          question_number: number
           question_text: string
           questionnaire_type: string
           response_type: string
@@ -63,20 +156,20 @@ export type Database = {
         }
         Insert: {
           active?: boolean
-          created_at?: string
-          id?: string
-          max_score?: number
+          max_score?: number | null
+          question_id: string
+          question_number: number
           question_text: string
-          questionnaire_type?: string
+          questionnaire_type: string
           response_type?: string
           section_id: string
-          sort_order?: number
+          sort_order: number
         }
         Update: {
           active?: boolean
-          created_at?: string
-          id?: string
-          max_score?: number
+          max_score?: number | null
+          question_id?: string
+          question_number?: number
           question_text?: string
           questionnaire_type?: string
           response_type?: string
@@ -89,43 +182,52 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "sections"
-            referencedColumns: ["id"]
+            referencedColumns: ["section_id"]
           },
         ]
       }
       responses: {
         Row: {
           answer_option_id: string
-          answered_at: string
-          id: string
-          points_awarded: number
+          answered_at: string | null
+          created_at: string
+          points_awarded: number | null
           question_id: string
-          questionnaire_type: string
-          section_id: string
-          selected_answer_text: string
+          questionnaire_type: string | null
+          response_id: string
+          section_id: string | null
+          selected_answer_text: string | null
           submission_id: string
+          unique_id_response: string | null
+          updated_at: string
         }
         Insert: {
           answer_option_id: string
-          answered_at?: string
-          id?: string
-          points_awarded?: number
+          answered_at?: string | null
+          created_at?: string
+          points_awarded?: number | null
           question_id: string
-          questionnaire_type?: string
-          section_id: string
-          selected_answer_text: string
+          questionnaire_type?: string | null
+          response_id: string
+          section_id?: string | null
+          selected_answer_text?: string | null
           submission_id: string
+          unique_id_response?: string | null
+          updated_at?: string
         }
         Update: {
           answer_option_id?: string
-          answered_at?: string
-          id?: string
-          points_awarded?: number
+          answered_at?: string | null
+          created_at?: string
+          points_awarded?: number | null
           question_id?: string
-          questionnaire_type?: string
-          section_id?: string
-          selected_answer_text?: string
+          questionnaire_type?: string | null
+          response_id?: string
+          section_id?: string | null
+          selected_answer_text?: string | null
           submission_id?: string
+          unique_id_response?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -140,14 +242,7 @@ export type Database = {
             columns: ["question_id"]
             isOneToOne: false
             referencedRelation: "questions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "responses_section_id_fkey"
-            columns: ["section_id"]
-            isOneToOne: false
-            referencedRelation: "sections"
-            referencedColumns: ["id"]
+            referencedColumns: ["question_id"]
           },
           {
             foreignKeyName: "responses_submission_id_fkey"
@@ -158,54 +253,137 @@ export type Database = {
           },
         ]
       }
+      score_bands: {
+        Row: {
+          adjusted_band: number | null
+          band_type: string
+          extra_value: string | null
+          id: string
+          label: string
+          max_score: number
+          min_score: number
+          objective_band: number | null
+          questionnaire_type: string | null
+        }
+        Insert: {
+          adjusted_band?: number | null
+          band_type: string
+          extra_value?: string | null
+          id: string
+          label: string
+          max_score: number
+          min_score: number
+          objective_band?: number | null
+          questionnaire_type?: string | null
+        }
+        Update: {
+          adjusted_band?: number | null
+          band_type?: string
+          extra_value?: string | null
+          id?: string
+          label?: string
+          max_score?: number
+          min_score?: number
+          objective_band?: number | null
+          questionnaire_type?: string | null
+        }
+        Relationships: []
+      }
+      section_scores: {
+        Row: {
+          actual_score: number | null
+          max_score: number | null
+          potential_improvement: number | null
+          questionnaire_type: string | null
+          section_id: string | null
+          section_name: string | null
+          section_score_id: string
+          submission_id: string
+        }
+        Insert: {
+          actual_score?: number | null
+          max_score?: number | null
+          potential_improvement?: number | null
+          questionnaire_type?: string | null
+          section_id?: string | null
+          section_name?: string | null
+          section_score_id: string
+          submission_id: string
+        }
+        Update: {
+          actual_score?: number | null
+          max_score?: number | null
+          potential_improvement?: number | null
+          questionnaire_type?: string | null
+          section_id?: string | null
+          section_name?: string | null
+          section_score_id?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_scores_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["submission_id"]
+          },
+        ]
+      }
       sections: {
         Row: {
-          created_at: string
-          id: string
-          name: string
+          max_score: number
+          questionnaire_type: string
+          section_id: string
+          section_name: string
           sort_order: number
         }
         Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          sort_order?: number
+          max_score: number
+          questionnaire_type: string
+          section_id: string
+          section_name: string
+          sort_order: number
         }
         Update: {
-          created_at?: string
-          id?: string
-          name?: string
+          max_score?: number
+          questionnaire_type?: string
+          section_id?: string
+          section_name?: string
           sort_order?: number
         }
         Relationships: []
       }
       submissions: {
         Row: {
+          advisor_status: string
           client_status: string
           company_name: string
           created_at: string
-          id: string
           submission_id: string
+          target_valuation: number | null
           updated_at: string
           valuation_input_amount: number | null
           valuation_input_type: string | null
         }
         Insert: {
+          advisor_status?: string
           client_status?: string
           company_name: string
           created_at?: string
-          id?: string
           submission_id: string
+          target_valuation?: number | null
           updated_at?: string
           valuation_input_amount?: number | null
           valuation_input_type?: string | null
         }
         Update: {
+          advisor_status?: string
           client_status?: string
           company_name?: string
           created_at?: string
-          id?: string
           submission_id?: string
+          target_valuation?: number | null
           updated_at?: string
           valuation_input_amount?: number | null
           valuation_input_type?: string | null
