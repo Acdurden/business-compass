@@ -149,6 +149,8 @@ function ResultsPage() {
   }
 
   const obj = result?.objective;
+  const adj = result?.adjusted;
+  const hasAdvisory = responses.some((r) => r.questionnaire_type === "advisory");
 
   return (
     <main className="min-h-screen pb-24">
