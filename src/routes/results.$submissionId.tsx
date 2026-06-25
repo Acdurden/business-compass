@@ -63,6 +63,7 @@ function ResultsPage() {
 
   const [inputType, setInputType] = useState<InputType>("netfeeincome");
   const [amountStr, setAmountStr] = useState("");
+  const [targetStr, setTargetStr] = useState("");
 
   useEffect(() => {
     let cancelled = false;
