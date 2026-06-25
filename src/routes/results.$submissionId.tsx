@@ -180,9 +180,16 @@ function ResultsPage() {
             </p>
             <p className="text-sm font-medium">{companyName}</p>
           </div>
-          <Button variant="ghost" asChild size="sm">
-            <Link to="/">Start over</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" asChild size="sm">
+              <Link to="/questionnaire/$submissionId" params={{ submissionId }}>
+                Edit Answers
+              </Link>
+            </Button>
+            <Button variant="ghost" asChild size="sm">
+              <Link to="/">Start over</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
