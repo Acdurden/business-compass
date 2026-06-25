@@ -119,14 +119,19 @@ function ResultsPage() {
     return isFinite(n) ? n : 0;
   }, [amountStr]);
 
+  const target = useMemo(() => {
+    const n = parseFloat(targetStr.replace(/[^0-9.]/g, ""));
+    return isFinite(n) ? n : 0;
+  }, [targetStr]);
+
   const result = useMemo(() => {
     if (!questions.length) return null;
     return computeValuation(responses, questions, {
       valuationInputType: inputType,
       valuationInputAmount: amount,
-      targetValuation: 0,
+      targetValuation: target,
     });
-  }, [questions, responses, inputType, amount]);
+  }, [questions, responses, inputType, amount, target]);
 
   // Persist input changes (debounced lightly)
   useEffect(() => {
