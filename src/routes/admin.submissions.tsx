@@ -1,12 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, LogOut } from "lucide-react";
+import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 
 export const Route = createFileRoute("/admin/submissions")({
   ssr: false,
+  beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
   head: () => ({
     meta: [{ title: "Admin · Submissions" }],
   }),
