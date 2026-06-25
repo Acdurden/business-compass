@@ -82,7 +82,12 @@ function AdminSubmissionsPage() {
             <Button asChild variant="ghost" size="sm">
               <Link to="/advisor">Advisor home</Link>
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
+              <LogOut className="h-3.5 w-3.5 mr-1.5" />
+              Sign out
+            </Button>
           </div>
+
         </div>
       </header>
 
