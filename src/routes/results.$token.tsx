@@ -292,7 +292,7 @@ function ResultsPage() {
 
         {hasAdvisory ? (
           <ResultBlock
-            eyebrow="Adjusted (ValScore)"
+            eyebrow="ValScore"
             subtitle={`Objective ${result?.objectiveScore ?? 0} + Advisor ${result?.advisoryScore ?? 0} = ${result?.valScore ?? 0}`}
             marketPosition={adj?.marketPosition}
             multiple={adj?.multiple}
@@ -343,7 +343,7 @@ function ResultsPage() {
           {target > 0 && hasAdvisory && adj?.target && (
             <div className="mt-4">
               <TargetAnalysisBlock
-                eyebrow="Adjusted (ValScore) target gap"
+                eyebrow="ValScore target gap"
                 target={adj.target}
                 currentScore={result?.valScore ?? 0}
                 currentValuation={adj.estimatedValuation}
