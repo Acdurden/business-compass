@@ -142,12 +142,13 @@ function ResultsPage() {
         .update({
           valuation_input_type: inputType,
           valuation_input_amount: amount || null,
+          target_valuation: target || null,
           updated_at: new Date().toISOString(),
         })
         .eq("submission_id", submissionId);
     }, 400);
     return () => clearTimeout(t);
-  }, [inputType, amount, submissionId, loading]);
+  }, [inputType, amount, target, submissionId, loading]);
 
   if (loading) {
     return (
