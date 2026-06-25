@@ -71,7 +71,7 @@ function ResultsPage() {
       const [subRes, sRes, qRes, rRes] = await Promise.all([
         supabase
           .from("submissions")
-          .select("company_name,valuation_input_type,valuation_input_amount")
+          .select("company_name,valuation_input_type,valuation_input_amount,target_valuation")
           .eq("submission_id", submissionId)
           .maybeSingle(),
         supabase
