@@ -249,17 +249,12 @@ function ResultsPage() {
               </Label>
               <Input
                 id="amount"
-                inputMode="decimal"
-                placeholder="e.g. 1,500,000"
+                inputMode="numeric"
+                placeholder="$1,500,000"
                 value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
+                onChange={(e) => setAmountStr(formatCurrencyInput(e.target.value))}
                 className="mt-1.5 text-lg font-medium"
               />
-              {amount > 0 && (
-                <p className="mt-1.5 text-sm text-muted-foreground tabular-nums">
-                  {fmtCurrency(amount)}
-                </p>
-              )}
             </div>
             <div>
               <Label htmlFor="basis" className="text-xs uppercase tracking-wide text-muted-foreground">
