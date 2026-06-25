@@ -146,6 +146,9 @@ function AdminSubmissionsPage() {
                     <ClientLinkBox url={cUrl} token={r.client_token} />
                     <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
                   </div>
+                  <div className="mt-3 flex justify-end">
+                    <DownloadPdfButton submissionId={r.submission_id} />
+                  </div>
                 </li>
               );
             })}
