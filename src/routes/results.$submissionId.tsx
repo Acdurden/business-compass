@@ -179,42 +179,6 @@ function ResultsPage() {
       </header>
 
       <div className="mx-auto max-w-3xl px-6 pt-10 space-y-10">
-        <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-base font-semibold mb-1">Your financials</h2>
-          <p className="text-sm text-muted-foreground mb-5">
-            Enter the figure your valuation should be based on. Results update live.
-          </p>
-          <div className="grid gap-5 sm:grid-cols-[1fr_auto]">
-            <div>
-              <Label htmlFor="amount" className="text-xs uppercase tracking-wide text-muted-foreground">
-                Amount (USD)
-              </Label>
-              <Input
-                id="amount"
-                inputMode="decimal"
-                placeholder="e.g. 1,500,000"
-                value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
-                className="mt-1.5 text-lg font-medium"
-              />
-            </div>
-            <div>
-              <Label htmlFor="basis" className="text-xs uppercase tracking-wide text-muted-foreground">
-                Basis
-              </Label>
-              <select
-                id="basis"
-                value={inputType}
-                onChange={(e) => setInputType(e.target.value as InputType)}
-                className="mt-1.5 h-11 rounded-md border border-input bg-background px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="netfeeincome">Net Fee Income</option>
-                <option value="ebitda">EBITDA</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
         <section className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
             <h2 className="text-base font-semibold">Score by section</h2>
@@ -263,6 +227,47 @@ function ResultsPage() {
               </tr>
             </tbody>
           </table>
+        </section>
+
+        <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="text-base font-semibold mb-1">Your financials</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            Enter the figure your valuation should be based on. Results update live.
+          </p>
+          <div className="grid gap-5 sm:grid-cols-[1fr_auto]">
+            <div>
+              <Label htmlFor="amount" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Amount (USD)
+              </Label>
+              <Input
+                id="amount"
+                inputMode="decimal"
+                placeholder="e.g. 1,500,000"
+                value={amountStr}
+                onChange={(e) => setAmountStr(e.target.value)}
+                className="mt-1.5 text-lg font-medium"
+              />
+              {amount > 0 && (
+                <p className="mt-1.5 text-sm text-muted-foreground tabular-nums">
+                  {fmtCurrency(amount)}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="basis" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Basis
+              </Label>
+              <select
+                id="basis"
+                value={inputType}
+                onChange={(e) => setInputType(e.target.value as InputType)}
+                className="mt-1.5 h-11 rounded-md border border-input bg-background px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="netfeeincome">Net Fee Income</option>
+                <option value="ebitda">EBITDA</option>
+              </select>
+            </div>
+          </div>
         </section>
 
         <ResultBlock
@@ -318,6 +323,11 @@ function ResultsPage() {
               onChange={(e) => setTargetStr(e.target.value)}
               className="mt-1.5 text-lg font-medium"
             />
+            {target > 0 && (
+              <p className="mt-1.5 text-sm text-muted-foreground tabular-nums">
+                {fmtCurrency(target)}
+              </p>
+            )}
           </div>
 
           {target > 0 && obj?.target && (
@@ -375,19 +385,19 @@ function TargetAnalysisBlock(props: {
         <div>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Required multiple</p>
           <p className="mt-1.5 text-lg font-semibold tabular-nums">
-            {target.requiredMultiple.toFixed(4)}x
+            {target.requiredMultiple.toFixed(1)}x
           </p>
         </div>
         <div>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Required score</p>
           <p className="mt-1.5 text-lg font-semibold tabular-nums">
-            {target.requiredScore != null ? target.requiredScore.toFixed(1) : "Beyond top band"}
+            {target.requiredScore != null ? Math.ceil(target.requiredScore).toString() : "Beyond top band"}
           </p>
         </div>
         <div>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Score deficit</p>
           <p className="mt-1.5 text-lg font-semibold tabular-nums">
-            {target.scoreDeficit != null ? `${target.scoreDeficit.toFixed(1)} pts` : "—"}
+            {target.scoreDeficit != null ? `${Math.ceil(target.scoreDeficit)} pts` : "—"}
           </p>
         </div>
       </div>
@@ -438,7 +448,7 @@ function ResultBlock(props: {
             Valuation multiple
           </p>
           <p className="mt-2 text-3xl font-semibold tabular-nums">
-            {multiple != null ? `${multiple.toFixed(4)}x` : "—"}
+            {multiple != null ? `${multiple.toFixed(1)}x` : "—"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {inputType === "ebitda" ? "EBITDA basis" : "Net Fee Income basis"}
