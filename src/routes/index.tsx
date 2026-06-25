@@ -46,15 +46,10 @@ function StartPage() {
     }
     setSubmitting(true);
     const submissionId = shortCode();
-    const { data, error } = await supabase
-      .from("submissions")
-      .insert({
-        submission_id: submissionId,
-        company_name: name,
-        client_status: "inprogress",
-      })
-      .select("client_token")
-      .single();
+    const { data, error } = await supabase.rpc("start_client_submission", {
+      p_submission_id: submissionId,
+      p_company_name: name,
+    });
     setSubmitting(false);
     if (error || !data) {
       toast.error("Could not start. Please try again.");
@@ -63,7 +58,7 @@ function StartPage() {
     }
     navigate({
       to: "/q/$token",
-      params: { token: data.client_token as string },
+      params: { token: data as string },
     });
   }
 
@@ -71,21 +66,19 @@ function StartPage() {
     const trimmed = tokenInput.trim();
     if (!trimmed) return;
     setOpening(true);
-    const { data, error } = await supabase
-      .from("submissions")
-      .select("client_status,client_token")
-      .eq("client_token", trimmed)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("get_client_submission", {
+      p_token: trimmed,
+    });
     setOpening(false);
-    if (error || !data) {
+    const row = (data ?? [])[0] as { client_status: string } | undefined;
+    if (error || !row) {
       toast.error("No submission found with that link code");
       return;
     }
-    const token = data.client_token as string;
-    if (data.client_status === "complete") {
-      navigate({ to: "/results/$token", params: { token } });
+    if (row.client_status === "complete") {
+      navigate({ to: "/results/$token", params: { token: trimmed } });
     } else {
-      navigate({ to: "/q/$token", params: { token } });
+      navigate({ to: "/q/$token", params: { token: trimmed } });
     }
   }
 

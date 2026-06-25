@@ -398,7 +398,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_client_responses: {
+        Args: { p_token: string }
+        Returns: {
+          answer_option_id: string
+          points_awarded: number
+          question_id: string
+          questionnaire_type: string
+          section_id: string
+        }[]
+      }
+      get_client_submission: {
+        Args: { p_token: string }
+        Returns: {
+          advisor_status: string
+          client_status: string
+          company_name: string
+          target_valuation: number
+          valuation_input_amount: number
+          valuation_input_type: string
+        }[]
+      }
+      save_client_response: {
+        Args: {
+          p_answer_option_id: string
+          p_question_id: string
+          p_token: string
+        }
+        Returns: undefined
+      }
+      set_client_submission_status: {
+        Args: { p_status: string; p_token: string }
+        Returns: undefined
+      }
+      start_client_submission: {
+        Args: { p_company_name: string; p_submission_id: string }
+        Returns: string
+      }
+      update_client_valuation_inputs: {
+        Args: {
+          p_input_amount: number
+          p_input_type: string
+          p_target: number
+          p_token: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
