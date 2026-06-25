@@ -21,14 +21,6 @@ export const Route = createFileRoute("/")({
   component: StartPage,
 });
 
-type RecentSubmission = {
-  submission_id: string;
-  company_name: string;
-  client_status: string;
-  advisor_status: string;
-  updated_at: string;
-};
-
 function shortCode() {
   return (
     Date.now().toString(36).slice(-4) +
@@ -42,16 +34,7 @@ function StartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resumeId, setResumeId] = useState("");
   const [opening, setOpening] = useState(false);
-  const [recent, setRecent] = useState<RecentSubmission[]>([]);
 
-  useEffect(() => {
-    void supabase
-      .from("submissions")
-      .select("submission_id,company_name,client_status,advisor_status,updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(20)
-      .then(({ data }) => setRecent((data ?? []) as RecentSubmission[]));
-  }, []);
 
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
@@ -187,51 +170,10 @@ function StartPage() {
                 {opening ? "Opening…" : "Open submission"}
               </Button>
             </form>
-
-            {recent.length > 0 && (
-              <ul className="mt-4 rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-                {recent.map((s) => (
-                  <li key={s.submission_id}>
-                    <button
-                      type="button"
-                      onClick={() => void openSubmission(s.submission_id)}
-                      className="w-full flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-muted/40 text-left transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{s.company_name}</p>
-                        <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                          {s.submission_id}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] shrink-0">
-                        <StatusPill label="Client" status={s.client_status} />
-                        <StatusPill label="Advisor" status={s.advisor_status} />
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
+
         </div>
       </section>
     </main>
-  );
-}
-
-function StatusPill({ label, status }: { label: string; status: string }) {
-  const tone =
-    status === "complete"
-      ? "bg-primary/10 text-primary border-primary/30"
-      : status === "inprogress"
-        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
-        : "bg-muted text-muted-foreground border-border";
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${tone}`}>
-      <span className="opacity-60">{label}</span>
-      <span className="font-medium capitalize">
-        {status.replace("inprogress", "in progress").replace("notstarted", "not started")}
-      </span>
-    </span>
   );
 }
