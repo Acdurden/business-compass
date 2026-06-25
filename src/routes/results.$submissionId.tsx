@@ -106,10 +106,10 @@ function ResultsPage() {
         setInputType(subRes.data.valuation_input_type as InputType);
       }
       if (subRes.data.valuation_input_amount != null) {
-        setAmountStr(String(subRes.data.valuation_input_amount));
+        setAmountStr(formatCurrencyInput(String(subRes.data.valuation_input_amount)));
       }
       if (subRes.data.target_valuation != null) {
-        setTargetStr(String(subRes.data.target_valuation));
+        setTargetStr(formatCurrencyInput(String(subRes.data.target_valuation)));
       }
       setSections((sRes.data ?? []) as Section[]);
       setQuestions((qRes.data ?? []) as Question[]);
