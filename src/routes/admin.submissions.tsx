@@ -40,9 +40,17 @@ async function copy(text: string, label: string) {
 }
 
 function AdminSubmissionsPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [origin, setOrigin] = useState("");
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    toast.success("Signed out");
+    navigate({ to: "/auth" });
+  }
+
 
   useEffect(() => {
     setOrigin(window.location.origin);
