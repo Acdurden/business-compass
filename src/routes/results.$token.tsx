@@ -8,7 +8,7 @@ import { computeValuation } from "@/lib/valscore_calc.js";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/results/$submissionId")({
+export const Route = createFileRoute("/results/$token")({
   ssr: false,
   component: ResultsPage,
   errorComponent: ({ error }) => (
