@@ -187,7 +187,7 @@ function ResultsPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild size="sm">
-              <Link to="/questionnaire/$submissionId" params={{ submissionId }}>
+              <Link to="/q/$token" params={{ token }}>
                 Edit Answers
               </Link>
             </Button>
@@ -309,14 +309,7 @@ function ResultsPage() {
         ) : (
           <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
             Adjusted ValScore results will appear once an advisor completes the advisor
-            questionnaire for this submission.{" "}
-            <Link
-              to="/advisor/$submissionId"
-              params={{ submissionId }}
-              className="underline underline-offset-4 hover:text-foreground"
-            >
-              Open advisor questionnaire →
-            </Link>
+            questionnaire for this submission.
           </div>
         )}
 
@@ -363,7 +356,7 @@ function ResultsPage() {
         </section>
 
         <p className="text-xs text-muted-foreground text-center">
-          Submission ID {submissionId}
+          Keep this link private — anyone with it can view these results.
         </p>
       </div>
     </main>
