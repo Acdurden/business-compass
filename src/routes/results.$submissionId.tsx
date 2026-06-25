@@ -402,15 +402,21 @@ function TargetAnalysisBlock(props: {
         <div>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Score deficit</p>
           <p className="mt-1.5 text-lg font-semibold tabular-nums">
-            {target.scoreDeficit != null ? `${Math.ceil(target.scoreDeficit)} pts` : "—"}
+            {target.scoreDeficit != null
+              ? target.scoreDeficit <= 0
+                ? "Target achievable at current score"
+                : `${Math.ceil(target.scoreDeficit)} pts`
+              : "—"}
           </p>
         </div>
       </div>
-      {target.additionalIncomeRequired > 0 && (
+      {target.scoreDeficit != null && (
         <div className="mt-4 grid gap-4 sm:grid-cols-2 border-t border-border/60 pt-4">
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Additional income required</p>
-            <p className="mt-1.5 text-lg font-semibold tabular-nums">{fmtCurrency(target.additionalIncomeRequired)}</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums">
+              {target.scoreDeficit <= 0 ? fmtCurrency(0) : fmtCurrency(target.additionalIncomeRequired)}
+            </p>
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total income required</p>
