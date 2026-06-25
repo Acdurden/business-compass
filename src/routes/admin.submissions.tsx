@@ -3,8 +3,30 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Copy, ExternalLink, LogOut } from "lucide-react";
+import { Copy, ExternalLink, LogOut, FileDown } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
+import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
+
+function DownloadPdfButton({ submissionId }: { submissionId: string }) {
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    setBusy(true);
+    try {
+      await generateSubmissionPdf(submissionId);
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not generate PDF");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <FileDown className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Generating…" : "Download PDF"}
+    </Button>
+  );
+}
 
 export const Route = createFileRoute("/admin/submissions")({
   ssr: false,
@@ -123,6 +145,9 @@ function AdminSubmissionsPage() {
                   <div className="grid md:grid-cols-2 gap-3">
                     <ClientLinkBox url={cUrl} token={r.client_token} />
                     <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <DownloadPdfButton submissionId={r.submission_id} />
                   </div>
                 </li>
               );
