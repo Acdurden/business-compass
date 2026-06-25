@@ -151,8 +151,8 @@ function ResultsPage() {
       void supabase.rpc("update_client_valuation_inputs", {
         p_token: token,
         p_input_type: inputType,
-        p_input_amount: amount || null,
-        p_target: target || null,
+        p_input_amount: (amount || null) as unknown as number,
+        p_target: (target || null) as unknown as number,
       });
     }, 400);
     return () => clearTimeout(t);
