@@ -177,20 +177,3 @@ function StartPage() {
     </main>
   );
 }
-
-function StatusPill({ label, status }: { label: string; status: string }) {
-  const tone =
-    status === "complete"
-      ? "bg-primary/10 text-primary border-primary/30"
-      : status === "inprogress"
-        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
-        : "bg-muted text-muted-foreground border-border";
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${tone}`}>
-      <span className="opacity-60">{label}</span>
-      <span className="font-medium capitalize">
-        {status.replace("inprogress", "in progress").replace("notstarted", "not started")}
-      </span>
-    </span>
-  );
-}
