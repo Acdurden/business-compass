@@ -33,6 +33,12 @@ type Response = {
   questionnaire_type: string | null;
   points_awarded: number | null;
 };
+type Section = {
+  section_id: string;
+  section_name: string;
+  sort_order: number;
+  questionnaire_type: string;
+};
 
 type InputType = "netfeeincome" | "ebitda";
 
@@ -50,6 +56,7 @@ function ResultsPage() {
   const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState("");
+  const [sections, setSections] = useState<Section[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,12 +67,16 @@ function ResultsPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [subRes, qRes, rRes] = await Promise.all([
+      const [subRes, sRes, qRes, rRes] = await Promise.all([
         supabase
           .from("submissions")
           .select("company_name,valuation_input_type,valuation_input_amount")
           .eq("submission_id", submissionId)
           .maybeSingle(),
+        supabase
+          .from("sections")
+          .select("section_id,section_name,sort_order,questionnaire_type")
+          .order("sort_order"),
         supabase
           .from("questions")
           .select("question_id,section_id,questionnaire_type,max_score")
@@ -88,6 +99,7 @@ function ResultsPage() {
       if (subRes.data.valuation_input_amount != null) {
         setAmountStr(String(subRes.data.valuation_input_amount));
       }
+      setSections((sRes.data ?? []) as Section[]);
       setQuestions((qRes.data ?? []) as Question[]);
       setResponses((rRes.data ?? []) as Response[]);
       setLoading(false);
@@ -175,33 +187,70 @@ function ResultsPage() {
               />
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="basis" className="text-xs uppercase tracking-wide text-muted-foreground">
                 Basis
               </Label>
-              <div className="mt-1.5 inline-flex rounded-md border border-border p-1 bg-background">
-                {(
-                  [
-                    { v: "netfeeincome", label: "Net Fee Income" },
-                    { v: "ebitda", label: "EBITDA" },
-                  ] as const
-                ).map((opt) => (
-                  <button
-                    key={opt.v}
-                    type="button"
-                    onClick={() => setInputType(opt.v)}
-                    className={cn(
-                      "px-3.5 py-2 text-sm rounded transition-colors",
-                      inputType === opt.v
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              <select
+                id="basis"
+                value={inputType}
+                onChange={(e) => setInputType(e.target.value as InputType)}
+                className="mt-1.5 h-11 rounded-md border border-input bg-background px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="netfeeincome">Net Fee Income</option>
+                <option value="ebitda">EBITDA</option>
+              </select>
             </div>
           </div>
+        </section>
+
+        <section className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-base font-semibold">Score by section</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Your objective score across each area.
+            </p>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="text-[11px] uppercase tracking-wide text-muted-foreground bg-muted/40">
+              <tr>
+                <th className="text-left font-medium px-6 py-2.5">Section</th>
+                <th className="text-right font-medium px-6 py-2.5 w-24">Score</th>
+                <th className="text-right font-medium px-6 py-2.5 w-24">Max</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sections
+                .filter((s) => s.questionnaire_type === "objective")
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map((s) => {
+                  const sc = result?.sectionScores.find(
+                    (x) => x.section_id === s.section_id,
+                  );
+                  return (
+                    <tr key={s.section_id} className="border-t border-border/60">
+                      <td className="px-6 py-3">{s.section_name}</td>
+                      <td className="px-6 py-3 text-right tabular-nums font-medium">
+                        {sc?.actual_score ?? 0}
+                      </td>
+                      <td className="px-6 py-3 text-right tabular-nums text-muted-foreground">
+                        {sc?.max_score ?? 0}
+                      </td>
+                    </tr>
+                  );
+                })}
+              <tr className="border-t-2 border-border bg-muted/30">
+                <td className="px-6 py-3 font-semibold">Objective Score</td>
+                <td className="px-6 py-3 text-right tabular-nums font-semibold">
+                  {result?.objectiveScore ?? 0}
+                </td>
+                <td className="px-6 py-3 text-right tabular-nums font-semibold text-muted-foreground">
+                  {result?.sectionScores
+                    .filter((s) => s.questionnaire_type === "objective")
+                    .reduce((sum, s) => sum + s.max_score, 0) ?? 0}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
         <section className="grid gap-4 sm:grid-cols-3">
