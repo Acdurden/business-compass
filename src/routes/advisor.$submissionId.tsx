@@ -20,6 +20,7 @@ function AdvisorQuestionnairePage() {
   const { submissionId } = Route.useParams();
   return (
     <QuestionnaireRunner
+      mode="advisor"
       submissionId={submissionId}
       questionnaireType="advisory"
       statusField="advisor_status"

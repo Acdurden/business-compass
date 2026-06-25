@@ -26,8 +26,10 @@ type AnswerOption = {
   unique_id_responses: string | null;
 };
 
-export type QuestionnaireRunnerProps = {
-  submissionId: string;
+type ClientSource = { mode: "client"; token: string };
+type AdvisorSource = { mode: "advisor"; submissionId: string };
+
+export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   questionnaireType: "objective" | "advisory";
   statusField: "client_status" | "advisor_status";
   eyebrow: string;
@@ -36,19 +38,21 @@ export type QuestionnaireRunnerProps = {
   notFoundTo: "/" | "/advisor";
 };
 
-export function QuestionnaireRunner({
-  submissionId,
-  questionnaireType,
-  statusField,
-  eyebrow,
-  finishLabel,
-  exitTo,
-  notFoundTo,
-}: QuestionnaireRunnerProps) {
+export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
+  const {
+    questionnaireType,
+    statusField,
+    eyebrow,
+    finishLabel,
+    exitTo,
+    notFoundTo,
+  } = props;
   const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState("");
-  const [clientToken, setClientToken] = useState<string | null>(null);
+  const [clientToken, setClientToken] = useState<string | null>(
+    props.mode === "client" ? props.token : null,
+  );
   const [sections, setSections] = useState<Section[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [options, setOptions] = useState<AnswerOption[]>([]);
@@ -57,72 +61,121 @@ export function QuestionnaireRunner({
   const [saving, setSaving] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
 
+  // Stable identity for effect dependency
+  const sourceKey =
+    props.mode === "client" ? `client:${props.token}` : `advisor:${props.submissionId}`;
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [submissionRes, sectionsRes, questionsRes, responsesRes] =
-        await Promise.all([
-          supabase
-            .from("submissions")
-            .select("company_name,client_token")
-            .eq("submission_id", submissionId)
-            .maybeSingle(),
-          supabase
-            .from("sections")
-            .select("section_id,section_name,sort_order")
-            .eq("questionnaire_type", questionnaireType)
-            .order("sort_order"),
-          supabase
-            .from("questions")
-            .select("question_id,section_id,question_text,sort_order,max_score")
-            .eq("questionnaire_type", questionnaireType)
-            .eq("active", true)
-            .order("sort_order"),
-          supabase
-            .from("responses")
-            .select("question_id,answer_option_id")
-            .eq("submission_id", submissionId)
-            .eq("questionnaire_type", questionnaireType),
-        ]);
+      let companyNameVal = "";
+      let tokenVal: string | null = null;
+      const responseMap: Record<string, string> = {};
 
-      if (cancelled) return;
-      if (submissionRes.error || !submissionRes.data) {
-        toast.error("Submission not found");
-        navigate({ to: notFoundTo });
-        return;
+      if (props.mode === "client") {
+        const { data, error } = await supabase.rpc("get_client_submission", {
+          p_token: props.token,
+        });
+        if (cancelled) return;
+        const row = (data ?? [])[0];
+        if (error || !row) {
+          toast.error("This link is invalid or has expired");
+          navigate({ to: notFoundTo });
+          return;
+        }
+        companyNameVal = row.company_name as string;
+        tokenVal = props.token;
+
+        const respRes = await supabase.rpc("get_client_responses", {
+          p_token: props.token,
+        });
+        if (cancelled) return;
+        for (const r of (respRes.data ?? []) as Array<{
+          question_id: string;
+          questionnaire_type: string | null;
+          answer_option_id: string;
+        }>) {
+          if (r.questionnaire_type === questionnaireType) {
+            responseMap[r.question_id] = r.answer_option_id;
+          }
+        }
+      } else {
+        const subRes = await supabase
+          .from("submissions")
+          .select("company_name,client_token")
+          .eq("submission_id", props.submissionId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (subRes.error || !subRes.data) {
+          toast.error("Submission not found");
+          navigate({ to: notFoundTo });
+          return;
+        }
+        companyNameVal = subRes.data.company_name;
+        tokenVal = subRes.data.client_token as string;
+
+        const respRes = await supabase
+          .from("responses")
+          .select("question_id,answer_option_id")
+          .eq("submission_id", props.submissionId)
+          .eq("questionnaire_type", questionnaireType);
+        if (cancelled) return;
+        for (const r of respRes.data ?? []) {
+          responseMap[r.question_id] = r.answer_option_id;
+        }
       }
-      setCompanyName(submissionRes.data.company_name);
-      setClientToken(submissionRes.data.client_token as string);
+
+      const [sectionsRes, questionsRes] = await Promise.all([
+        supabase
+          .from("sections")
+          .select("section_id,section_name,sort_order")
+          .eq("questionnaire_type", questionnaireType)
+          .order("sort_order"),
+        supabase
+          .from("questions")
+          .select("question_id,section_id,question_text,sort_order,max_score")
+          .eq("questionnaire_type", questionnaireType)
+          .eq("active", true)
+          .order("sort_order"),
+      ]);
+      if (cancelled) return;
 
       const qs = (questionsRes.data ?? []) as Question[];
       setSections((sectionsRes.data ?? []) as Section[]);
       setQuestions(qs);
+      setCompanyName(companyNameVal);
+      setClientToken(tokenVal);
+      setResponses(responseMap);
 
       if (qs.length) {
         const { data: opts } = await supabase
           .from("answer_options")
-          .select("id,question_id,answer_text,points,option_order,unique_id_responses")
+          .select(
+            "id,question_id,answer_text,points,option_order,unique_id_responses",
+          )
           .in("question_id", qs.map((q) => q.question_id))
           .eq("active", true)
           .order("option_order");
         if (!cancelled) setOptions((opts ?? []) as AnswerOption[]);
       }
 
-      const map: Record<string, string> = {};
-      (responsesRes.data ?? []).forEach((r) => {
-        map[r.question_id] = r.answer_option_id;
-      });
-      setResponses(map);
-
-      // mark in-progress if it isn't already
-      const inprogressUpdate: { client_status?: string; advisor_status?: string; updated_at: string } =
-        { updated_at: new Date().toISOString() };
-      inprogressUpdate[statusField] = "inprogress";
-      await supabase
-        .from("submissions")
-        .update(inprogressUpdate)
-        .eq("submission_id", submissionId)
-        .neq(statusField, "complete");
+      // mark in-progress if not already complete
+      if (props.mode === "client") {
+        await supabase.rpc("set_client_submission_status", {
+          p_token: props.token,
+          p_status: "inprogress",
+        });
+      } else {
+        const update: { advisor_status: string; updated_at: string } = {
+          advisor_status: "inprogress",
+          updated_at: new Date().toISOString(),
+        };
+        await supabase
+          .from("submissions")
+          .update(update)
+          .eq("submission_id", props.submissionId)
+          .neq(statusField, "complete");
+      }
 
       setLoading(false);
     }
@@ -130,7 +183,8 @@ export function QuestionnaireRunner({
     return () => {
       cancelled = true;
     };
-  }, [submissionId, questionnaireType, statusField, navigate, notFoundTo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceKey, questionnaireType, statusField, notFoundTo]);
 
   const sectionsWithQuestions = useMemo(() => {
     const byId = new Map(sections.map((s) => [s.section_id, s]));
@@ -161,23 +215,34 @@ export function QuestionnaireRunner({
   async function handleSelect(question: Question, option: AnswerOption) {
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
     setSaving(question.question_id);
-    const responseId = `${submissionId}_${question.question_id}`;
-    const { error } = await supabase.from("responses").upsert(
-      {
-        response_id: responseId,
-        submission_id: submissionId,
-        question_id: question.question_id,
-        answer_option_id: option.id,
-        section_id: question.section_id,
-        questionnaire_type: questionnaireType,
-        unique_id_response: option.unique_id_responses,
-        selected_answer_text: option.answer_text,
-        points_awarded: option.points ?? 0,
-        answered_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "submission_id,question_id" },
-    );
+    let error: unknown = null;
+    if (props.mode === "client") {
+      const res = await supabase.rpc("save_client_response", {
+        p_token: props.token,
+        p_question_id: question.question_id,
+        p_answer_option_id: option.id,
+      });
+      error = res.error;
+    } else {
+      const responseId = `${props.submissionId}_${question.question_id}`;
+      const res = await supabase.from("responses").upsert(
+        {
+          response_id: responseId,
+          submission_id: props.submissionId,
+          question_id: question.question_id,
+          answer_option_id: option.id,
+          section_id: question.section_id,
+          questionnaire_type: questionnaireType,
+          unique_id_response: option.unique_id_responses,
+          selected_answer_text: option.answer_text,
+          points_awarded: option.points ?? 0,
+          answered_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "submission_id,question_id" },
+      );
+      error = res.error;
+    }
     setSaving(null);
     if (error) {
       toast.error("Couldn't save answer");
@@ -187,13 +252,24 @@ export function QuestionnaireRunner({
 
   async function handleFinish() {
     setFinishing(true);
-    const completeUpdate: { client_status?: string; advisor_status?: string; updated_at: string } =
-      { updated_at: new Date().toISOString() };
-    completeUpdate[statusField] = "complete";
-    const { error } = await supabase
-      .from("submissions")
-      .update(completeUpdate)
-      .eq("submission_id", submissionId);
+    let error: unknown = null;
+    if (props.mode === "client") {
+      const res = await supabase.rpc("set_client_submission_status", {
+        p_token: props.token,
+        p_status: "complete",
+      });
+      error = res.error;
+    } else {
+      const update: { advisor_status: string; updated_at: string } = {
+        advisor_status: "complete",
+        updated_at: new Date().toISOString(),
+      };
+      const res = await supabase
+        .from("submissions")
+        .update(update)
+        .eq("submission_id", props.submissionId);
+      error = res.error;
+    }
     setFinishing(false);
     if (error) {
       toast.error("Couldn't finalize submission");
@@ -221,7 +297,6 @@ export function QuestionnaireRunner({
               <p className="text-xs text-muted-foreground">
                 {answered} / {total} answered
               </p>
-              <p className="text-[11px] text-muted-foreground/70">ID {submissionId}</p>
             </div>
           </div>
           <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
