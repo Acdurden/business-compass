@@ -64,7 +64,6 @@ function ResultsPage() {
   const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState("");
-  const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
@@ -77,28 +76,30 @@ function ResultsPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const subRes = await supabase
-        .from("submissions")
-        .select("submission_id,company_name,valuation_input_type,valuation_input_amount,target_valuation")
-        .eq("client_token", token)
-        .maybeSingle();
+      const subRes = await supabase.rpc("get_client_submission", { p_token: token });
       if (cancelled) return;
-      if (subRes.error || !subRes.data) {
+      const row = (subRes.data ?? [])[0] as
+        | {
+            company_name: string;
+            valuation_input_type: string | null;
+            valuation_input_amount: number | null;
+            target_valuation: number | null;
+          }
+        | undefined;
+      if (subRes.error || !row) {
         toast.error("This link is invalid or has expired");
         navigate({ to: "/" });
         return;
       }
-      const sid = subRes.data.submission_id;
-      setSubmissionId(sid);
-      setCompanyName(subRes.data.company_name);
-      if (subRes.data.valuation_input_type) {
-        setInputType(subRes.data.valuation_input_type as InputType);
+      setCompanyName(row.company_name);
+      if (row.valuation_input_type) {
+        setInputType(row.valuation_input_type as InputType);
       }
-      if (subRes.data.valuation_input_amount != null) {
-        setAmountStr(formatCurrencyInput(String(subRes.data.valuation_input_amount)));
+      if (row.valuation_input_amount != null) {
+        setAmountStr(formatCurrencyInput(String(row.valuation_input_amount)));
       }
-      if (subRes.data.target_valuation != null) {
-        setTargetStr(formatCurrencyInput(String(subRes.data.target_valuation)));
+      if (row.target_valuation != null) {
+        setTargetStr(formatCurrencyInput(String(row.target_valuation)));
       }
 
       const [sRes, qRes, rRes] = await Promise.all([
@@ -110,10 +111,7 @@ function ResultsPage() {
           .from("questions")
           .select("question_id,section_id,questionnaire_type,max_score")
           .eq("active", true),
-        supabase
-          .from("responses")
-          .select("question_id,section_id,questionnaire_type,points_awarded")
-          .eq("submission_id", sid),
+        supabase.rpc("get_client_responses", { p_token: token }),
       ]);
       if (cancelled) return;
       setSections((sRes.data ?? []) as Section[]);
@@ -148,20 +146,17 @@ function ResultsPage() {
 
   // Persist input changes (debounced lightly)
   useEffect(() => {
-    if (loading || !submissionId) return;
+    if (loading) return;
     const t = setTimeout(() => {
-      void supabase
-        .from("submissions")
-        .update({
-          valuation_input_type: inputType,
-          valuation_input_amount: amount || null,
-          target_valuation: target || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("submission_id", submissionId);
+      void supabase.rpc("update_client_valuation_inputs", {
+        p_token: token,
+        p_input_type: inputType,
+        p_input_amount: amount || null,
+        p_target: target || null,
+      });
     }, 400);
     return () => clearTimeout(t);
-  }, [inputType, amount, target, submissionId, loading]);
+  }, [inputType, amount, target, token, loading]);
 
   if (loading) {
     return (
