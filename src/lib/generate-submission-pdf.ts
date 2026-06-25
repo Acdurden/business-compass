@@ -289,26 +289,28 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   }
 
   // Target analysis
-  if (target > 0 && obj.target) {
-    y = ensureSpace(doc, y, 140, margin);
-    y = sectionHeading(doc, "Target Analysis", y, margin, primary);
-
-    y = renderTargetBlock(
-      doc,
-      "Objective target gap",
-      obj.target,
-      result.objectiveScore,
-      obj.estimatedValuation,
-      target,
-      y,
-      margin,
-      pageW,
-      primary,
-      muted,
-    );
+  if (target > 0) {
+    if (!includeAdjusted && obj.target) {
+      y = ensureSpace(doc, y, 140, margin);
+      y = sectionHeading(doc, "Target Analysis", y, margin, primary);
+      y = renderTargetBlock(
+        doc,
+        "Objective target gap",
+        obj.target,
+        result.objectiveScore,
+        obj.estimatedValuation,
+        target,
+        y,
+        margin,
+        pageW,
+        primary,
+        muted,
+      );
+    }
 
     if (includeAdjusted && result.adjusted.target) {
-      y = ensureSpace(doc, y, 100, margin);
+      y = ensureSpace(doc, y, 140, margin);
+      y = sectionHeading(doc, "Target Analysis", y, margin, primary);
       y = renderTargetBlock(
         doc,
         "ValScore target gap",
