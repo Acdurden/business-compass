@@ -21,20 +21,25 @@ export const Route = createFileRoute("/questionnaire/$submissionId")({
   ),
 });
 
-type Section = { id: string; name: string; sort_order: number };
+type Section = {
+  section_id: string;
+  section_name: string;
+  sort_order: number;
+};
 type Question = {
-  id: string;
+  question_id: string;
   section_id: string;
   question_text: string;
   sort_order: number;
-  max_score: number;
+  max_score: number | null;
 };
 type AnswerOption = {
   id: string;
   question_id: string;
   answer_text: string;
-  points: number;
+  points: number | null;
   option_order: number;
+  unique_id_responses: string | null;
 };
 
 function QuestionnairePage() {
@@ -45,7 +50,7 @@ function QuestionnairePage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [options, setOptions] = useState<AnswerOption[]>([]);
-  const [responses, setResponses] = useState<Record<string, string>>({}); // question_id -> answer_option_id
+  const [responses, setResponses] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
@@ -60,10 +65,14 @@ function QuestionnairePage() {
             .select("company_name,client_status")
             .eq("submission_id", submissionId)
             .maybeSingle(),
-          supabase.from("sections").select("*").order("sort_order"),
+          supabase
+            .from("sections")
+            .select("section_id,section_name,sort_order")
+            .eq("questionnaire_type", "objective")
+            .order("sort_order"),
           supabase
             .from("questions")
-            .select("*")
+            .select("question_id,section_id,question_text,sort_order,max_score")
             .eq("questionnaire_type", "objective")
             .eq("active", true)
             .order("sort_order"),
@@ -88,11 +97,9 @@ function QuestionnairePage() {
       if (qs.length) {
         const { data: opts } = await supabase
           .from("answer_options")
-          .select("*")
-          .in(
-            "question_id",
-            qs.map((q) => q.id),
-          )
+          .select("id,question_id,answer_text,points,option_order,unique_id_responses")
+          .in("question_id", qs.map((q) => q.question_id))
+          .eq("active", true)
           .order("option_order");
         if (!cancelled) setOptions((opts ?? []) as AnswerOption[]);
       }
@@ -111,13 +118,17 @@ function QuestionnairePage() {
   }, [submissionId, navigate]);
 
   const sectionsWithQuestions = useMemo(() => {
-    const byId = new Map(sections.map((s) => [s.id, s]));
-    const grouped = new Map<string, { section: Section; questions: Question[] }>();
+    const byId = new Map(sections.map((s) => [s.section_id, s]));
+    const grouped = new Map<
+      string,
+      { section: Section; questions: Question[] }
+    >();
     for (const q of questions) {
       const s = byId.get(q.section_id);
       if (!s) continue;
-      if (!grouped.has(s.id)) grouped.set(s.id, { section: s, questions: [] });
-      grouped.get(s.id)!.questions.push(q);
+      if (!grouped.has(s.section_id))
+        grouped.set(s.section_id, { section: s, questions: [] });
+      grouped.get(s.section_id)!.questions.push(q);
     }
     return Array.from(grouped.values()).sort(
       (a, b) => a.section.sort_order - b.section.sort_order,
@@ -138,19 +149,22 @@ function QuestionnairePage() {
   const allAnswered = total > 0 && answered === total;
 
   async function handleSelect(question: Question, option: AnswerOption) {
-    // optimistic
-    setResponses((prev) => ({ ...prev, [question.id]: option.id }));
-    setSaving(question.id);
+    setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
+    setSaving(question.question_id);
+    const responseId = `${submissionId}_${question.question_id}`;
     const { error } = await supabase.from("responses").upsert(
       {
+        response_id: responseId,
         submission_id: submissionId,
-        question_id: question.id,
+        question_id: question.question_id,
         answer_option_id: option.id,
         section_id: question.section_id,
         questionnaire_type: "objective",
+        unique_id_response: option.unique_id_responses,
         selected_answer_text: option.answer_text,
-        points_awarded: option.points,
+        points_awarded: option.points ?? 0,
         answered_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       },
       { onConflict: "submission_id,question_id" },
     );
@@ -165,7 +179,10 @@ function QuestionnairePage() {
     setFinishing(true);
     const { error } = await supabase
       .from("submissions")
-      .update({ client_status: "complete", updated_at: new Date().toISOString() })
+      .update({
+        client_status: "complete",
+        updated_at: new Date().toISOString(),
+      })
       .eq("submission_id", submissionId);
     setFinishing(false);
     if (error) {
@@ -211,35 +228,34 @@ function QuestionnairePage() {
           <div className="text-sm text-muted-foreground">Loading questions…</div>
         ) : sectionsWithQuestions.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            No active objective questions have been loaded yet. Add them to
-            the database and refresh.
+            No active objective questions found.
           </div>
         ) : (
           <div className="space-y-14">
             {sectionsWithQuestions.map(({ section, questions: qs }, sIdx) => (
-              <section key={section.id}>
+              <section key={section.section_id}>
                 <div className="flex items-baseline gap-3 mb-6">
                   <span className="text-xs font-mono text-muted-foreground tabular-nums">
                     {String(sIdx + 1).padStart(2, "0")}
                   </span>
                   <h2 className="text-xl font-semibold tracking-tight">
-                    {section.name}
+                    {section.section_name}
                   </h2>
                 </div>
                 <ol className="space-y-5">
                   {qs.map((q) => {
-                    const opts = optionsByQuestion[q.id] ?? [];
-                    const selected = responses[q.id];
+                    const opts = optionsByQuestion[q.question_id] ?? [];
+                    const selected = responses[q.question_id];
                     return (
                       <li
-                        key={q.id}
+                        key={q.question_id}
                         className="rounded-xl border border-border bg-card p-5 shadow-sm"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <p className="font-medium leading-snug">
                             {q.question_text}
                           </p>
-                          {saving === q.id && (
+                          {saving === q.question_id && (
                             <span className="text-[11px] text-muted-foreground shrink-0 mt-1">
                               saving…
                             </span>
