@@ -150,7 +150,7 @@ function StartPage() {
 
           <div>
             <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-              Resume an existing submission
+              Resume from your link
             </h2>
             <form
               onSubmit={(e) => {
@@ -161,15 +161,18 @@ function StartPage() {
             >
               <div>
                 <Label htmlFor="sid" className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Submission ID
+                  Your access code
                 </Label>
                 <Input
                   id="sid"
                   value={resumeId}
-                  onChange={(e) => setResumeId(e.target.value.toUpperCase())}
-                  placeholder="e.g. 3Y5PWSI6JO"
-                  className="mt-1.5 font-mono tracking-wider"
+                  onChange={(e) => setResumeId(e.target.value.trim())}
+                  placeholder="Paste the code from your link"
+                  className="mt-1.5 font-mono text-xs"
                 />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  The code is the long string at the end of your unique link.
+                </p>
               </div>
               <Button type="submit" variant="secondary" disabled={opening || !resumeId.trim()}>
                 {opening ? "Opening…" : "Open submission"}
