@@ -10,11 +10,19 @@ export interface SectionScore {
   max_score: number;
   potential_improvement: number;
 }
+export interface TargetAnalysis {
+  requiredMultiple: number;
+  requiredScore: number | null;
+  scoreDeficit: number | null;
+  additionalIncomeRequired: number;
+  totalIncomeRequired: number;
+}
 export interface ValuationLeg {
   multiple: number;
   marketPosition: string;
   estimatedValuation: number;
   maxValuation: number;
+  target: TargetAnalysis | null;
 }
 export interface ValuationResult {
   sectionScores: SectionScore[];
