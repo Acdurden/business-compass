@@ -10,33 +10,44 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as QuestionnaireSubmissionIdRouteImport } from './routes/questionnaire.$submissionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuestionnaireSubmissionIdRoute =
+  QuestionnaireSubmissionIdRouteImport.update({
+    id: '/questionnaire/$submissionId',
+    path: '/questionnaire/$submissionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/questionnaire/$submissionId': typeof QuestionnaireSubmissionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/questionnaire/$submissionId': typeof QuestionnaireSubmissionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/questionnaire/$submissionId': typeof QuestionnaireSubmissionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/questionnaire/$submissionId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/questionnaire/$submissionId'
+  id: '__root__' | '/' | '/questionnaire/$submissionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  QuestionnaireSubmissionIdRoute: typeof QuestionnaireSubmissionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +59,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/questionnaire/$submissionId': {
+      id: '/questionnaire/$submissionId'
+      path: '/questionnaire/$submissionId'
+      fullPath: '/questionnaire/$submissionId'
+      preLoaderRoute: typeof QuestionnaireSubmissionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  QuestionnaireSubmissionIdRoute: QuestionnaireSubmissionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
