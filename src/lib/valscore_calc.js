@@ -77,6 +77,41 @@ function marketPosition(score, bands) {
   return b ? b.label : "";
 }
 
+// ---- Target analysis: "what would it take to reach a target valuation?" ----
+// Inverts the interpolation to find the score that achieves the required multiple.
+function requiredScore(reqMultiple, floors, anchors) {
+  for (let i = 0; i < floors.length - 1; i++) {
+    const aLo = anchors[i], aHi = anchors[i + 1];
+    if (reqMultiple >= aLo && reqMultiple <= aHi && aHi > aLo) {
+      const slope = (aHi - aLo) / (floors[i + 1] - floors[i]);
+      return floors[i] + (reqMultiple - aLo) / slope;
+    }
+  }
+  return null; // target beyond top band
+}
+
+function targetAnalysis(targetValuation, amount, currentScore, floors, anchors) {
+  const maxMultiple = anchors[anchors.length - 1];
+  if (!targetValuation || !amount) return null;
+  // required multiple, capped at the max the model allows
+  const requiredMultiple = Math.min(targetValuation / amount, maxMultiple);
+  // if the target needs MORE than the max multiple, you also need more income
+  const additionalIncomeRequired =
+    (targetValuation / amount) > maxMultiple
+      ? (targetValuation / maxMultiple) - amount
+      : 0;
+  const totalIncomeRequired = amount + additionalIncomeRequired;
+  const reqScore = requiredScore(requiredMultiple, floors, anchors);
+  const scoreDeficit = reqScore == null ? null : reqScore - currentScore;
+  return {
+    requiredMultiple,
+    additionalIncomeRequired,
+    totalIncomeRequired,
+    requiredScore: reqScore,
+    scoreDeficit,
+  };
+}
+
 // ---- 3. Full valuation for one submission ----
 // inputs: { valuationInputType: 'netfeeincome'|'ebitda',
 //           valuationInputAmount: number,
@@ -106,12 +141,14 @@ function computeValuation(responses, questions, inputs) {
       marketPosition: marketPosition(objectiveScore, CONFIG.objectiveBands),
       estimatedValuation: amount * objectiveMultiple,
       maxValuation: amount * maxMultiple,
+      target: targetAnalysis(Number(inputs.targetValuation), amount, objectiveScore, CONFIG.objectiveFloors, anchors),
     },
     adjusted: {
       multiple: adjustedMultiple,
       marketPosition: marketPosition(valScore, CONFIG.adjustedBands),
       estimatedValuation: amount * adjustedMultiple,
       maxValuation: amount * maxMultiple,
+      target: targetAnalysis(Number(inputs.targetValuation), amount, valScore, CONFIG.adjustedFloors, anchors),
     },
     inputs,
   };
