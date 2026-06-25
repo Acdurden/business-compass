@@ -374,9 +374,31 @@ function TargetAnalysisBlock(props: {
   eyebrow: string;
   target: TargetAnalysis;
   currentScore: number;
+  currentValuation: number;
+  targetValuation: number;
   accent?: boolean;
 }) {
-  const { eyebrow, target, currentScore, accent } = props;
+  const { eyebrow, target, currentScore, currentValuation, targetValuation, accent } = props;
+  const alreadyMet = currentValuation >= targetValuation;
+
+  if (alreadyMet) {
+    return (
+      <div className={cn("rounded-xl border p-5", accent ? "border-primary/40 bg-primary/5" : "border-border bg-card")}>
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide">{eyebrow}</h3>
+          <p className="text-xs text-muted-foreground">Current score {currentScore}</p>
+        </div>
+        <p className="text-sm">
+          <span className="font-semibold text-primary">Target already exceeded.</span>{" "}
+          <span className="text-muted-foreground">
+            Estimated valuation of {fmtCurrency(currentValuation)} is above the target of{" "}
+            {fmtCurrency(targetValuation)} — no additional score or income required.
+          </span>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={cn("rounded-xl border p-5", accent ? "border-primary/40 bg-primary/5" : "border-border bg-card")}>
       <div className="mb-3 flex items-baseline justify-between gap-3">
