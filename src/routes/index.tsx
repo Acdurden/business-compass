@@ -170,32 +170,8 @@ function StartPage() {
                 {opening ? "Opening…" : "Open submission"}
               </Button>
             </form>
-
-            {recent.length > 0 && (
-              <ul className="mt-4 rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
-                {recent.map((s) => (
-                  <li key={s.submission_id}>
-                    <button
-                      type="button"
-                      onClick={() => void openSubmission(s.submission_id)}
-                      className="w-full flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-muted/40 text-left transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{s.company_name}</p>
-                        <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                          {s.submission_id}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] shrink-0">
-                        <StatusPill label="Client" status={s.client_status} />
-                        <StatusPill label="Advisor" status={s.advisor_status} />
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
+
         </div>
       </section>
     </main>
