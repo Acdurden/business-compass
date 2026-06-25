@@ -22,7 +22,7 @@ function ClientQuestionnaireByToken() {
       token={token}
       questionnaireType="objective"
       statusField="client_status"
-      eyebrow="Valuation questionnaire"
+      eyebrow="ValScore questionnaire"
       finishLabel="See my results"
       exitTo="/"
       notFoundTo="/"

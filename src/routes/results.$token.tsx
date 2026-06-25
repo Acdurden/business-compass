@@ -176,7 +176,7 @@ function ResultsPage() {
         <div className="mx-auto max-w-3xl px-6 py-5 flex items-center justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Valuation results
+              ValScore results
             </p>
             <p className="text-sm font-medium">{companyName}</p>
           </div>
