@@ -356,6 +356,7 @@ export type Database = {
       }
       submissions: {
         Row: {
+          advisor_id: string | null
           advisor_status: string
           client_status: string
           client_token: string
@@ -368,6 +369,7 @@ export type Database = {
           valuation_input_type: string | null
         }
         Insert: {
+          advisor_id?: string | null
           advisor_status?: string
           client_status?: string
           client_token?: string
@@ -380,6 +382,7 @@ export type Database = {
           valuation_input_type?: string | null
         }
         Update: {
+          advisor_id?: string | null
           advisor_status?: string
           client_status?: string
           client_token?: string
