@@ -245,7 +245,7 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   if (includeAdjusted) {
     const adj = result.adjusted;
     valuationRows.push([
-      "Adjusted (ValScore)",
+      "ValScore",
       adj.marketPosition || "—",
       fmtMultiple(adj.multiple),
       fmtCurrency(adj.estimatedValuation),
@@ -311,7 +311,7 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
       y = ensureSpace(doc, y, 100, margin);
       y = renderTargetBlock(
         doc,
-        "Adjusted (ValScore) target gap",
+        "ValScore target gap",
         result.adjusted.target,
         result.valScore,
         result.adjusted.estimatedValuation,
