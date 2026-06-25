@@ -51,6 +51,14 @@ function fmtCurrency(n: number) {
   }).format(n);
 }
 
+function formatCurrencyInput(raw: string) {
+  const digits = raw.replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  // Strip leading zeros
+  const trimmed = digits.replace(/^0+(?=\d)/, "");
+  return "$" + Number(trimmed).toLocaleString("en-US");
+}
+
 function ResultsPage() {
   const { submissionId } = Route.useParams();
   const navigate = useNavigate();
@@ -98,10 +106,10 @@ function ResultsPage() {
         setInputType(subRes.data.valuation_input_type as InputType);
       }
       if (subRes.data.valuation_input_amount != null) {
-        setAmountStr(String(subRes.data.valuation_input_amount));
+        setAmountStr(formatCurrencyInput(String(subRes.data.valuation_input_amount)));
       }
       if (subRes.data.target_valuation != null) {
-        setTargetStr(String(subRes.data.target_valuation));
+        setTargetStr(formatCurrencyInput(String(subRes.data.target_valuation)));
       }
       setSections((sRes.data ?? []) as Section[]);
       setQuestions((qRes.data ?? []) as Question[]);
@@ -241,17 +249,12 @@ function ResultsPage() {
               </Label>
               <Input
                 id="amount"
-                inputMode="decimal"
-                placeholder="e.g. 1,500,000"
+                inputMode="numeric"
+                placeholder="$1,500,000"
                 value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
+                onChange={(e) => setAmountStr(formatCurrencyInput(e.target.value))}
                 className="mt-1.5 text-lg font-medium"
               />
-              {amount > 0 && (
-                <p className="mt-1.5 text-sm text-muted-foreground tabular-nums">
-                  {fmtCurrency(amount)}
-                </p>
-              )}
             </div>
             <div>
               <Label htmlFor="basis" className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -317,17 +320,12 @@ function ResultsPage() {
             </Label>
             <Input
               id="target"
-              inputMode="decimal"
-              placeholder="e.g. 2,000,000"
+              inputMode="numeric"
+              placeholder="$2,000,000"
               value={targetStr}
-              onChange={(e) => setTargetStr(e.target.value)}
+              onChange={(e) => setTargetStr(formatCurrencyInput(e.target.value))}
               className="mt-1.5 text-lg font-medium"
             />
-            {target > 0 && (
-              <p className="mt-1.5 text-sm text-muted-foreground tabular-nums">
-                {fmtCurrency(target)}
-              </p>
-            )}
           </div>
 
           {target > 0 && obj?.target && (
