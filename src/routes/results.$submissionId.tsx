@@ -51,6 +51,14 @@ function fmtCurrency(n: number) {
   }).format(n);
 }
 
+function formatCurrencyInput(raw: string) {
+  const digits = raw.replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  // Strip leading zeros
+  const trimmed = digits.replace(/^0+(?=\d)/, "");
+  return "$" + Number(trimmed).toLocaleString("en-US");
+}
+
 function ResultsPage() {
   const { submissionId } = Route.useParams();
   const navigate = useNavigate();
