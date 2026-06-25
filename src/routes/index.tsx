@@ -21,14 +21,6 @@ export const Route = createFileRoute("/")({
   component: StartPage,
 });
 
-type RecentSubmission = {
-  submission_id: string;
-  company_name: string;
-  client_status: string;
-  advisor_status: string;
-  updated_at: string;
-};
-
 function shortCode() {
   return (
     Date.now().toString(36).slice(-4) +
@@ -42,16 +34,7 @@ function StartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resumeId, setResumeId] = useState("");
   const [opening, setOpening] = useState(false);
-  const [recent, setRecent] = useState<RecentSubmission[]>([]);
 
-  useEffect(() => {
-    void supabase
-      .from("submissions")
-      .select("submission_id,company_name,client_status,advisor_status,updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(20)
-      .then(({ data }) => setRecent((data ?? []) as RecentSubmission[]));
-  }, []);
 
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
