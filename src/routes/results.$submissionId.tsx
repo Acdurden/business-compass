@@ -33,6 +33,12 @@ type Response = {
   questionnaire_type: string | null;
   points_awarded: number | null;
 };
+type Section = {
+  section_id: string;
+  section_name: string;
+  sort_order: number;
+  questionnaire_type: string;
+};
 
 type InputType = "netfeeincome" | "ebitda";
 
