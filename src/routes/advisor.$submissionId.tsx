@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { QuestionnaireRunner } from "@/components/QuestionnaireRunner";
+import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 
 export const Route = createFileRoute("/advisor/$submissionId")({
   ssr: false,
+  beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
   component: AdvisorQuestionnairePage,
   errorComponent: ({ error }) => (
     <div className="min-h-screen grid place-items-center p-6 text-center">

@@ -1,12 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, LogOut } from "lucide-react";
+import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 
 export const Route = createFileRoute("/admin/submissions")({
   ssr: false,
+  beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
   head: () => ({
     meta: [{ title: "Admin · Submissions" }],
   }),
@@ -38,9 +40,17 @@ async function copy(text: string, label: string) {
 }
 
 function AdminSubmissionsPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [origin, setOrigin] = useState("");
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    toast.success("Signed out");
+    navigate({ to: "/auth" });
+  }
+
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -72,7 +82,12 @@ function AdminSubmissionsPage() {
             <Button asChild variant="ghost" size="sm">
               <Link to="/advisor">Advisor home</Link>
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
+              <LogOut className="h-3.5 w-3.5 mr-1.5" />
+              Sign out
+            </Button>
           </div>
+
         </div>
       </header>
 
