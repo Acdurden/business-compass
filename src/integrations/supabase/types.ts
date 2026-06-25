@@ -14,7 +14,204 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      answer_options: {
+        Row: {
+          answer_text: string
+          created_at: string
+          id: string
+          option_order: number
+          points: number
+          question_id: string
+        }
+        Insert: {
+          answer_text: string
+          created_at?: string
+          id?: string
+          option_order?: number
+          points?: number
+          question_id: string
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string
+          id?: string
+          option_order?: number
+          points?: number
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "answer_options_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      questions: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          max_score: number
+          question_text: string
+          questionnaire_type: string
+          response_type: string
+          section_id: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          max_score?: number
+          question_text: string
+          questionnaire_type?: string
+          response_type?: string
+          section_id: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          max_score?: number
+          question_text?: string
+          questionnaire_type?: string
+          response_type?: string
+          section_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      responses: {
+        Row: {
+          answer_option_id: string
+          answered_at: string
+          id: string
+          points_awarded: number
+          question_id: string
+          questionnaire_type: string
+          section_id: string
+          selected_answer_text: string
+          submission_id: string
+        }
+        Insert: {
+          answer_option_id: string
+          answered_at?: string
+          id?: string
+          points_awarded?: number
+          question_id: string
+          questionnaire_type?: string
+          section_id: string
+          selected_answer_text: string
+          submission_id: string
+        }
+        Update: {
+          answer_option_id?: string
+          answered_at?: string
+          id?: string
+          points_awarded?: number
+          question_id?: string
+          questionnaire_type?: string
+          section_id?: string
+          selected_answer_text?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "responses_answer_option_id_fkey"
+            columns: ["answer_option_id"]
+            isOneToOne: false
+            referencedRelation: "answer_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responses_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responses_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["submission_id"]
+          },
+        ]
+      }
+      sections: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      submissions: {
+        Row: {
+          client_status: string
+          company_name: string
+          created_at: string
+          id: string
+          submission_id: string
+          updated_at: string
+          valuation_input_amount: number | null
+          valuation_input_type: string | null
+        }
+        Insert: {
+          client_status?: string
+          company_name: string
+          created_at?: string
+          id?: string
+          submission_id: string
+          updated_at?: string
+          valuation_input_amount?: number | null
+          valuation_input_type?: string | null
+        }
+        Update: {
+          client_status?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          submission_id?: string
+          updated_at?: string
+          valuation_input_amount?: number | null
+          valuation_input_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
