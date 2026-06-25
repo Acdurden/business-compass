@@ -328,7 +328,7 @@ function ResultsPage() {
             />
           </div>
 
-          {target > 0 && obj?.target && (
+          {target > 0 && !hasAdvisory && obj?.target && (
             <div className="mt-6">
               <TargetAnalysisBlock
                 eyebrow="Objective target gap"
