@@ -185,12 +185,12 @@ export function QuestionnaireRunner({
 
   async function handleFinish() {
     setFinishing(true);
+    const completeUpdate: { client_status?: string; advisor_status?: string; updated_at: string } =
+      { updated_at: new Date().toISOString() };
+    completeUpdate[statusField] = "complete";
     const { error } = await supabase
       .from("submissions")
-      .update({
-        [statusField]: "complete",
-        updated_at: new Date().toISOString(),
-      })
+      .update(completeUpdate)
       .eq("submission_id", submissionId);
     setFinishing(false);
     if (error) {
