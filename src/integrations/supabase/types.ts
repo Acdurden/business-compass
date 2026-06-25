@@ -358,6 +358,7 @@ export type Database = {
         Row: {
           advisor_status: string
           client_status: string
+          client_token: string
           company_name: string
           created_at: string
           submission_id: string
@@ -369,6 +370,7 @@ export type Database = {
         Insert: {
           advisor_status?: string
           client_status?: string
+          client_token?: string
           company_name: string
           created_at?: string
           submission_id: string
@@ -380,6 +382,7 @@ export type Database = {
         Update: {
           advisor_status?: string
           client_status?: string
+          client_token?: string
           company_name?: string
           created_at?: string
           submission_id?: string
