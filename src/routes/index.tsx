@@ -46,41 +46,46 @@ function StartPage() {
     }
     setSubmitting(true);
     const submissionId = shortCode();
-    const { error } = await supabase.from("submissions").insert({
-      submission_id: submissionId,
-      company_name: name,
-      client_status: "inprogress",
-    });
+    const { data, error } = await supabase
+      .from("submissions")
+      .insert({
+        submission_id: submissionId,
+        company_name: name,
+        client_status: "inprogress",
+      })
+      .select("client_token")
+      .single();
     setSubmitting(false);
-    if (error) {
+    if (error || !data) {
       toast.error("Could not start. Please try again.");
       console.error(error);
       return;
     }
     navigate({
-      to: "/questionnaire/$submissionId",
-      params: { submissionId },
+      to: "/q/$token",
+      params: { token: data.client_token as string },
     });
   }
 
-  async function openSubmission(submissionId: string) {
-    const trimmed = submissionId.trim();
+  async function openSubmission(tokenInput: string) {
+    const trimmed = tokenInput.trim();
     if (!trimmed) return;
     setOpening(true);
     const { data, error } = await supabase
       .from("submissions")
-      .select("submission_id,client_status")
-      .eq("submission_id", trimmed)
+      .select("client_status,client_token")
+      .eq("client_token", trimmed)
       .maybeSingle();
     setOpening(false);
     if (error || !data) {
-      toast.error("No submission found with that ID");
+      toast.error("No submission found with that link code");
       return;
     }
+    const token = data.client_token as string;
     if (data.client_status === "complete") {
-      navigate({ to: "/results/$submissionId", params: { submissionId: trimmed } });
+      navigate({ to: "/results/$token", params: { token } });
     } else {
-      navigate({ to: "/questionnaire/$submissionId", params: { submissionId: trimmed } });
+      navigate({ to: "/q/$token", params: { token } });
     }
   }
 
