@@ -10,7 +10,7 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Business Valuation Questionnaire" },
+      { title: "Business ValScore Questionnaire" },
       {
         name: "description",
         content:
@@ -90,7 +90,7 @@ function StartPage() {
             <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground grid place-items-center text-sm font-semibold">
               V
             </div>
-            <span className="font-semibold tracking-tight">Valuation</span>
+            <span className="font-semibold tracking-tight">ValScore</span>
           </div>
           <span className="text-xs text-muted-foreground">Confidential · ~10 min</span>
         </div>
