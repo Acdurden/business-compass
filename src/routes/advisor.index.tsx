@@ -6,8 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
+
 export const Route = createFileRoute("/advisor/")({
   ssr: false,
+  beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
   component: AdvisorEntryPage,
 });
 
