@@ -63,6 +63,7 @@ function ResultsPage() {
 
   const [inputType, setInputType] = useState<InputType>("netfeeincome");
   const [amountStr, setAmountStr] = useState("");
+  const [targetStr, setTargetStr] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -70,7 +71,7 @@ function ResultsPage() {
       const [subRes, sRes, qRes, rRes] = await Promise.all([
         supabase
           .from("submissions")
-          .select("company_name,valuation_input_type,valuation_input_amount")
+          .select("company_name,valuation_input_type,valuation_input_amount,target_valuation")
           .eq("submission_id", submissionId)
           .maybeSingle(),
         supabase
@@ -99,6 +100,9 @@ function ResultsPage() {
       if (subRes.data.valuation_input_amount != null) {
         setAmountStr(String(subRes.data.valuation_input_amount));
       }
+      if (subRes.data.target_valuation != null) {
+        setTargetStr(String(subRes.data.target_valuation));
+      }
       setSections((sRes.data ?? []) as Section[]);
       setQuestions((qRes.data ?? []) as Question[]);
       setResponses((rRes.data ?? []) as Response[]);
@@ -115,14 +119,19 @@ function ResultsPage() {
     return isFinite(n) ? n : 0;
   }, [amountStr]);
 
+  const target = useMemo(() => {
+    const n = parseFloat(targetStr.replace(/[^0-9.]/g, ""));
+    return isFinite(n) ? n : 0;
+  }, [targetStr]);
+
   const result = useMemo(() => {
     if (!questions.length) return null;
     return computeValuation(responses, questions, {
       valuationInputType: inputType,
       valuationInputAmount: amount,
-      targetValuation: 0,
+      targetValuation: target,
     });
-  }, [questions, responses, inputType, amount]);
+  }, [questions, responses, inputType, amount, target]);
 
   // Persist input changes (debounced lightly)
   useEffect(() => {
@@ -133,12 +142,13 @@ function ResultsPage() {
         .update({
           valuation_input_type: inputType,
           valuation_input_amount: amount || null,
+          target_valuation: target || null,
           updated_at: new Date().toISOString(),
         })
         .eq("submission_id", submissionId);
     }, 400);
     return () => clearTimeout(t);
-  }, [inputType, amount, submissionId, loading]);
+  }, [inputType, amount, target, submissionId, loading]);
 
   if (loading) {
     return (
@@ -290,11 +300,110 @@ function ResultsPage() {
           </div>
         )}
 
+        {/* Target Valuation */}
+        <section className="rounded-xl border border-border/70 bg-muted/30 p-6">
+          <h2 className="text-base font-semibold mb-1">Target Valuation</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            What would it take to reach your target? Enter a number and see the gap.
+          </p>
+          <div className="max-w-sm">
+            <Label htmlFor="target" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Target Valuation (USD)
+            </Label>
+            <Input
+              id="target"
+              inputMode="decimal"
+              placeholder="e.g. 2,000,000"
+              value={targetStr}
+              onChange={(e) => setTargetStr(e.target.value)}
+              className="mt-1.5 text-lg font-medium"
+            />
+          </div>
+
+          {target > 0 && obj?.target && (
+            <div className="mt-6">
+              <TargetAnalysisBlock
+                eyebrow="Objective target gap"
+                target={obj.target}
+                currentScore={result?.objectiveScore ?? 0}
+              />
+            </div>
+          )}
+
+          {target > 0 && hasAdvisory && adj?.target && (
+            <div className="mt-4">
+              <TargetAnalysisBlock
+                eyebrow="Adjusted (ValScore) target gap"
+                target={adj.target}
+                currentScore={result?.valScore ?? 0}
+                accent
+              />
+            </div>
+          )}
+        </section>
+
         <p className="text-xs text-muted-foreground text-center">
           Submission ID {submissionId}
         </p>
       </div>
     </main>
+  );
+}
+
+type TargetAnalysis = {
+  requiredMultiple: number;
+  requiredScore: number | null;
+  scoreDeficit: number | null;
+  additionalIncomeRequired: number;
+  totalIncomeRequired: number;
+};
+
+function TargetAnalysisBlock(props: {
+  eyebrow: string;
+  target: TargetAnalysis;
+  currentScore: number;
+  accent?: boolean;
+}) {
+  const { eyebrow, target, currentScore, accent } = props;
+  return (
+    <div className={cn("rounded-xl border p-5", accent ? "border-primary/40 bg-primary/5" : "border-border bg-card")}>
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wide">{eyebrow}</h3>
+        <p className="text-xs text-muted-foreground">Current score {currentScore}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Required multiple</p>
+          <p className="mt-1.5 text-lg font-semibold tabular-nums">
+            {target.requiredMultiple.toFixed(4)}x
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Required score</p>
+          <p className="mt-1.5 text-lg font-semibold tabular-nums">
+            {target.requiredScore != null ? target.requiredScore.toFixed(1) : "Beyond top band"}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Score deficit</p>
+          <p className="mt-1.5 text-lg font-semibold tabular-nums">
+            {target.scoreDeficit != null ? `${target.scoreDeficit.toFixed(1)} pts` : "—"}
+          </p>
+        </div>
+      </div>
+      {target.additionalIncomeRequired > 0 && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 border-t border-border/60 pt-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Additional income required</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums">{fmtCurrency(target.additionalIncomeRequired)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total income required</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums">{fmtCurrency(target.totalIncomeRequired)}</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
