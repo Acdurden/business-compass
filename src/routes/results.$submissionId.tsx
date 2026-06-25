@@ -350,6 +350,63 @@ function ResultsPage() {
   );
 }
 
+type TargetAnalysis = {
+  requiredMultiple: number;
+  requiredScore: number | null;
+  scoreDeficit: number | null;
+  additionalIncomeRequired: number;
+  totalIncomeRequired: number;
+};
+
+function TargetAnalysisBlock(props: {
+  eyebrow: string;
+  target: TargetAnalysis;
+  currentScore: number;
+  accent?: boolean;
+}) {
+  const { eyebrow, target, currentScore, accent } = props;
+  return (
+    <div className={cn("rounded-xl border p-5", accent ? "border-primary/40 bg-primary/5" : "border-border bg-card")}>
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wide">{eyebrow}</h3>
+        <p className="text-xs text-muted-foreground">Current score {currentScore}</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Required multiple</p>
+          <p className="mt-1.5 text-lg font-semibold tabular-nums">
+            {target.requiredMultiple.toFixed(4)}x
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Required score</p>
+          <p className="mt-1.5 text-lg font-semibold tabular-nums">
+            {target.requiredScore != null ? target.requiredScore.toFixed(1) : "Beyond top band"}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Score deficit</p>
+          <p className="mt-1.5 text-lg font-semibold tabular-nums">
+            {target.scoreDeficit != null ? `${target.scoreDeficit.toFixed(1)} pts` : "—"}
+          </p>
+        </div>
+      </div>
+      {target.additionalIncomeRequired > 0 && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 border-t border-border/60 pt-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Additional income required</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums">{fmtCurrency(target.additionalIncomeRequired)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Total income required</p>
+            <p className="mt-1.5 text-lg font-semibold tabular-nums">{fmtCurrency(target.totalIncomeRequired)}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResultBlock(props: {
   eyebrow: string;
   subtitle: string;
