@@ -30,6 +30,17 @@ type RecentSubmission = {
   updated_at: string;
 };
 
+const PUBLISHED_CLIENT_ORIGIN = "https://valscore.lovable.app";
+
+function getClientLinkOrigin() {
+  const { origin, hostname } = window.location;
+  const isLovableEditorPreview =
+    hostname.includes("lovableproject.com") ||
+    hostname.includes("lovable.app") && hostname.includes("preview");
+
+  return isLovableEditorPreview ? PUBLISHED_CLIENT_ORIGIN : origin;
+}
+
 function AdvisorEntryPage() {
   const navigate = useNavigate();
   const [id, setId] = useState("");
@@ -42,7 +53,7 @@ function AdvisorEntryPage() {
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
-    setOrigin(window.location.origin);
+    setOrigin(getClientLinkOrigin());
     loadRecent();
   }, []);
 
