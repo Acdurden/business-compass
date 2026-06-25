@@ -113,9 +113,12 @@ export function QuestionnaireRunner({
       setResponses(map);
 
       // mark in-progress if it isn't already
+      const inprogressUpdate: { client_status?: string; advisor_status?: string; updated_at: string } =
+        { updated_at: new Date().toISOString() };
+      inprogressUpdate[statusField] = "inprogress";
       await supabase
         .from("submissions")
-        .update({ [statusField]: "inprogress", updated_at: new Date().toISOString() })
+        .update(inprogressUpdate)
         .eq("submission_id", submissionId)
         .neq(statusField, "complete");
 
