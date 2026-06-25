@@ -179,42 +179,6 @@ function ResultsPage() {
       </header>
 
       <div className="mx-auto max-w-3xl px-6 pt-10 space-y-10">
-        <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h2 className="text-base font-semibold mb-1">Your financials</h2>
-          <p className="text-sm text-muted-foreground mb-5">
-            Enter the figure your valuation should be based on. Results update live.
-          </p>
-          <div className="grid gap-5 sm:grid-cols-[1fr_auto]">
-            <div>
-              <Label htmlFor="amount" className="text-xs uppercase tracking-wide text-muted-foreground">
-                Amount (USD)
-              </Label>
-              <Input
-                id="amount"
-                inputMode="decimal"
-                placeholder="e.g. 1,500,000"
-                value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
-                className="mt-1.5 text-lg font-medium"
-              />
-            </div>
-            <div>
-              <Label htmlFor="basis" className="text-xs uppercase tracking-wide text-muted-foreground">
-                Basis
-              </Label>
-              <select
-                id="basis"
-                value={inputType}
-                onChange={(e) => setInputType(e.target.value as InputType)}
-                className="mt-1.5 h-11 rounded-md border border-input bg-background px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="netfeeincome">Net Fee Income</option>
-                <option value="ebitda">EBITDA</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
         <section className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
             <h2 className="text-base font-semibold">Score by section</h2>
