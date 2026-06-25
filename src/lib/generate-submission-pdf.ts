@@ -383,6 +383,8 @@ function renderTargetBlock(
     totalIncomeRequired: number;
   },
   currentScore: number,
+  currentValuation: number,
+  targetValuation: number,
   y: number,
   margin: number,
   pageW: number,
@@ -400,6 +402,16 @@ function renderTargetBlock(
     align: "right",
   });
   y += 14;
+
+  if (currentValuation >= targetValuation) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...primary);
+    const msg = `Target already exceeded. Estimated valuation of ${fmtCurrency(currentValuation)} is above the target of ${fmtCurrency(targetValuation)} — no additional score or income required.`;
+    const lines = doc.splitTextToSize(msg, pageW - margin * 2);
+    doc.text(lines, margin, y + 8);
+    return y + 8 + lines.length * 12 + 10;
+  }
 
   const rows = [
     ["Required multiple", `${t.requiredMultiple.toFixed(1)}x`],
