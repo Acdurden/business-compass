@@ -5,8 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Copy, ExternalLink } from "lucide-react";
 
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
+
+function shortCode() {
+  return (
+    Date.now().toString(36).slice(-4) +
+    Math.random().toString(36).slice(2, 8)
+  ).toUpperCase();
+}
 
 export const Route = createFileRoute("/advisor/")({
   ssr: false,
