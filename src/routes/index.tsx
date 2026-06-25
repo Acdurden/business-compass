@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,15 @@ export const Route = createFileRoute("/")({
   component: StartPage,
 });
 
+type RecentSubmission = {
+  submission_id: string;
+  company_name: string;
+  client_status: string;
+  advisor_status: string;
+  updated_at: string;
+};
+
 function shortCode() {
-  // 10-char base36 token, easy to share
   return (
     Date.now().toString(36).slice(-4) +
     Math.random().toString(36).slice(2, 8)
@@ -33,6 +40,18 @@ function StartPage() {
   const navigate = useNavigate();
   const [companyName, setCompanyName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [resumeId, setResumeId] = useState("");
+  const [opening, setOpening] = useState(false);
+  const [recent, setRecent] = useState<RecentSubmission[]>([]);
+
+  useEffect(() => {
+    void supabase
+      .from("submissions")
+      .select("submission_id,company_name,client_status,advisor_status,updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => setRecent((data ?? []) as RecentSubmission[]));
+  }, []);
 
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +80,27 @@ function StartPage() {
     });
   }
 
+  async function openSubmission(submissionId: string) {
+    const trimmed = submissionId.trim();
+    if (!trimmed) return;
+    setOpening(true);
+    const { data, error } = await supabase
+      .from("submissions")
+      .select("submission_id,client_status")
+      .eq("submission_id", trimmed)
+      .maybeSingle();
+    setOpening(false);
+    if (error || !data) {
+      toast.error("No submission found with that ID");
+      return;
+    }
+    if (data.client_status === "complete") {
+      navigate({ to: "/results/$submissionId", params: { submissionId: trimmed } });
+    } else {
+      navigate({ to: "/questionnaire/$submissionId", params: { submissionId: trimmed } });
+    }
+  }
+
   return (
     <main className="min-h-screen flex flex-col">
       <header className="border-b border-border/60 bg-card/60 backdrop-blur">
@@ -71,57 +111,132 @@ function StartPage() {
             </div>
             <span className="font-semibold tracking-tight">Valuation</span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            Confidential · ~10 min
-          </span>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/advisor">Advisor</Link>
+            </Button>
+            <span className="text-xs text-muted-foreground">Confidential · ~10 min</span>
+          </div>
         </div>
       </header>
 
-      <section className="flex-1 grid place-items-center px-6 py-16">
-        <div className="w-full max-w-xl">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
-            Business valuation questionnaire
-          </p>
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
-            What is your business worth?
-          </h1>
-          <p className="mt-4 text-muted-foreground leading-relaxed">
-            Answer 24 short questions across 9 areas of your business.
-            We'll combine your responses with a single financial input to
-            estimate your valuation.
-          </p>
-
-          <form
-            onSubmit={handleStart}
-            className="mt-10 rounded-xl border border-border bg-card p-6 shadow-sm"
-          >
-            <Label htmlFor="company" className="text-sm font-medium">
-              Company name
-            </Label>
-            <Input
-              id="company"
-              autoFocus
-              required
-              maxLength={200}
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="Acme Advisory Ltd."
-              className="mt-2"
-            />
-            <Button
-              type="submit"
-              disabled={submitting || !companyName.trim()}
-              className="mt-5 w-full"
-              size="lg"
-            >
-              {submitting ? "Starting…" : "Begin questionnaire"}
-            </Button>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Your answers are saved as you go.
+      <section className="flex-1 px-6 py-16">
+        <div className="mx-auto w-full max-w-xl space-y-12">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
+              Business valuation questionnaire
             </p>
-          </form>
+            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
+              What is your business worth?
+            </h1>
+            <p className="mt-4 text-muted-foreground leading-relaxed">
+              Answer 24 short questions across 9 areas of your business.
+              We'll combine your responses with a single financial input to
+              estimate your valuation.
+            </p>
+
+            <form
+              onSubmit={handleStart}
+              className="mt-10 rounded-xl border border-border bg-card p-6 shadow-sm"
+            >
+              <Label htmlFor="company" className="text-sm font-medium">
+                Company name
+              </Label>
+              <Input
+                id="company"
+                required
+                maxLength={200}
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Acme Advisory Ltd."
+                className="mt-2"
+              />
+              <Button
+                type="submit"
+                disabled={submitting || !companyName.trim()}
+                className="mt-5 w-full"
+                size="lg"
+              >
+                {submitting ? "Starting…" : "Begin questionnaire"}
+              </Button>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Your answers are saved as you go.
+              </p>
+            </form>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
+              Resume an existing submission
+            </h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void openSubmission(resumeId);
+              }}
+              className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
+            >
+              <div>
+                <Label htmlFor="sid" className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Submission ID
+                </Label>
+                <Input
+                  id="sid"
+                  value={resumeId}
+                  onChange={(e) => setResumeId(e.target.value.toUpperCase())}
+                  placeholder="e.g. 3Y5PWSI6JO"
+                  className="mt-1.5 font-mono tracking-wider"
+                />
+              </div>
+              <Button type="submit" variant="secondary" disabled={opening || !resumeId.trim()}>
+                {opening ? "Opening…" : "Open submission"}
+              </Button>
+            </form>
+
+            {recent.length > 0 && (
+              <ul className="mt-4 rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+                {recent.map((s) => (
+                  <li key={s.submission_id}>
+                    <button
+                      type="button"
+                      onClick={() => void openSubmission(s.submission_id)}
+                      className="w-full flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-muted/40 text-left transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{s.company_name}</p>
+                        <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                          {s.submission_id}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] shrink-0">
+                        <StatusPill label="Client" status={s.client_status} />
+                        <StatusPill label="Advisor" status={s.advisor_status} />
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
     </main>
+  );
+}
+
+function StatusPill({ label, status }: { label: string; status: string }) {
+  const tone =
+    status === "complete"
+      ? "bg-primary/10 text-primary border-primary/30"
+      : status === "inprogress"
+        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+        : "bg-muted text-muted-foreground border-border";
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${tone}`}>
+      <span className="opacity-60">{label}</span>
+      <span className="font-medium capitalize">
+        {status.replace("inprogress", "in progress").replace("notstarted", "not started")}
+      </span>
+    </span>
   );
 }
