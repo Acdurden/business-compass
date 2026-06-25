@@ -334,6 +334,8 @@ function ResultsPage() {
                 eyebrow="Objective target gap"
                 target={obj.target}
                 currentScore={result?.objectiveScore ?? 0}
+                currentValuation={obj.estimatedValuation}
+                targetValuation={target}
               />
             </div>
           )}
@@ -344,6 +346,8 @@ function ResultsPage() {
                 eyebrow="Adjusted (ValScore) target gap"
                 target={adj.target}
                 currentScore={result?.valScore ?? 0}
+                currentValuation={adj.estimatedValuation}
+                targetValuation={target}
                 accent
               />
             </div>
