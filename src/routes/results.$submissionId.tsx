@@ -100,6 +100,9 @@ function ResultsPage() {
       if (subRes.data.valuation_input_amount != null) {
         setAmountStr(String(subRes.data.valuation_input_amount));
       }
+      if (subRes.data.target_valuation != null) {
+        setTargetStr(String(subRes.data.target_valuation));
+      }
       setSections((sRes.data ?? []) as Section[]);
       setQuestions((qRes.data ?? []) as Question[]);
       setResponses((rRes.data ?? []) as Response[]);
