@@ -56,6 +56,7 @@ function ResultsPage() {
   const navigate = useNavigate();
 
   const [companyName, setCompanyName] = useState("");
+  const [sections, setSections] = useState<Section[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [responses, setResponses] = useState<Response[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,12 +67,16 @@ function ResultsPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [subRes, qRes, rRes] = await Promise.all([
+      const [subRes, sRes, qRes, rRes] = await Promise.all([
         supabase
           .from("submissions")
           .select("company_name,valuation_input_type,valuation_input_amount")
           .eq("submission_id", submissionId)
           .maybeSingle(),
+        supabase
+          .from("sections")
+          .select("section_id,section_name,sort_order,questionnaire_type")
+          .order("sort_order"),
         supabase
           .from("questions")
           .select("question_id,section_id,questionnaire_type,max_score")
@@ -94,6 +99,7 @@ function ResultsPage() {
       if (subRes.data.valuation_input_amount != null) {
         setAmountStr(String(subRes.data.valuation_input_amount));
       }
+      setSections((sRes.data ?? []) as Section[]);
       setQuestions((qRes.data ?? []) as Question[]);
       setResponses((rRes.data ?? []) as Response[]);
       setLoading(false);
