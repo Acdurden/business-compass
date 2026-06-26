@@ -482,6 +482,10 @@ export type Database = {
         Args: { p_status: string; p_token: string }
         Returns: undefined
       }
+      set_my_client_valuation: {
+        Args: { p_input_amount: number; p_input_type: string }
+        Returns: undefined
+      }
       start_client_submission: {
         Args: { p_company_name: string; p_submission_id: string }
         Returns: string

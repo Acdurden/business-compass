@@ -68,6 +68,7 @@ function ClientQuestionnaire() {
       finishMode="submitlock"
       exitTo="/client"
       notFoundTo="/client"
+      requireFinancialInput
     />
   );
 }
