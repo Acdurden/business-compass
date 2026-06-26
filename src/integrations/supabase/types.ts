@@ -362,6 +362,7 @@ export type Database = {
           client_token: string
           company_name: string
           created_at: string
+          owner_user_id: string | null
           submission_id: string
           target_valuation: number | null
           updated_at: string
@@ -375,6 +376,7 @@ export type Database = {
           client_token?: string
           company_name: string
           created_at?: string
+          owner_user_id?: string | null
           submission_id: string
           target_valuation?: number | null
           updated_at?: string
@@ -388,6 +390,7 @@ export type Database = {
           client_token?: string
           company_name?: string
           created_at?: string
+          owner_user_id?: string | null
           submission_id?: string
           target_valuation?: number | null
           updated_at?: string
@@ -422,6 +425,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advisor_reset_client_responses: {
+        Args: { p_submission_id: string }
+        Returns: undefined
+      }
+      advisor_unlock_submission: {
+        Args: { p_submission_id: string }
+        Returns: undefined
+      }
       get_client_responses: {
         Args: { p_token: string }
         Returns: {
@@ -441,6 +452,15 @@ export type Database = {
           target_valuation: number
           valuation_input_amount: number
           valuation_input_type: string
+        }[]
+      }
+      get_my_client_submission: {
+        Args: never
+        Returns: {
+          client_status: string
+          client_token: string
+          company_name: string
+          submission_id: string
         }[]
       }
       has_role: {
@@ -466,6 +486,16 @@ export type Database = {
         Args: { p_company_name: string; p_submission_id: string }
         Returns: string
       }
+      start_my_client_submission: {
+        Args: { p_company_name: string }
+        Returns: {
+          client_status: string
+          client_token: string
+          company_name: string
+          submission_id: string
+        }[]
+      }
+      submit_my_client_submission: { Args: never; Returns: undefined }
       update_client_valuation_inputs: {
         Args: {
           p_input_amount: number
