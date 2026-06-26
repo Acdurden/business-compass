@@ -110,7 +110,7 @@ function ClientHome() {
       <section className="mx-auto max-w-2xl px-6 py-16">
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : sub === null ? (
+        ) : sub === null || sub.client_status === "notstarted" ? (
           <div>
             <h2 className="text-3xl font-semibold tracking-tight">
               Welcome to your business assessment
