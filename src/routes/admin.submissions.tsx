@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Copy, ExternalLink, LogOut, FileDown, Mail } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { inviteClient } from "@/lib/client-invites.functions";
+import { inviteClient, createTestClient } from "@/lib/client-invites.functions";
 
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
   const [busy, setBusy] = useState(false);
