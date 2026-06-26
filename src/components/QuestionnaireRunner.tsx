@@ -228,24 +228,22 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       });
       error = res.error;
     } else {
-      const responseId = `${props.submissionId}_${question.question_id}`;
-      const res = await supabase.from("responses").upsert(
-        {
-          response_id: responseId,
-          submission_id: props.submissionId,
-          question_id: question.question_id,
-          answer_option_id: option.id,
-          section_id: question.section_id,
-          questionnaire_type: questionnaireType,
-          unique_id_response: option.unique_id_responses,
-          selected_answer_text: option.answer_text,
-          points_awarded: option.points ?? 0,
-          answered_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "submission_id,question_id" },
-      );
-      error = res.error;
+      try {
+        await saveAdvisor({
+          data: {
+            submissionId: props.submissionId,
+            questionnaireType,
+            questionId: question.question_id,
+            sectionId: question.section_id,
+            answerOptionId: option.id,
+            answerText: option.answer_text,
+            points: option.points ?? 0,
+            uniqueIdResponse: option.unique_id_responses,
+          },
+        });
+      } catch (e) {
+        error = e;
+      }
     }
     setSaving(null);
     if (error) {
