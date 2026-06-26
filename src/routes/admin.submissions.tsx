@@ -90,6 +90,32 @@ function AdvisoryButton({
   );
 }
 
+function ViewResultsButton({
+  submissionId,
+  clientStatus,
+}: {
+  submissionId: string;
+  clientStatus: string;
+}) {
+  const ready = clientStatus === "submitted" || clientStatus === "complete";
+  if (!ready) {
+    return (
+      <Button size="sm" variant="outline" disabled title="Awaiting client submission">
+        <Eye className="h-3.5 w-3.5 mr-1.5" />
+        View results
+      </Button>
+    );
+  }
+  return (
+    <Button size="sm" variant="outline" asChild>
+      <Link to="/admin/results/$submissionId" params={{ submissionId }}>
+        <Eye className="h-3.5 w-3.5 mr-1.5" />
+        View results
+      </Link>
+    </Button>
+  );
+}
+
 type FilterKey = "all" | "awaiting_advisory" | "in_progress" | "complete" | "not_started";
 
 function AdminSubmissionsPage() {
