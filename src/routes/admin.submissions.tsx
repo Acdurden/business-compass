@@ -120,6 +120,7 @@ function AdminSubmissionsPage() {
 
       <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
         <InviteClientCard />
+        <CreateTestClientCard />
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
