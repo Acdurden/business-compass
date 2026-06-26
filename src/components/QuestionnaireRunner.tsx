@@ -172,11 +172,14 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           p_status: "inprogress",
         });
       } else {
-        const update: { advisor_status: string; updated_at: string } = {
-          advisor_status: "inprogress",
-          updated_at: new Date().toISOString(),
-        };
-        await supabase
+        try {
+          await setAdvStatus({
+            data: { submissionId: props.submissionId, status: "inprogress", onlyIfNotComplete: true },
+          });
+        } catch {
+          /* non-fatal */
+        }
+      }
           .from("submissions")
           .update(update)
           .eq("submission_id", props.submissionId)
