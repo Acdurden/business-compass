@@ -113,28 +113,21 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           }
         }
       } else {
-        const subRes = await supabase
-          .from("submissions")
-          .select("company_name,client_token")
-          .eq("submission_id", props.submissionId)
-          .maybeSingle();
-        if (cancelled) return;
-        if (subRes.error || !subRes.data) {
-          toast.error("Submission not found");
+        try {
+          const load = await loadAdvisor({
+            data: { submissionId: props.submissionId, questionnaireType },
+          });
+          if (cancelled) return;
+          companyNameVal = load.company_name;
+          tokenVal = load.client_token;
+          for (const r of load.responses) {
+            responseMap[r.question_id] = r.answer_option_id;
+          }
+        } catch (err) {
+          if (cancelled) return;
+          toast.error(err instanceof Error ? err.message : "Submission not found");
           navigate({ to: notFoundTo });
           return;
-        }
-        companyNameVal = subRes.data.company_name;
-        tokenVal = subRes.data.client_token as string;
-
-        const respRes = await supabase
-          .from("responses")
-          .select("question_id,answer_option_id")
-          .eq("submission_id", props.submissionId)
-          .eq("questionnaire_type", questionnaireType);
-        if (cancelled) return;
-        for (const r of respRes.data ?? []) {
-          responseMap[r.question_id] = r.answer_option_id;
         }
       }
 
