@@ -34,9 +34,13 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   statusField: "client_status" | "advisor_status";
   eyebrow: string;
   finishLabel: string;
-  exitTo: "/" | "/advisor";
-  notFoundTo: "/" | "/advisor";
+  exitTo: "/" | "/advisor" | "/client";
+  notFoundTo: "/" | "/advisor" | "/client";
+  /** "complete" (default) marks complete + shows results.
+   *  "submitlock" calls submit_my_client_submission and returns to exitTo. */
+  finishMode?: "complete" | "submitlock";
 };
+
 
 export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const {
