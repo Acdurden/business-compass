@@ -218,6 +218,76 @@ function InviteClientCard() {
   );
 }
 
+function CreateTestClientCard() {
+  const create = useServerFn(createTestClient);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed || password.length < 8) return;
+    setBusy(true);
+    try {
+      await create({ data: { email: trimmed, password } });
+      toast.success(`Test client ready: ${trimmed}`);
+      setEmail("");
+      setPassword("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create test client");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="rounded-xl border border-dashed border-border bg-card p-5 shadow-sm space-y-3"
+    >
+      <div>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          Create test client (no email)
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Creates a confirmed client account with the password you choose. Sign in at <code>/client/auth</code>.
+        </p>
+      </div>
+      <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
+        <div>
+          <Label htmlFor="test-email" className="text-xs uppercase tracking-wide text-muted-foreground">
+            Email
+          </Label>
+          <Input
+            id="test-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="test-client@example.com"
+            className="mt-1.5"
+          />
+        </div>
+        <div>
+          <Label htmlFor="test-password" className="text-xs uppercase tracking-wide text-muted-foreground">
+            Password (min 8)
+          </Label>
+          <Input
+            id="test-password"
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="choose a password"
+            className="mt-1.5 font-mono"
+          />
+        </div>
+        <Button type="submit" disabled={busy || !email.trim() || password.length < 8}>
+          {busy ? "Creating…" : "Create test client"}
+        </Button>
+      </div>
+    </form>
+  );
+
 function ClientLinkBox({ url, token }: { url: string; token: string }) {
   return (
     <div className="rounded-lg border border-border bg-background p-3">
