@@ -224,9 +224,10 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const pct = total === 0 ? 0 : Math.round((answered / total) * 100);
   const allAnswered = total > 0 && answered === total;
   const requireFin = !!props.requireFinancialInput && props.mode === "client";
-  const parsedAmount = Number(finAmount.replace(/[,\s]/g, ""));
+  const cleanFin = finAmount.replace(/[$,\s]/g, "");
+  const parsedAmount = Number(cleanFin);
   const financialReady =
-    !requireFin || (finAmount.trim() !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
+    !requireFin || (cleanFin !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
   const canFinish = allAnswered && financialReady;
 
   async function handleSelect(question: Question, option: AnswerOption) {
