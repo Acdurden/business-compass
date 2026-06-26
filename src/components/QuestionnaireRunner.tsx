@@ -47,6 +47,9 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   /** "complete" (default) marks complete + shows results.
    *  "submitlock" calls submit_my_client_submission and returns to exitTo. */
   finishMode?: "complete" | "submitlock";
+  /** When true, render a required final "Financial information" step
+   *  (basis + amount) before allowing finish. Client mode only. */
+  requireFinancialInput?: boolean;
 };
 
 
