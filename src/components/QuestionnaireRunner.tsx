@@ -58,6 +58,9 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     notFoundTo,
   } = props;
   const navigate = useNavigate();
+  const loadAdvisor = useServerFn(getAdvisorSubmission);
+  const saveAdvisor = useServerFn(saveAdvisorResponse);
+  const setAdvStatus = useServerFn(setAdvisorStatus);
 
   const [companyName, setCompanyName] = useState("");
   const [clientToken, setClientToken] = useState<string | null>(
