@@ -15,6 +15,7 @@ import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
 import { Route as ResultsTokenRouteImport } from './routes/results.$token'
 import { Route as QTokenRouteImport } from './routes/q.$token'
+import { Route as ClientQuestionnaireRouteImport } from './routes/client.questionnaire'
 import { Route as ClientAuthRouteImport } from './routes/client.auth'
 import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
 import { Route as AdminSubmissionsRouteImport } from './routes/admin.submissions'
@@ -49,6 +50,11 @@ const QTokenRoute = QTokenRouteImport.update({
   path: '/q/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientQuestionnaireRoute = ClientQuestionnaireRouteImport.update({
+  id: '/client/questionnaire',
+  path: '/client/questionnaire',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientAuthRoute = ClientAuthRouteImport.update({
   id: '/client/auth',
   path: '/client/auth',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/client/auth': typeof ClientAuthRoute
+  '/client/questionnaire': typeof ClientQuestionnaireRoute
   '/q/$token': typeof QTokenRoute
   '/results/$token': typeof ResultsTokenRoute
   '/advisor/': typeof AdvisorIndexRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/client/auth': typeof ClientAuthRoute
+  '/client/questionnaire': typeof ClientQuestionnaireRoute
   '/q/$token': typeof QTokenRoute
   '/results/$token': typeof ResultsTokenRoute
   '/advisor': typeof AdvisorIndexRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/client/auth': typeof ClientAuthRoute
+  '/client/questionnaire': typeof ClientQuestionnaireRoute
   '/q/$token': typeof QTokenRoute
   '/results/$token': typeof ResultsTokenRoute
   '/advisor/': typeof AdvisorIndexRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/client/auth'
+    | '/client/questionnaire'
     | '/q/$token'
     | '/results/$token'
     | '/advisor/'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/client/auth'
+    | '/client/questionnaire'
     | '/q/$token'
     | '/results/$token'
     | '/advisor'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/client/auth'
+    | '/client/questionnaire'
     | '/q/$token'
     | '/results/$token'
     | '/advisor/'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   AdminSubmissionsRoute: typeof AdminSubmissionsRoute
   AdvisorSubmissionIdRoute: typeof AdvisorSubmissionIdRoute
   ClientAuthRoute: typeof ClientAuthRoute
+  ClientQuestionnaireRoute: typeof ClientQuestionnaireRoute
   QTokenRoute: typeof QTokenRoute
   ResultsTokenRoute: typeof ResultsTokenRoute
   AdvisorIndexRoute: typeof AdvisorIndexRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/questionnaire': {
+      id: '/client/questionnaire'
+      path: '/client/questionnaire'
+      fullPath: '/client/questionnaire'
+      preLoaderRoute: typeof ClientQuestionnaireRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client/auth': {
       id: '/client/auth'
       path: '/client/auth'
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSubmissionsRoute: AdminSubmissionsRoute,
   AdvisorSubmissionIdRoute: AdvisorSubmissionIdRoute,
   ClientAuthRoute: ClientAuthRoute,
+  ClientQuestionnaireRoute: ClientQuestionnaireRoute,
   QTokenRoute: QTokenRoute,
   ResultsTokenRoute: ResultsTokenRoute,
   AdvisorIndexRoute: AdvisorIndexRoute,

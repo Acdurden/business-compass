@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, ExternalLink, LogOut, FileDown, Mail } from "lucide-react";
+import { Copy, ExternalLink, LogOut, FileDown, Mail, Unlock, RotateCcw } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { inviteClient, createTestClient } from "@/lib/client-invites.functions";
@@ -153,12 +153,39 @@ function AdminSubmissionsPage() {
                     <ClientLinkBox url={cUrl} token={r.client_token} />
                     <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
                   </div>
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    {r.client_status === "submitted" && (
+                      <UnlockButton
+                        submissionId={r.submission_id}
+                        onDone={(next) =>
+                          setRows((prev) =>
+                            prev.map((x) =>
+                              x.submission_id === r.submission_id
+                                ? { ...x, client_status: next }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    )}
+                    <ResetButton
+                      submissionId={r.submission_id}
+                      onDone={() =>
+                        setRows((prev) =>
+                          prev.map((x) =>
+                            x.submission_id === r.submission_id
+                              ? { ...x, client_status: "notstarted" }
+                              : x,
+                          ),
+                        )
+                      }
+                    />
                     <DownloadPdfButton submissionId={r.submission_id} />
                   </div>
                 </li>
               );
             })}
+
           </ul>
         )}
       </div>
@@ -288,6 +315,72 @@ function CreateTestClientCard() {
     </form>
   );
 }
+
+function UnlockButton({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: (nextStatus: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    setBusy(true);
+    const { error } = await supabase.rpc("advisor_unlock_submission", {
+      p_submission_id: submissionId,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message ?? "Could not unlock");
+      return;
+    }
+    toast.success("Unlocked — client can edit again");
+    onDone("inprogress");
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <Unlock className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Unlocking…" : "Unlock"}
+    </Button>
+  );
+}
+
+function ResetButton({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    if (
+      !window.confirm(
+        "Reset this client's questionnaire? All of their objective answers will be cleared.",
+      )
+    )
+      return;
+    setBusy(true);
+    const { error } = await supabase.rpc("advisor_reset_client_responses", {
+      p_submission_id: submissionId,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message ?? "Could not reset");
+      return;
+    }
+    toast.success("Client questionnaire reset");
+    onDone();
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Resetting…" : "Reset client answers"}
+    </Button>
+  );
+}
+
+
 
 
 
