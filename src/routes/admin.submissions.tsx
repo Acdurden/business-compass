@@ -90,12 +90,15 @@ function AdvisoryButton({
   );
 }
 
+type FilterKey = "all" | "awaiting_advisory" | "in_progress" | "complete" | "not_started";
+
 function AdminSubmissionsPage() {
   const navigate = useNavigate();
   const listAll = useServerFn(listAllSubmissions);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterKey>("all");
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -103,9 +106,7 @@ function AdminSubmissionsPage() {
     navigate({ to: "/auth" });
   }
 
-
   useEffect(() => {
-    
     listAll()
       .then((data) => {
         setRows((data ?? []) as Row[]);
@@ -116,6 +117,36 @@ function AdminSubmissionsPage() {
         setLoading(false);
       });
   }, [listAll]);
+
+  const q = search.trim().toLowerCase();
+  const filteredRows = rows.filter((r) => {
+    if (q && !r.company_name.toLowerCase().includes(q) && !r.submission_id.toLowerCase().includes(q)) {
+      return false;
+    }
+    switch (filter) {
+      case "awaiting_advisory":
+        return (
+          (r.client_status === "submitted" || r.client_status === "complete") &&
+          r.advisor_status !== "complete"
+        );
+      case "in_progress":
+        return r.client_status === "inprogress";
+      case "complete":
+        return r.advisor_status === "complete";
+      case "not_started":
+        return r.client_status === "notstarted";
+      default:
+        return true;
+    }
+  });
+
+  const filterOptions: { key: FilterKey; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "awaiting_advisory", label: "Awaiting my advisory" },
+    { key: "in_progress", label: "Client in progress" },
+    { key: "not_started", label: "Not started" },
+    { key: "complete", label: "Complete" },
+  ];
 
   return (
     <main className="min-h-screen">
@@ -147,13 +178,39 @@ function AdminSubmissionsPage() {
         <InviteClientCard />
         <CreateTestClientCard />
 
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
+          <Input
+            placeholder="Search by company name or submission ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((f) => (
+              <Button
+                key={f.key}
+                type="button"
+                size="sm"
+                variant={filter === f.key ? "default" : "outline"}
+                onClick={() => setFilter(f.key)}
+              >
+                {f.label}
+              </Button>
+            ))}
+            <span className="ml-auto self-center text-[11px] text-muted-foreground">
+              {filteredRows.length} of {rows.length}
+            </span>
+          </div>
+        </div>
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No submissions yet.</p>
+        ) : filteredRows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {rows.length === 0 ? "No submissions yet." : "No submissions match your search."}
+          </p>
         ) : (
           <ul className="space-y-3">
-            {rows.map((r) => {
+            {filteredRows.map((r) => {
               return (
                 <li
                   key={r.submission_id}

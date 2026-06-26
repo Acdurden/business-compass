@@ -1,9 +1,15 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  getAdvisorSubmission,
+  saveAdvisorResponse,
+  setAdvisorStatus,
+} from "@/lib/advisor-submissions.functions";
 
 type Section = {
   section_id: string;
@@ -52,6 +58,9 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     notFoundTo,
   } = props;
   const navigate = useNavigate();
+  const loadAdvisor = useServerFn(getAdvisorSubmission);
+  const saveAdvisor = useServerFn(saveAdvisorResponse);
+  const setAdvStatus = useServerFn(setAdvisorStatus);
 
   const [companyName, setCompanyName] = useState("");
   const [clientToken, setClientToken] = useState<string | null>(
@@ -104,28 +113,21 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           }
         }
       } else {
-        const subRes = await supabase
-          .from("submissions")
-          .select("company_name,client_token")
-          .eq("submission_id", props.submissionId)
-          .maybeSingle();
-        if (cancelled) return;
-        if (subRes.error || !subRes.data) {
-          toast.error("Submission not found");
+        try {
+          const load = await loadAdvisor({
+            data: { submissionId: props.submissionId, questionnaireType },
+          });
+          if (cancelled) return;
+          companyNameVal = load.company_name;
+          tokenVal = load.client_token;
+          for (const r of load.responses) {
+            responseMap[r.question_id] = r.answer_option_id;
+          }
+        } catch (err) {
+          if (cancelled) return;
+          toast.error(err instanceof Error ? err.message : "Submission not found");
           navigate({ to: notFoundTo });
           return;
-        }
-        companyNameVal = subRes.data.company_name;
-        tokenVal = subRes.data.client_token as string;
-
-        const respRes = await supabase
-          .from("responses")
-          .select("question_id,answer_option_id")
-          .eq("submission_id", props.submissionId)
-          .eq("questionnaire_type", questionnaireType);
-        if (cancelled) return;
-        for (const r of respRes.data ?? []) {
-          responseMap[r.question_id] = r.answer_option_id;
         }
       }
 
@@ -170,15 +172,13 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           p_status: "inprogress",
         });
       } else {
-        const update: { advisor_status: string; updated_at: string } = {
-          advisor_status: "inprogress",
-          updated_at: new Date().toISOString(),
-        };
-        await supabase
-          .from("submissions")
-          .update(update)
-          .eq("submission_id", props.submissionId)
-          .neq(statusField, "complete");
+        try {
+          await setAdvStatus({
+            data: { submissionId: props.submissionId, status: "inprogress", onlyIfNotComplete: true },
+          });
+        } catch {
+          /* non-fatal */
+        }
       }
 
       setLoading(false);
@@ -228,24 +228,22 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       });
       error = res.error;
     } else {
-      const responseId = `${props.submissionId}_${question.question_id}`;
-      const res = await supabase.from("responses").upsert(
-        {
-          response_id: responseId,
-          submission_id: props.submissionId,
-          question_id: question.question_id,
-          answer_option_id: option.id,
-          section_id: question.section_id,
-          questionnaire_type: questionnaireType,
-          unique_id_response: option.unique_id_responses,
-          selected_answer_text: option.answer_text,
-          points_awarded: option.points ?? 0,
-          answered_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "submission_id,question_id" },
-      );
-      error = res.error;
+      try {
+        await saveAdvisor({
+          data: {
+            submissionId: props.submissionId,
+            questionnaireType,
+            questionId: question.question_id,
+            sectionId: question.section_id,
+            answerOptionId: option.id,
+            answerText: option.answer_text,
+            points: option.points ?? 0,
+            uniqueIdResponse: option.unique_id_responses,
+          },
+        });
+      } catch (e) {
+        error = e;
+      }
     }
     setSaving(null);
     if (error) {
@@ -268,15 +266,13 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       });
       error = res.error;
     } else {
-      const update: { advisor_status: string; updated_at: string } = {
-        advisor_status: "complete",
-        updated_at: new Date().toISOString(),
-      };
-      const res = await supabase
-        .from("submissions")
-        .update(update)
-        .eq("submission_id", props.submissionId);
-      error = res.error;
+      try {
+        await setAdvStatus({
+          data: { submissionId: props.submissionId, status: "complete" },
+        });
+      } catch (e) {
+        error = e;
+      }
     }
     setFinishing(false);
     if (error) {
