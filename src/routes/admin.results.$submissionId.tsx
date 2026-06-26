@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { computeValuation, type ValuationResult } from "@/lib/valscore_calc";
 import {
-  DEFAULT_TARGET_VALUATION,
   DEFAULT_VALUATION_INPUT_AMOUNT,
   DEFAULT_VALUATION_INPUT_TYPE,
 } from "@/lib/valuation-defaults";
