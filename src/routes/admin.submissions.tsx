@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, ExternalLink, LogOut, FileDown, Mail, Unlock, RotateCcw } from "lucide-react";
+import { LogOut, FileDown, Mail, Unlock, RotateCcw, ClipboardList } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { inviteClient, createTestClient } from "@/lib/client-invites.functions";
@@ -56,13 +56,38 @@ function advisorPath(id: string) {
   return `/advisor/${id}`;
 }
 
-async function copy(text: string, label: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(`${label} copied`);
-  } catch {
-    toast.error("Copy failed");
+function AdvisoryButton({
+  submissionId,
+  clientStatus,
+  advisorStatus,
+}: {
+  submissionId: string;
+  clientStatus: string;
+  advisorStatus: string;
+}) {
+  const ready = clientStatus === "submitted" || clientStatus === "complete";
+  if (!ready) {
+    return (
+      <Button size="sm" variant="outline" disabled title="Awaiting client submission">
+        <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+        Awaiting client submission
+      </Button>
+    );
   }
+  const label =
+    advisorStatus === "complete"
+      ? "Review advisory answers"
+      : advisorStatus === "inprogress"
+        ? "Resume advisory questionnaire"
+        : "Complete advisory questionnaire";
+  return (
+    <Button size="sm" asChild>
+      <Link to="/advisor/$submissionId" params={{ submissionId }}>
+        <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+        {label}
+      </Link>
+    </Button>
+  );
 }
 
 function AdminSubmissionsPage() {
@@ -70,7 +95,7 @@ function AdminSubmissionsPage() {
   const listAll = useServerFn(listAllSubmissions);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [origin, setOrigin] = useState("");
+  
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -80,7 +105,7 @@ function AdminSubmissionsPage() {
 
 
   useEffect(() => {
-    setOrigin(window.location.origin);
+    
     listAll()
       .then((data) => {
         setRows((data ?? []) as Row[]);
@@ -129,7 +154,6 @@ function AdminSubmissionsPage() {
         ) : (
           <ul className="space-y-3">
             {rows.map((r) => {
-              const aUrl = `${origin}${advisorPath(r.submission_id)}`;
               return (
                 <li
                   key={r.submission_id}
@@ -153,10 +177,12 @@ function AdminSubmissionsPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
-                  </div>
-                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <AdvisoryButton
+                      submissionId={r.submission_id}
+                      clientStatus={r.client_status}
+                      advisorStatus={r.advisor_status}
+                    />
                     {r.client_status === "submitted" && (
                       <UnlockButton
                         submissionId={r.submission_id}
@@ -388,31 +414,6 @@ function ResetButton({
 
 
 
-function AdvisorLinkBox({ url, submissionId }: { url: string; submissionId: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-3">
-      <div className="flex items-center justify-between mb-1.5">
-        <div>
-          <p className="text-xs font-semibold">Advisor link</p>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            Advisory questions (login required)
-          </p>
-        </div>
-        <div className="flex gap-1">
-          <Button size="sm" variant="ghost" onClick={() => void copy(url, "Advisor link")} title="Copy link">
-            <Copy className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="sm" variant="ghost" asChild title="Open">
-            <Link to="/advisor/$submissionId" params={{ submissionId }}>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </div>
-      </div>
-      <p className="text-[11px] font-mono text-muted-foreground break-all">{url}</p>
-    </div>
-  );
-}
 
 function StatusPill({ label, status }: { label: string; status: string }) {
   const tone =
