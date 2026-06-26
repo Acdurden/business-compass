@@ -28,6 +28,7 @@ function AdvisorQuestionnairePage() {
       finishLabel="View combined results"
       exitTo="/admin/submissions"
       notFoundTo="/admin/submissions"
+      finishTo={{ to: "/admin/results/$submissionId", params: { submissionId } }}
     />
   );
 }

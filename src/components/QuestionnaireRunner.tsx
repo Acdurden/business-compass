@@ -42,6 +42,8 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   finishLabel: string;
   exitTo: "/" | "/advisor" | "/client" | "/admin/submissions";
   notFoundTo: "/" | "/advisor" | "/client" | "/admin/submissions";
+  /** Where to send the user when they click "Finish". Defaults to exitTo. */
+  finishTo?: { to: string; params?: Record<string, string> };
   /** "complete" (default) marks complete + shows results.
    *  "submitlock" calls submit_my_client_submission and returns to exitTo. */
   finishMode?: "complete" | "submitlock";
@@ -284,7 +286,12 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     } else {
       toast.success("Saved");
     }
-    navigate({ to: exitTo });
+    const finishTo = props.finishTo;
+    if (finishMode !== "submitlock" && finishTo) {
+      navigate({ to: finishTo.to, params: finishTo.params } as never);
+    } else {
+      navigate({ to: exitTo });
+    }
   }
 
 
