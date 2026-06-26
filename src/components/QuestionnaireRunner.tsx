@@ -282,7 +282,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     const finishMode = props.finishMode ?? "complete";
     setFinError(null);
     if (requireFin) {
-      if (finAmount.trim() === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      if (cleanFin === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
         setFinError("Enter your financial amount before submitting.");
         toast.error("Enter your financial amount before submitting.");
         return;
