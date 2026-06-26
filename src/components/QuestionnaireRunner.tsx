@@ -52,6 +52,17 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   requireFinancialInput?: boolean;
 };
 
+function fmtCurrencyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  const num = Number(digits);
+  if (!Number.isFinite(num)) return "";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(num);
+}
 
 export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const {
