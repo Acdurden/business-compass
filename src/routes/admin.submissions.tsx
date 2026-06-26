@@ -145,6 +145,11 @@ function AdminSubmissionsPage() {
                       <p className="font-medium truncate">{r.company_name}</p>
                       <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
                         {r.submission_id}
+                        {r.owner_user_id ? (
+                          <span className="ml-2 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-sans uppercase tracking-wide text-primary">
+                            Client account
+                          </span>
+                        ) : null}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] shrink-0">
