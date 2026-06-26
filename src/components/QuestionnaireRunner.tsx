@@ -497,15 +497,33 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                     </label>
                     <input
                       id="fin-amount"
+                      ref={finInputRef}
                       type="text"
                       inputMode="decimal"
                       autoComplete="off"
                       value={finAmount}
                       onChange={(e) => {
-                        setFinAmount(e.target.value);
+                        const input = e.target;
+                        const selectionStart = input.selectionStart ?? 0;
+                        const digitsBeforeCursor = input.value
+                          .slice(0, selectionStart)
+                          .replace(/\D/g, "").length;
+                        const formatted = fmtCurrencyInput(input.value);
+                        setFinAmount(formatted);
                         if (finError) setFinError(null);
+                        requestAnimationFrame(() => {
+                          if (!finInputRef.current) return;
+                          let digitCount = 0;
+                          let newPos = 0;
+                          for (let i = 0; i < formatted.length; i++) {
+                            if (/\d/.test(formatted[i])) digitCount++;
+                            newPos = i + 1;
+                            if (digitCount >= digitsBeforeCursor) break;
+                          }
+                          finInputRef.current.setSelectionRange(newPos, newPos);
+                        });
                       }}
-                      placeholder=""
+                      placeholder="
                       className={cn(
                         "w-full rounded-md border bg-background px-4 py-3 text-sm outline-none transition-colors",
                         finError
