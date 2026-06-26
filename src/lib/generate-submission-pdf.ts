@@ -222,7 +222,6 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
     body: [
       ["Basis", inputType === "ebitda" ? "EBITDA" : "Net Fee Income"],
       ["Amount", fmtCurrency(amount)],
-      ["Target valuation", target > 0 ? fmtCurrency(target) : "—"],
     ],
     theme: "plain",
     margin: { left: margin, right: margin },
