@@ -113,12 +113,40 @@ function ClientHome() {
         ) : sub === null ? (
           <div>
             <h2 className="text-3xl font-semibold tracking-tight">
-              Start your assessment
+              Welcome to your business assessment
             </h2>
-            <p className="mt-3 text-muted-foreground">
-              Answer a short questionnaire about your business. Your advisor
-              will review and follow up with results.
+            <p className="mt-3 leading-relaxed text-muted-foreground">
+              This short questionnaire helps us understand your business across
+              the areas that matter most for valuation — from financials and
+              operations to market position and growth potential. It takes about
+              10–15 minutes, and your advisor will review your responses and
+              follow up with personalised insights and next steps.
             </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">10–15 minutes</p>
+                  <p className="text-xs text-muted-foreground">Save as you go</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Key business areas</p>
+                  <p className="text-xs text-muted-foreground">Finance, ops, market &amp; more</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+                <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Advisor review</p>
+                  <p className="text-xs text-muted-foreground">Personalised follow-up</p>
+                </div>
+              </div>
+            </div>
+
             <form
               onSubmit={startNew}
               className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm"
@@ -139,7 +167,7 @@ function ClientHome() {
                 className="mt-5 w-full"
                 disabled={busy || !companyName.trim()}
               >
-                {busy ? "Starting…" : "Start your assessment"}
+                {busy ? "Starting…" : "Begin Assessment"}
               </Button>
             </form>
           </div>
