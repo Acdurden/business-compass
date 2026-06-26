@@ -240,14 +240,14 @@ function ResultsPage() {
                 </tr>
               </thead>
               <tbody>
-                <ValuationRow label="Objective" leg={result.objective} />
-                <ValuationRow label="ValScore (adjusted)" leg={result.adjusted} highlight />
+                <ValuationRow label="ValScore" leg={result.adjusted} highlight />
               </tbody>
             </table>
           </div>
-          <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
+          <dl className="mt-4 grid grid-cols-3 gap-3 text-xs">
             <Meta label="Basis">{inputType === "ebitda" ? "EBITDA" : "Net Fee Income"}</Meta>
             <Meta label="Amount">{fmtCurrency(amount)}</Meta>
+            <Meta label="ValScore">{fmtScore(result.valScore)}</Meta>
           </dl>
         </section>
       </div>
