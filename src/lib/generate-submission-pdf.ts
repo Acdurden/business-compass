@@ -237,24 +237,15 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   y = ensureSpace(doc, y, 140, margin);
   y = sectionHeading(doc, "Valuation Results", y, margin, primary);
 
-  const obj = result.objective;
+  const adj = result.adjusted;
   const valuationRows: string[][] = [
     [
-      "Objective",
-      obj.marketPosition || "—",
-      fmtMultiple(obj.multiple),
-      fmtCurrency(obj.estimatedValuation),
-    ],
-  ];
-  if (includeAdjusted) {
-    const adj = result.adjusted;
-    valuationRows.push([
       "ValScore",
       adj.marketPosition || "—",
       fmtMultiple(adj.multiple),
       fmtCurrency(adj.estimatedValuation),
-    ]);
-  }
+    ],
+  ];
 
   autoTable(doc, {
     startY: y,
