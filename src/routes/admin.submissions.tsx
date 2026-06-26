@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { LogOut, FileDown, Mail, Unlock, RotateCcw, ClipboardList } from "lucide-react";
+import { LogOut, FileDown, Mail, Unlock, RotateCcw, ClipboardList, Eye } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { inviteClient, createTestClient, createAdvisor } from "@/lib/client-invites.functions";
