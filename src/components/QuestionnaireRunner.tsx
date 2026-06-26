@@ -1,9 +1,15 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  getAdvisorSubmission,
+  saveAdvisorResponse,
+  setAdvisorStatus,
+} from "@/lib/advisor-submissions.functions";
 
 type Section = {
   section_id: string;
