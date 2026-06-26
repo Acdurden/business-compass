@@ -133,7 +133,6 @@ function AdminSubmissionsPage() {
         ) : (
           <ul className="space-y-3">
             {rows.map((r) => {
-              const cUrl = `${origin}${clientPath(r.client_token)}`;
               const aUrl = `${origin}${advisorPath(r.submission_id)}`;
               return (
                 <li
