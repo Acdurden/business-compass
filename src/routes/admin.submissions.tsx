@@ -49,6 +49,8 @@ type Row = {
   client_status: string;
   advisor_status: string;
   updated_at: string;
+  owner_user_id: string | null;
+  advisor_id: string | null;
 };
 
 function clientPath(token: string) {
