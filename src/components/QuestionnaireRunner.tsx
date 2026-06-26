@@ -78,6 +78,9 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [finBasis, setFinBasis] = useState<"netfeeincome" | "ebitda">("netfeeincome");
+  const [finAmount, setFinAmount] = useState<string>("");
+  const [finError, setFinError] = useState<string | null>(null);
 
   // Stable identity for effect dependency
   const sourceKey =
