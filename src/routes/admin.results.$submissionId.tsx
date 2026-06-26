@@ -168,7 +168,6 @@ function ResultsPage() {
   const inputType =
     (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
   const amount = Number(sub.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
-  const target = Number(sub.target_valuation ?? DEFAULT_TARGET_VALUATION);
 
   return (
     <main className="min-h-screen pb-24">
