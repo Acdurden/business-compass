@@ -267,8 +267,28 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
 
   async function handleFinish() {
     const finishMode = props.finishMode ?? "complete";
+    setFinError(null);
+    if (requireFin) {
+      if (finAmount.trim() === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        setFinError("Enter your financial amount before submitting.");
+        toast.error("Enter your financial amount before submitting.");
+        return;
+      }
+    }
     setFinishing(true);
     let error: unknown = null;
+    if (requireFin) {
+      const res = await supabase.rpc("set_my_client_valuation", {
+        p_input_type: finBasis,
+        p_input_amount: parsedAmount,
+      });
+      if (res.error) {
+        setFinishing(false);
+        toast.error("Couldn't save financial information");
+        return;
+      }
+    }
+
     if (finishMode === "submitlock") {
       const res = await supabase.rpc("submit_my_client_submission");
       error = res.error;
