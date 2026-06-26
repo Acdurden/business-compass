@@ -137,15 +137,9 @@ function AuthPage() {
                 : "Create account"}
           </Button>
 
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
-          >
-            {mode === "signin"
-              ? "Need to create the first advisor account? Sign up"
-              : "Already have an account? Sign in"}
-          </button>
+          <p className="text-center text-[11px] text-muted-foreground">
+            Advisor accounts are created by an existing advisor from the admin panel.
+          </p>
         </form>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
