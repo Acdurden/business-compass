@@ -255,9 +255,13 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   }
 
   async function handleFinish() {
+    const finishMode = props.finishMode ?? "complete";
     setFinishing(true);
     let error: unknown = null;
-    if (props.mode === "client") {
+    if (finishMode === "submitlock") {
+      const res = await supabase.rpc("submit_my_client_submission");
+      error = res.error;
+    } else if (props.mode === "client") {
       const res = await supabase.rpc("set_client_submission_status", {
         p_token: props.token,
         p_status: "complete",
@@ -279,12 +283,18 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       toast.error("Couldn't finalize submission");
       return;
     }
+    if (finishMode === "submitlock") {
+      toast.success("Submitted");
+      navigate({ to: exitTo });
+      return;
+    }
     if (!clientToken) {
       toast.error("Missing token");
       return;
     }
     navigate({ to: "/results/$token", params: { token: clientToken } });
   }
+
 
   return (
     <main className="min-h-screen pb-32">
