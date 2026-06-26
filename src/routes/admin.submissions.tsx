@@ -56,13 +56,38 @@ function advisorPath(id: string) {
   return `/advisor/${id}`;
 }
 
-async function copy(text: string, label: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(`${label} copied`);
-  } catch {
-    toast.error("Copy failed");
+function AdvisoryButton({
+  submissionId,
+  clientStatus,
+  advisorStatus,
+}: {
+  submissionId: string;
+  clientStatus: string;
+  advisorStatus: string;
+}) {
+  const ready = clientStatus === "submitted" || clientStatus === "complete";
+  if (!ready) {
+    return (
+      <Button size="sm" variant="outline" disabled title="Awaiting client submission">
+        <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+        Awaiting client submission
+      </Button>
+    );
   }
+  const label =
+    advisorStatus === "complete"
+      ? "Review advisory answers"
+      : advisorStatus === "inprogress"
+        ? "Resume advisory questionnaire"
+        : "Complete advisory questionnaire";
+  return (
+    <Button size="sm" asChild>
+      <Link to="/advisor/$submissionId" params={{ submissionId }}>
+        <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+        {label}
+      </Link>
+    </Button>
+  );
 }
 
 function AdminSubmissionsPage() {
