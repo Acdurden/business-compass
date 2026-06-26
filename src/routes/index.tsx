@@ -10,75 +10,55 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Business ValScore Questionnaire" },
+      { title: "Business ValScore — Client sign-in" },
       {
         name: "description",
         content:
-          "Get a data-driven estimate of your business's value in under 10 minutes.",
+          "Sign in to your ValScore client portal to start or continue your business valuation assessment.",
       },
     ],
   }),
-  component: StartPage,
+  component: HomePage,
 });
 
-function shortCode() {
-  return (
-    Date.now().toString(36).slice(-4) +
-    Math.random().toString(36).slice(2, 8)
-  ).toUpperCase();
-}
-
-function StartPage() {
+function HomePage() {
   const navigate = useNavigate();
-  const [companyName, setCompanyName] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [resumeId, setResumeId] = useState("");
-  const [opening, setOpening] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
 
+  // If already signed in as a client, jump straight to /client.
+  useEffect(() => {
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const { data: isClient } = await supabase.rpc("has_role", {
+        _user_id: data.session.user.id,
+        _role: "client",
+      });
+      if (isClient) navigate({ to: "/client" });
+    });
+  }, [navigate]);
 
-  async function handleStart(e: React.FormEvent) {
+  async function onSignIn(e: React.FormEvent) {
     e.preventDefault();
-    const name = companyName.trim();
-    if (!name) return;
-    if (name.length > 200) {
-      toast.error("Company name is too long");
-      return;
-    }
-    setSubmitting(true);
-    const submissionId = shortCode();
-    const { data, error } = await supabase.rpc("start_client_submission", {
-      p_submission_id: submissionId,
-      p_company_name: name,
-    });
-    setSubmitting(false);
-    if (error || !data) {
-      toast.error("Could not start. Please try again.");
-      console.error(error);
-      return;
-    }
-    navigate({
-      to: "/q/$token",
-      params: { token: data as string },
-    });
-  }
-
-  async function openSubmission(tokenInput: string) {
-    const trimmed = tokenInput.trim();
-    if (!trimmed) return;
-    setOpening(true);
-    const { data, error } = await supabase.rpc("get_client_submission", {
-      p_token: trimmed,
-    });
-    setOpening(false);
-    const row = (data ?? [])[0] as { client_status: string } | undefined;
-    if (error || !row) {
-      toast.error("No submission found with that link code");
-      return;
-    }
-    if (row.client_status === "complete") {
-      navigate({ to: "/results/$token", params: { token: trimmed } });
-    } else {
-      navigate({ to: "/q/$token", params: { token: trimmed } });
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      const { data: isClient } = await supabase.rpc("has_role", {
+        _user_id: data.user!.id,
+        _role: "client",
+      });
+      if (!isClient) {
+        await supabase.auth.signOut();
+        throw new Error("This account is not a client account. Please use the advisor sign-in.");
+      }
+      toast.success("Signed in");
+      navigate({ to: "/client" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sign-in failed. Please check your email and password.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -92,87 +72,68 @@ function StartPage() {
             </div>
             <span className="font-semibold tracking-tight">ValScore</span>
           </div>
-          <span className="text-xs text-muted-foreground">Confidential · ~10 min</span>
+          <span className="text-xs text-muted-foreground">Confidential client portal</span>
         </div>
       </header>
 
       <section className="flex-1 px-6 py-16">
-        <div className="mx-auto w-full max-w-xl space-y-12">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-4">
-              Business valuation questionnaire
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-8 text-center">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">
+              Client portal
             </p>
-            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
-              What is your business worth?
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
+              Welcome back
             </h1>
-            <p className="mt-4 text-muted-foreground leading-relaxed">
-              Answer 24 short questions across 9 areas of your business.
-              We'll combine your responses with a single financial input to
-              estimate your valuation.
+            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+              Sign in to start or continue your business valuation assessment.
             </p>
+          </div>
 
-            <form
-              onSubmit={handleStart}
-              className="mt-10 rounded-xl border border-border bg-card p-6 shadow-sm"
-            >
-              <Label htmlFor="company" className="text-sm font-medium">
-                Company name
+          <form
+            onSubmit={onSignIn}
+            className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
+          >
+            <div>
+              <Label htmlFor="email" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Email
               </Label>
               <Input
-                id="company"
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                maxLength={200}
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Acme Advisory Ltd."
-                className="mt-2"
+                autoFocus
+                className="mt-1.5"
               />
-              <Button
-                type="submit"
-                disabled={submitting || !companyName.trim()}
-                className="mt-5 w-full"
-                size="lg"
-              >
-                {submitting ? "Starting…" : "Begin questionnaire"}
-              </Button>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Your answers are saved as you go.
-              </p>
-            </form>
-          </div>
+            </div>
+            <div>
+              <Label htmlFor="password" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="mt-1.5"
+              />
+            </div>
+            <Button type="submit" size="lg" className="w-full" disabled={busy}>
+              {busy ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
 
-          <div>
-            <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-              Resume from your link
-            </h2>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void openSubmission(resumeId);
-              }}
-              className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
-            >
-              <div>
-                <Label htmlFor="sid" className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Your access code
-                </Label>
-                <Input
-                  id="sid"
-                  value={resumeId}
-                  onChange={(e) => setResumeId(e.target.value.trim())}
-                  placeholder="Paste the code from your link"
-                  className="mt-1.5 font-mono text-xs"
-                />
-                <p className="mt-2 text-xs text-muted-foreground">
-                  The code is the long string at the end of your unique link.
-                </p>
-              </div>
-              <Button type="submit" variant="secondary" disabled={opening || !resumeId.trim()}>
-                {opening ? "Opening…" : "Open submission"}
-              </Button>
-            </form>
-          </div>
-
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Advisor?{" "}
+            <Link to="/auth" className="underline hover:text-foreground">
+              Advisor sign-in
+            </Link>
+          </p>
         </div>
       </section>
     </main>
