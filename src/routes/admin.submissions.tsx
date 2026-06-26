@@ -158,8 +158,7 @@ function AdminSubmissionsPage() {
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <ClientLinkBox url={cUrl} token={r.client_token} />
+                  <div>
                     <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
                   </div>
                   <div className="mt-3 flex flex-wrap justify-end gap-2">
