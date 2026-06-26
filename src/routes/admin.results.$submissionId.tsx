@@ -240,8 +240,7 @@ function ResultsPage() {
                 </tr>
               </thead>
               <tbody>
-                <ValuationRow label="Objective" leg={result.objective} />
-                <ValuationRow label="ValScore (adjusted)" leg={result.adjusted} highlight />
+                <ValuationRow label="ValScore" leg={result.adjusted} highlight />
               </tbody>
             </table>
           </div>
