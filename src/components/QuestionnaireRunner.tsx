@@ -523,7 +523,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                           finInputRef.current.setSelectionRange(newPos, newPos);
                         });
                       }}
-                      placeholder="
+                      placeholder=""
                       className={cn(
                         "w-full rounded-md border bg-background px-4 py-3 text-sm outline-none transition-colors",
                         finError
