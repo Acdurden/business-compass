@@ -110,7 +110,7 @@ function ClientHome() {
       <section className="mx-auto max-w-2xl px-6 py-16">
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : sub === null ? (
+        ) : sub === null || sub.client_status === "notstarted" ? (
           <div>
             <h2 className="text-3xl font-semibold tracking-tight">
               Welcome to your business assessment
@@ -147,29 +147,47 @@ function ClientHome() {
               </div>
             </div>
 
-            <form
-              onSubmit={startNew}
-              className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm"
-            >
-              <Label htmlFor="company">Company name</Label>
-              <Input
-                id="company"
-                required
-                maxLength={200}
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Acme Co."
-                className="mt-2"
-              />
-              <Button
-                type="submit"
-                size="lg"
-                className="mt-5 w-full"
-                disabled={busy || !companyName.trim()}
+            {sub === null ? (
+              <form
+                onSubmit={startNew}
+                className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm"
               >
-                {busy ? "Starting…" : "Begin Assessment"}
-              </Button>
-            </form>
+                <Label htmlFor="company">Company name</Label>
+                <Input
+                  id="company"
+                  required
+                  maxLength={200}
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Acme Co."
+                  className="mt-2"
+                />
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="mt-5 w-full"
+                  disabled={busy || !companyName.trim()}
+                >
+                  {busy ? "Starting…" : "Begin Assessment"}
+                </Button>
+              </form>
+            ) : (
+              <div className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm">
+                <p className="text-sm text-muted-foreground">
+                  Assessment for{" "}
+                  <span className="font-medium text-foreground">
+                    {sub.company_name}
+                  </span>
+                </p>
+                <Button
+                  size="lg"
+                  className="mt-4 w-full"
+                  onClick={() => navigate({ to: "/client/questionnaire" })}
+                >
+                  Begin Assessment
+                </Button>
+              </div>
+            )}
           </div>
         ) : sub.client_status === "submitted" ||
           sub.client_status === "complete" ? (
