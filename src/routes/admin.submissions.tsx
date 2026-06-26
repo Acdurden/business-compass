@@ -404,6 +404,90 @@ function CreateTestClientCard() {
   );
 }
 
+function CreateAdvisorCard() {
+  const create = useServerFn(createAdvisor);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [lastCreated, setLastCreated] = useState<{ email: string; password: string } | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed || password.length < 8) return;
+    setBusy(true);
+    try {
+      await create({ data: { email: trimmed, password } });
+      toast.success(`Advisor account ready: ${trimmed}`);
+      setLastCreated({ email: trimmed, password });
+      setEmail("");
+      setPassword("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create advisor");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="rounded-xl border border-dashed border-primary/40 bg-card p-5 shadow-sm space-y-3"
+    >
+      <div>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          Create advisor account (no email)
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Creates a confirmed advisor with the password you choose. Share the credentials directly — they will be prompted to set a new password on first sign-in at <code>/auth</code>.
+        </p>
+      </div>
+      <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
+        <div>
+          <Label htmlFor="adv-email" className="text-xs uppercase tracking-wide text-muted-foreground">
+            Email
+          </Label>
+          <Input
+            id="adv-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="advisor@example.com"
+            className="mt-1.5"
+          />
+        </div>
+        <div>
+          <Label htmlFor="adv-password" className="text-xs uppercase tracking-wide text-muted-foreground">
+            Temporary password (min 8)
+          </Label>
+          <Input
+            id="adv-password"
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="temporary password"
+            className="mt-1.5 font-mono"
+          />
+        </div>
+        <Button type="submit" disabled={busy || !email.trim() || password.length < 8}>
+          {busy ? "Creating…" : "Create advisor"}
+        </Button>
+      </div>
+      {lastCreated && (
+        <div className="rounded-md border border-border bg-muted/40 p-3 text-xs space-y-1">
+          <p className="font-medium">Share these credentials with the advisor:</p>
+          <p>Email: <code>{lastCreated.email}</code></p>
+          <p>Temporary password: <code>{lastCreated.password}</code></p>
+          <p className="text-muted-foreground">
+            Sign-in URL: <code>{typeof window !== "undefined" ? window.location.origin : ""}/auth</code>
+          </p>
+        </div>
+      )}
+    </form>
+  );
+}
+
+
 function UnlockButton({
   submissionId,
   onDone,
