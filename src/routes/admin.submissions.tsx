@@ -1,11 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, ExternalLink, LogOut, FileDown } from "lucide-react";
+import { Copy, ExternalLink, LogOut, FileDown, Mail } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
+import { inviteClient } from "@/lib/client-invites.functions";
 
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
   const [busy, setBusy] = useState(false);
