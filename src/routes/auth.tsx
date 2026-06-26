@@ -52,6 +52,11 @@ function AuthPage() {
           navigate({ to: "/client" });
           return;
         }
+        if (data.user?.user_metadata?.must_change_password) {
+          toast.message("Please set a new password to continue");
+          navigate({ to: "/advisor/change-password" });
+          return;
+        }
         toast.success("Signed in");
       } else {
         const { error } = await supabase.auth.signUp({
