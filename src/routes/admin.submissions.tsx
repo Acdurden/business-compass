@@ -95,7 +95,7 @@ function AdminSubmissionsPage() {
   const listAll = useServerFn(listAllSubmissions);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [origin, setOrigin] = useState("");
+  
 
   async function signOut() {
     await supabase.auth.signOut();
