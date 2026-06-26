@@ -154,7 +154,6 @@ function AdminSubmissionsPage() {
         ) : (
           <ul className="space-y-3">
             {rows.map((r) => {
-              const aUrl = `${origin}${advisorPath(r.submission_id)}`;
               return (
                 <li
                   key={r.submission_id}
@@ -178,10 +177,12 @@ function AdminSubmissionsPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
-                  </div>
-                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <AdvisoryButton
+                      submissionId={r.submission_id}
+                      clientStatus={r.client_status}
+                      advisorStatus={r.advisor_status}
+                    />
                     {r.client_status === "submitted" && (
                       <UnlockButton
                         submissionId={r.submission_id}
