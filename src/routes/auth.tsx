@@ -52,6 +52,14 @@ function AuthPage() {
           navigate({ to: "/client" });
           return;
         }
+        const { data: isAdvisor } = await supabase.rpc("has_role", {
+          _user_id: data.user!.id,
+          _role: "advisor",
+        });
+        if (!isAdvisor) {
+          await supabase.auth.signOut();
+          throw new Error("This account does not have advisor access.");
+        }
         if (data.user?.user_metadata?.must_change_password) {
           toast.message("Please set a new password to continue");
           navigate({ to: "/advisor/change-password" });
