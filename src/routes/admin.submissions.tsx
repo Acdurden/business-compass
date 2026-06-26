@@ -44,7 +44,6 @@ export const Route = createFileRoute("/admin/submissions")({
 
 type Row = {
   submission_id: string;
-  client_token: string;
   company_name: string;
   client_status: string;
   advisor_status: string;
@@ -53,9 +52,6 @@ type Row = {
   advisor_id: string | null;
 };
 
-function clientPath(token: string) {
-  return `/q/${token}`;
-}
 function advisorPath(id: string) {
   return `/advisor/${id}`;
 }
