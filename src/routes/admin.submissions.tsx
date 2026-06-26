@@ -153,12 +153,39 @@ function AdminSubmissionsPage() {
                     <ClientLinkBox url={cUrl} token={r.client_token} />
                     <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
                   </div>
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    {r.client_status === "submitted" && (
+                      <UnlockButton
+                        submissionId={r.submission_id}
+                        onDone={(next) =>
+                          setRows((prev) =>
+                            prev.map((x) =>
+                              x.submission_id === r.submission_id
+                                ? { ...x, client_status: next }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    )}
+                    <ResetButton
+                      submissionId={r.submission_id}
+                      onDone={() =>
+                        setRows((prev) =>
+                          prev.map((x) =>
+                            x.submission_id === r.submission_id
+                              ? { ...x, client_status: "notstarted" }
+                              : x,
+                          ),
+                        )
+                      }
+                    />
                     <DownloadPdfButton submissionId={r.submission_id} />
                   </div>
                 </li>
               );
             })}
+
           </ul>
         )}
       </div>
