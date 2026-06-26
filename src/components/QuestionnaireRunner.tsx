@@ -266,15 +266,13 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       });
       error = res.error;
     } else {
-      const update: { advisor_status: string; updated_at: string } = {
-        advisor_status: "complete",
-        updated_at: new Date().toISOString(),
-      };
-      const res = await supabase
-        .from("submissions")
-        .update(update)
-        .eq("submission_id", props.submissionId);
-      error = res.error;
+      try {
+        await setAdvStatus({
+          data: { submissionId: props.submissionId, status: "complete" },
+        });
+      } catch (e) {
+        error = e;
+      }
     }
     setFinishing(false);
     if (error) {
