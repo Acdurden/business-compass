@@ -396,6 +396,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -421,6 +442,13 @@ export type Database = {
           valuation_input_amount: number
           valuation_input_type: string
         }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       save_client_response: {
         Args: {
@@ -449,7 +477,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "advisor" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -576,6 +604,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["advisor", "client"],
+    },
   },
 } as const

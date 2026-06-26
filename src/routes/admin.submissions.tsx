@@ -1,11 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Copy, ExternalLink, LogOut, FileDown } from "lucide-react";
+import { Copy, ExternalLink, LogOut, FileDown, Mail } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
+import { inviteClient } from "@/lib/client-invites.functions";
 
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
   const [busy, setBusy] = useState(false);
@@ -114,7 +118,9 @@ function AdminSubmissionsPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
+        <InviteClientCard />
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : rows.length === 0 ? (
@@ -156,6 +162,58 @@ function AdminSubmissionsPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function InviteClientCard() {
+  const invite = useServerFn(inviteClient);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    setBusy(true);
+    try {
+      await invite({
+        data: { email: trimmed, redirectTo: `${window.location.origin}/client/auth` },
+      });
+      toast.success(`Invite sent to ${trimmed}`);
+      setEmail("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send invite");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col md:flex-row md:items-end gap-3"
+    >
+      <div className="flex-1">
+        <Label htmlFor="invite-email" className="text-xs uppercase tracking-wide text-muted-foreground">
+          Invite a client
+        </Label>
+        <Input
+          id="invite-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="client@example.com"
+          className="mt-1.5"
+        />
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Sends an email invite. The client sets their password and lands on the client portal.
+        </p>
+      </div>
+      <Button type="submit" disabled={busy || !email.trim()}>
+        <Mail className="h-3.5 w-3.5 mr-1.5" />
+        {busy ? "Sending…" : "Send invite"}
+      </Button>
+    </form>
   );
 }
 
