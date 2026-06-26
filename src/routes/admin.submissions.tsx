@@ -118,7 +118,9 @@ function AdminSubmissionsPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
+        <InviteClientCard />
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : rows.length === 0 ? (
