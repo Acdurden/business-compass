@@ -26,8 +26,8 @@ function AdvisorQuestionnairePage() {
       statusField="advisor_status"
       eyebrow="Advisor questionnaire"
       finishLabel="View combined results"
-      exitTo="/advisor"
-      notFoundTo="/advisor"
+      exitTo="/admin/submissions"
+      notFoundTo="/admin/submissions"
     />
   );
 }
