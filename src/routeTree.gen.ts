@@ -13,8 +13,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
-import { Route as ResultsTokenRouteImport } from './routes/results.$token'
-import { Route as QTokenRouteImport } from './routes/q.$token'
 import { Route as ClientQuestionnaireRouteImport } from './routes/client.questionnaire'
 import { Route as ClientAuthRouteImport } from './routes/client.auth'
 import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
@@ -38,16 +36,6 @@ const ClientIndexRoute = ClientIndexRouteImport.update({
 const AdvisorIndexRoute = AdvisorIndexRouteImport.update({
   id: '/advisor/',
   path: '/advisor/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResultsTokenRoute = ResultsTokenRouteImport.update({
-  id: '/results/$token',
-  path: '/results/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QTokenRoute = QTokenRouteImport.update({
-  id: '/q/$token',
-  path: '/q/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientQuestionnaireRoute = ClientQuestionnaireRouteImport.update({
@@ -78,8 +66,6 @@ export interface FileRoutesByFullPath {
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/questionnaire': typeof ClientQuestionnaireRoute
-  '/q/$token': typeof QTokenRoute
-  '/results/$token': typeof ResultsTokenRoute
   '/advisor/': typeof AdvisorIndexRoute
   '/client/': typeof ClientIndexRoute
 }
@@ -90,8 +76,6 @@ export interface FileRoutesByTo {
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/questionnaire': typeof ClientQuestionnaireRoute
-  '/q/$token': typeof QTokenRoute
-  '/results/$token': typeof ResultsTokenRoute
   '/advisor': typeof AdvisorIndexRoute
   '/client': typeof ClientIndexRoute
 }
@@ -103,8 +87,6 @@ export interface FileRoutesById {
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/questionnaire': typeof ClientQuestionnaireRoute
-  '/q/$token': typeof QTokenRoute
-  '/results/$token': typeof ResultsTokenRoute
   '/advisor/': typeof AdvisorIndexRoute
   '/client/': typeof ClientIndexRoute
 }
@@ -117,8 +99,6 @@ export interface FileRouteTypes {
     | '/advisor/$submissionId'
     | '/client/auth'
     | '/client/questionnaire'
-    | '/q/$token'
-    | '/results/$token'
     | '/advisor/'
     | '/client/'
   fileRoutesByTo: FileRoutesByTo
@@ -129,8 +109,6 @@ export interface FileRouteTypes {
     | '/advisor/$submissionId'
     | '/client/auth'
     | '/client/questionnaire'
-    | '/q/$token'
-    | '/results/$token'
     | '/advisor'
     | '/client'
   id:
@@ -141,8 +119,6 @@ export interface FileRouteTypes {
     | '/advisor/$submissionId'
     | '/client/auth'
     | '/client/questionnaire'
-    | '/q/$token'
-    | '/results/$token'
     | '/advisor/'
     | '/client/'
   fileRoutesById: FileRoutesById
@@ -154,8 +130,6 @@ export interface RootRouteChildren {
   AdvisorSubmissionIdRoute: typeof AdvisorSubmissionIdRoute
   ClientAuthRoute: typeof ClientAuthRoute
   ClientQuestionnaireRoute: typeof ClientQuestionnaireRoute
-  QTokenRoute: typeof QTokenRoute
-  ResultsTokenRoute: typeof ResultsTokenRoute
   AdvisorIndexRoute: typeof AdvisorIndexRoute
   ClientIndexRoute: typeof ClientIndexRoute
 }
@@ -188,20 +162,6 @@ declare module '@tanstack/react-router' {
       path: '/advisor'
       fullPath: '/advisor/'
       preLoaderRoute: typeof AdvisorIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/results/$token': {
-      id: '/results/$token'
-      path: '/results/$token'
-      fullPath: '/results/$token'
-      preLoaderRoute: typeof ResultsTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/q/$token': {
-      id: '/q/$token'
-      path: '/q/$token'
-      fullPath: '/q/$token'
-      preLoaderRoute: typeof QTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/client/questionnaire': {
@@ -242,8 +202,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdvisorSubmissionIdRoute: AdvisorSubmissionIdRoute,
   ClientAuthRoute: ClientAuthRoute,
   ClientQuestionnaireRoute: ClientQuestionnaireRoute,
-  QTokenRoute: QTokenRoute,
-  ResultsTokenRoute: ResultsTokenRoute,
   AdvisorIndexRoute: AdvisorIndexRoute,
   ClientIndexRoute: ClientIndexRoute,
 }
