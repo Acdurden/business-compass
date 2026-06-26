@@ -180,11 +180,6 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           /* non-fatal */
         }
       }
-          .from("submissions")
-          .update(update)
-          .eq("submission_id", props.submissionId)
-          .neq(statusField, "complete");
-      }
 
       setLoading(false);
     }
