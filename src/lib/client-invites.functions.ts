@@ -15,13 +15,13 @@ export const inviteClient = createServerFn({ method: "POST" })
     return { email, redirectTo };
   })
   .handler(async ({ data, context }) => {
-    // Caller must be an advisor (i.e. NOT a client account).
-    const { data: isClientRow } = await context.supabase.rpc("has_role", {
+    // Caller must explicitly hold the advisor role.
+    const { data: isAdvisor } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
-      _role: "client",
+      _role: "advisor",
     });
-    if (isClientRow === true) {
-      throw new Error("Forbidden: client accounts cannot invite other clients");
+    if (isAdvisor !== true) {
+      throw new Error("Forbidden: advisor role required");
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -75,12 +75,12 @@ export const createTestClient = createServerFn({ method: "POST" })
     return { email, password };
   })
   .handler(async ({ data, context }) => {
-    const { data: isClientRow } = await context.supabase.rpc("has_role", {
+    const { data: isAdvisor } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
-      _role: "client",
+      _role: "advisor",
     });
-    if (isClientRow === true) {
-      throw new Error("Forbidden: client accounts cannot create other clients");
+    if (isAdvisor !== true) {
+      throw new Error("Forbidden: advisor role required");
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -132,13 +132,13 @@ export const createAdvisor = createServerFn({ method: "POST" })
     return { email, password };
   })
   .handler(async ({ data, context }) => {
-    // Caller must already be an advisor (i.e. NOT a client account).
-    const { data: isClientRow } = await context.supabase.rpc("has_role", {
+    // Caller must explicitly hold the advisor role.
+    const { data: isAdvisor } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
-      _role: "client",
+      _role: "advisor",
     });
-    if (isClientRow === true) {
-      throw new Error("Forbidden: client accounts cannot create advisor accounts");
+    if (isAdvisor !== true) {
+      throw new Error("Forbidden: advisor role required");
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
