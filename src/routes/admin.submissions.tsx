@@ -316,6 +316,72 @@ function CreateTestClientCard() {
   );
 }
 
+function UnlockButton({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: (nextStatus: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    setBusy(true);
+    const { error } = await supabase.rpc("advisor_unlock_submission", {
+      p_submission_id: submissionId,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message ?? "Could not unlock");
+      return;
+    }
+    toast.success("Unlocked — client can edit again");
+    onDone("inprogress");
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <Unlock className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Unlocking…" : "Unlock"}
+    </Button>
+  );
+}
+
+function ResetButton({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    if (
+      !window.confirm(
+        "Reset this client's questionnaire? All of their objective answers will be cleared.",
+      )
+    )
+      return;
+    setBusy(true);
+    const { error } = await supabase.rpc("advisor_reset_client_responses", {
+      p_submission_id: submissionId,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message ?? "Could not reset");
+      return;
+    }
+    toast.success("Client questionnaire reset");
+    onDone();
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Resetting…" : "Reset client answers"}
+    </Button>
+  );
+}
+
+
+
 
 
 function ClientLinkBox({ url, token }: { url: string; token: string }) {
