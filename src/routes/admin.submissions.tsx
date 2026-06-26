@@ -165,6 +165,58 @@ function AdminSubmissionsPage() {
   );
 }
 
+function InviteClientCard() {
+  const invite = useServerFn(inviteClient);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    setBusy(true);
+    try {
+      await invite({
+        data: { email: trimmed, redirectTo: `${window.location.origin}/client/auth` },
+      });
+      toast.success(`Invite sent to ${trimmed}`);
+      setEmail("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send invite");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col md:flex-row md:items-end gap-3"
+    >
+      <div className="flex-1">
+        <Label htmlFor="invite-email" className="text-xs uppercase tracking-wide text-muted-foreground">
+          Invite a client
+        </Label>
+        <Input
+          id="invite-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="client@example.com"
+          className="mt-1.5"
+        />
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Sends an email invite. The client sets their password and lands on the client portal.
+        </p>
+      </div>
+      <Button type="submit" disabled={busy || !email.trim()}>
+        <Mail className="h-3.5 w-3.5 mr-1.5" />
+        {busy ? "Sending…" : "Send invite"}
+      </Button>
+    </form>
+  );
+}
+
 function ClientLinkBox({ url, token }: { url: string; token: string }) {
   return (
     <div className="rounded-lg border border-border bg-background p-3">
