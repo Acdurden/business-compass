@@ -44,7 +44,6 @@ export const Route = createFileRoute("/admin/submissions")({
 
 type Row = {
   submission_id: string;
-  client_token: string;
   company_name: string;
   client_status: string;
   advisor_status: string;
@@ -53,9 +52,6 @@ type Row = {
   advisor_id: string | null;
 };
 
-function clientPath(token: string) {
-  return `/q/${token}`;
-}
 function advisorPath(id: string) {
   return `/advisor/${id}`;
 }
@@ -133,7 +129,6 @@ function AdminSubmissionsPage() {
         ) : (
           <ul className="space-y-3">
             {rows.map((r) => {
-              const cUrl = `${origin}${clientPath(r.client_token)}`;
               const aUrl = `${origin}${advisorPath(r.submission_id)}`;
               return (
                 <li
@@ -158,8 +153,7 @@ function AdminSubmissionsPage() {
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <ClientLinkBox url={cUrl} token={r.client_token} />
+                  <div>
                     <AdvisorLinkBox url={aUrl} submissionId={r.submission_id} />
                   </div>
                   <div className="mt-3 flex flex-wrap justify-end gap-2">
@@ -393,31 +387,6 @@ function ResetButton({
 
 
 
-function ClientLinkBox({ url, token }: { url: string; token: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-3">
-      <div className="flex items-center justify-between mb-1.5">
-        <div>
-          <p className="text-xs font-semibold">Client link</p>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            Objective questions
-          </p>
-        </div>
-        <div className="flex gap-1">
-          <Button size="sm" variant="ghost" onClick={() => void copy(url, "Client link")} title="Copy link">
-            <Copy className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="sm" variant="ghost" asChild title="Open">
-            <Link to="/q/$token" params={{ token }}>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </div>
-      </div>
-      <p className="text-[11px] font-mono text-muted-foreground break-all">{url}</p>
-    </div>
-  );
-}
 
 function AdvisorLinkBox({ url, submissionId }: { url: string; submissionId: string }) {
   return (

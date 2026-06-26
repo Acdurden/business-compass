@@ -285,14 +285,10 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     }
     if (finishMode === "submitlock") {
       toast.success("Submitted");
-      navigate({ to: exitTo });
-      return;
+    } else {
+      toast.success("Saved");
     }
-    if (!clientToken) {
-      toast.error("Missing token");
-      return;
-    }
-    navigate({ to: "/results/$token", params: { token: clientToken } });
+    navigate({ to: exitTo });
   }
 
 
