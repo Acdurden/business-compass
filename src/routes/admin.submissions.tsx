@@ -178,13 +178,39 @@ function AdminSubmissionsPage() {
         <InviteClientCard />
         <CreateTestClientCard />
 
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
+          <Input
+            placeholder="Search by company name or submission ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((f) => (
+              <Button
+                key={f.key}
+                type="button"
+                size="sm"
+                variant={filter === f.key ? "default" : "outline"}
+                onClick={() => setFilter(f.key)}
+              >
+                {f.label}
+              </Button>
+            ))}
+            <span className="ml-auto self-center text-[11px] text-muted-foreground">
+              {filteredRows.length} of {rows.length}
+            </span>
+          </div>
+        </div>
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No submissions yet.</p>
+        ) : filteredRows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {rows.length === 0 ? "No submissions yet." : "No submissions match your search."}
+          </p>
         ) : (
           <ul className="space-y-3">
-            {rows.map((r) => {
+            {filteredRows.map((r) => {
               return (
                 <li
                   key={r.submission_id}
