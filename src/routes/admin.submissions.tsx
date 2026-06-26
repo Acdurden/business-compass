@@ -105,7 +105,7 @@ function AdminSubmissionsPage() {
 
 
   useEffect(() => {
-    setOrigin(window.location.origin);
+    
     listAll()
       .then((data) => {
         setRows((data ?? []) as Row[]);
