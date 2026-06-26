@@ -265,6 +265,10 @@ function AdminSubmissionsPage() {
                       clientStatus={r.client_status}
                       advisorStatus={r.advisor_status}
                     />
+                    <ViewResultsButton
+                      submissionId={r.submission_id}
+                      clientStatus={r.client_status}
+                    />
                     {r.client_status === "submitted" && (
                       <UnlockButton
                         submissionId={r.submission_id}
