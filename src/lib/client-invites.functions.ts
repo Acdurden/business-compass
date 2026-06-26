@@ -117,3 +117,74 @@ export const createTestClient = createServerFn({ method: "POST" })
 
     return { ok: true, userId, email: data.email };
   });
+
+export const createAdvisor = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { email: string; password: string }) => {
+    const email = String(input?.email ?? "").trim().toLowerCase();
+    const password = String(input?.password ?? "");
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Invalid email");
+    }
+    if (password.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+    return { email, password };
+  })
+  .handler(async ({ data, context }) => {
+    // Caller must already be an advisor (i.e. NOT a client account).
+    const { data: isClientRow } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "client",
+    });
+    if (isClientRow === true) {
+      throw new Error("Forbidden: client accounts cannot create advisor accounts");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let userId: string | null = null;
+    const created = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { must_change_password: true },
+    });
+    if (created.data?.user?.id) {
+      userId = created.data.user.id;
+    } else {
+      const existing = await supabaseAdmin.auth.admin.listUsers();
+      const found = existing.data?.users.find(
+        (u) => (u.email ?? "").toLowerCase() === data.email,
+      );
+      if (!found) {
+        throw new Error(created.error?.message ?? "Could not create user");
+      }
+      userId = found.id;
+      const upd = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: data.password,
+        email_confirm: true,
+        user_metadata: { must_change_password: true },
+      });
+      if (upd.error) throw new Error(upd.error.message);
+    }
+
+    // Refuse to grant advisor to an account that's already a client.
+    const { data: existingClient } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", userId)
+      .eq("role", "client")
+      .maybeSingle();
+    if (existingClient) {
+      throw new Error("This account is already a client; cannot also be an advisor");
+    }
+
+    const { error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: userId, role: "advisor" }, { onConflict: "user_id,role" });
+    if (roleErr) throw new Error(roleErr.message);
+
+    return { ok: true, userId, email: data.email };
+  });
+
