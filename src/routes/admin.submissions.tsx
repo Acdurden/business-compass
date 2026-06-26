@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { LogOut, FileDown, Mail, Unlock, RotateCcw, ClipboardList } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { inviteClient, createTestClient } from "@/lib/client-invites.functions";
+import { inviteClient, createTestClient, createAdvisor } from "@/lib/client-invites.functions";
 import { listAllSubmissions } from "@/lib/advisor-submissions.functions";
 
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
