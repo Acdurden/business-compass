@@ -286,7 +286,12 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     } else {
       toast.success("Saved");
     }
-    navigate({ to: exitTo });
+    const finishTo = props.finishTo;
+    if (finishMode !== "submitlock" && finishTo) {
+      navigate({ to: finishTo.to, params: finishTo.params } as never);
+    } else {
+      navigate({ to: exitTo });
+    }
   }
 
 
