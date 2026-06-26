@@ -168,7 +168,6 @@ function ResultsPage() {
   const inputType =
     (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
   const amount = Number(sub.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
-  const target = Number(sub.target_valuation ?? DEFAULT_TARGET_VALUATION);
 
   return (
     <main className="min-h-screen pb-24">
@@ -246,10 +245,9 @@ function ResultsPage() {
               </tbody>
             </table>
           </div>
-          <dl className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+          <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
             <Meta label="Basis">{inputType === "ebitda" ? "EBITDA" : "Net Fee Income"}</Meta>
             <Meta label="Amount">{fmtCurrency(amount)}</Meta>
-            <Meta label="Target valuation">{target > 0 ? fmtCurrency(target) : "—"}</Meta>
           </dl>
         </section>
       </div>
