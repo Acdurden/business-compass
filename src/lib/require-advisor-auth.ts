@@ -15,12 +15,17 @@ export async function requireAdvisorAuth(currentHref: string) {
       search: { redirect: currentHref },
     });
   }
-  const { data: isClient } = await supabase.rpc("has_role", {
+  const { data: isAdvisor } = await supabase.rpc("has_role", {
     _user_id: data.session.user.id,
-    _role: "client",
+    _role: "advisor",
   });
-  if (isClient) {
-    throw redirect({ to: "/client" });
+  if (!isAdvisor) {
+    const { data: isClient } = await supabase.rpc("has_role", {
+      _user_id: data.session.user.id,
+      _role: "client",
+    });
+    if (isClient) throw redirect({ to: "/client" });
+    throw redirect({ to: "/auth", search: { redirect: currentHref } });
   }
   return { userId: data.session.user.id, email: data.session.user.email ?? "" };
 }

@@ -13,12 +13,12 @@ export type AdvisorSubmissionRow = {
 };
 
 async function ensureAdvisor(context: { supabase: any; userId: string }) {
-  const { data: isClientRow } = await context.supabase.rpc("has_role", {
+  const { data: isAdvisor } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
-    _role: "client",
+    _role: "advisor",
   });
-  if (isClientRow === true) {
-    throw new Error("Forbidden: clients cannot access advisor data");
+  if (isAdvisor !== true) {
+    throw new Error("Forbidden: advisor role required");
   }
 }
 
