@@ -92,6 +92,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const [finBasis, setFinBasis] = useState<"netfeeincome" | "ebitda">("netfeeincome");
   const [finAmount, setFinAmount] = useState<string>("");
   const [finError, setFinError] = useState<string | null>(null);
+  const finInputRef = useRef<HTMLInputElement | null>(null);
 
   // Stable identity for effect dependency
   const sourceKey =
