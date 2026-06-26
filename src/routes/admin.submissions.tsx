@@ -10,6 +10,7 @@ import { Copy, ExternalLink, LogOut, FileDown, Mail, Unlock, RotateCcw } from "l
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { inviteClient, createTestClient } from "@/lib/client-invites.functions";
+import { listAllSubmissions } from "@/lib/advisor-submissions.functions";
 
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
   const [busy, setBusy] = useState(false);
