@@ -223,8 +223,12 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const total = questions.length;
   const pct = total === 0 ? 0 : Math.round((answered / total) * 100);
   const allAnswered = total > 0 && answered === total;
+  const requireFin = !!props.requireFinancialInput && props.mode === "client";
+  const parsedAmount = Number(finAmount.replace(/[,\s]/g, ""));
+  const financialReady =
+    !requireFin || (finAmount.trim() !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
+  const canFinish = allAnswered && financialReady;
 
-  async function handleSelect(question: Question, option: AnswerOption) {
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
     setSaving(question.question_id);
     let error: unknown = null;
