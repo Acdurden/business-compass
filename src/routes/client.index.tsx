@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { LogOut, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/client/")({
@@ -25,20 +27,65 @@ export const Route = createFileRoute("/client/")({
   component: ClientHome,
 });
 
+type MySubmission = {
+  submission_id: string;
+  client_token: string;
+  client_status: string;
+  company_name: string;
+};
+
 function ClientHome() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [sub, setSub] = useState<MySubmission | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [companyName, setCompanyName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function refresh() {
+    const { data, error } = await supabase.rpc("get_my_client_submission");
+    if (error) {
+      toast.error("Failed to load");
+      setLoading(false);
+      return;
+    }
+    const row = (data ?? [])[0] as MySubmission | undefined;
+    setSub(row ?? null);
+    setLoading(false);
+  }
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
       setEmail(data.session?.user.email ?? "");
     });
+    void refresh();
   }, []);
 
   async function signOut() {
     await supabase.auth.signOut();
     toast.success("Signed out");
     navigate({ to: "/client/auth" });
+  }
+
+  async function startNew(e: React.FormEvent) {
+    e.preventDefault();
+    const name = companyName.trim();
+    if (!name) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc("start_my_client_submission", {
+      p_company_name: name,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message ?? "Could not start");
+      return;
+    }
+    const row = (data ?? [])[0] as MySubmission | undefined;
+    if (!row) {
+      toast.error("Could not start");
+      return;
+    }
+    navigate({ to: "/client/questionnaire" });
   }
 
   return (
@@ -49,7 +96,9 @@ function ClientHome() {
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               Client portal
             </p>
-            <h1 className="text-lg font-semibold tracking-tight">Welcome</h1>
+            <h1 className="text-lg font-semibold tracking-tight">
+              {email || "Welcome"}
+            </h1>
           </div>
           <Button variant="ghost" size="sm" onClick={() => void signOut()}>
             <LogOut className="h-3.5 w-3.5 mr-1.5" />
@@ -57,12 +106,76 @@ function ClientHome() {
           </Button>
         </div>
       </header>
-      <section className="mx-auto max-w-3xl px-6 py-16">
-        <h2 className="text-3xl font-semibold tracking-tight">Welcome{email ? `, ${email}` : ""}</h2>
-        <p className="mt-3 text-muted-foreground">
-          Your client portal is being set up. Check back soon for your valuation
-          questionnaire and results.
-        </p>
+
+      <section className="mx-auto max-w-2xl px-6 py-16">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : sub === null ? (
+          <div>
+            <h2 className="text-3xl font-semibold tracking-tight">
+              Start your assessment
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Answer a short questionnaire about your business. Your advisor
+              will review and follow up with results.
+            </p>
+            <form
+              onSubmit={startNew}
+              className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm"
+            >
+              <Label htmlFor="company">Company name</Label>
+              <Input
+                id="company"
+                required
+                maxLength={200}
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Acme Co."
+                className="mt-2"
+              />
+              <Button
+                type="submit"
+                size="lg"
+                className="mt-5 w-full"
+                disabled={busy || !companyName.trim()}
+              >
+                {busy ? "Starting…" : "Start your assessment"}
+              </Button>
+            </form>
+          </div>
+        ) : sub.client_status === "submitted" ||
+          sub.client_status === "complete" ? (
+          <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
+            <CheckCircle2 className="h-8 w-8 text-primary" />
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight">
+              Submitted
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              Thank you — your assessment for{" "}
+              <span className="font-medium text-foreground">
+                {sub.company_name}
+              </span>{" "}
+              has been submitted. Your advisor will follow up with your
+              results.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <h2 className="text-3xl font-semibold tracking-tight">
+              Continue your assessment
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              {sub.company_name}
+            </p>
+            <Button
+              size="lg"
+              className="mt-8"
+              onClick={() => navigate({ to: "/client/questionnaire" })}
+            >
+              Continue
+            </Button>
+          </div>
+        )}
       </section>
     </main>
   );
