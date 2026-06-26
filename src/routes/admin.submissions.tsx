@@ -160,10 +160,7 @@ function AdminSubmissionsPage() {
           </div>
           <div className="flex gap-2">
             <Button asChild variant="ghost" size="sm">
-              <Link to="/">Client home</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/advisor">Advisor home</Link>
+              <Link to="/">Home</Link>
             </Button>
             <Button variant="ghost" size="sm" onClick={() => void signOut()}>
               <LogOut className="h-3.5 w-3.5 mr-1.5" />
