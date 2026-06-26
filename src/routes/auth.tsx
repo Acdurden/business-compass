@@ -41,8 +41,17 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        const { data: isClient } = await supabase.rpc("has_role", {
+          _user_id: data.user!.id,
+          _role: "client",
+        });
+        if (isClient) {
+          toast.success("Signed in");
+          navigate({ to: "/client" });
+          return;
+        }
         toast.success("Signed in");
       } else {
         const { error } = await supabase.auth.signUp({
