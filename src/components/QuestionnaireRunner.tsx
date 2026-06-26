@@ -426,6 +426,91 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                 </ol>
               </section>
             ))}
+
+            {requireFin && (
+              <section>
+                <div className="flex items-baseline gap-3 mb-6">
+                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                    {String(sectionsWithQuestions.length + 1).padStart(2, "0")}
+                  </span>
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    Financial information
+                  </h2>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-5">
+                  <div>
+                    <p className="font-medium leading-snug mb-3">
+                      Which figure are you providing?
+                    </p>
+                    <div className="grid gap-2">
+                      {(
+                        [
+                          { v: "netfeeincome", label: "Net fee income" },
+                          { v: "ebitda", label: "EBITDA" },
+                        ] as const
+                      ).map((o) => {
+                        const isSelected = finBasis === o.v;
+                        return (
+                          <button
+                            key={o.v}
+                            type="button"
+                            onClick={() => setFinBasis(o.v)}
+                            className={cn(
+                              "flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm transition-colors",
+                              isSelected
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-foreground/30 hover:bg-muted/40",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center",
+                                isSelected ? "border-primary" : "border-muted-foreground/40",
+                              )}
+                            >
+                              {isSelected && (
+                                <span className="h-2 w-2 rounded-full bg-primary" />
+                              )}
+                            </span>
+                            <span className="flex-1">{o.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="fin-amount" className="font-medium leading-snug block mb-2">
+                      Amount (USD) <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      id="fin-amount"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={finAmount}
+                      onChange={(e) => {
+                        setFinAmount(e.target.value);
+                        if (finError) setFinError(null);
+                      }}
+                      placeholder=""
+                      className={cn(
+                        "w-full rounded-md border bg-background px-4 py-3 text-sm outline-none transition-colors",
+                        finError
+                          ? "border-destructive focus:border-destructive"
+                          : "border-border focus:border-primary",
+                      )}
+                    />
+                    {finError ? (
+                      <p className="mt-2 text-xs text-destructive">{finError}</p>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Required. Enter the actual figure — no default is provided.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
@@ -434,9 +519,11 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
           <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
             <div className="text-sm text-muted-foreground">
-              {allAnswered
-                ? "All questions answered."
-                : `${total - answered} question${total - answered === 1 ? "" : "s"} remaining`}
+              {!allAnswered
+                ? `${total - answered} question${total - answered === 1 ? "" : "s"} remaining`
+                : requireFin && !financialReady
+                  ? "Enter your financial information to submit."
+                  : "Ready to submit."}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" asChild>
@@ -444,7 +531,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
               </Button>
               <Button
                 size="lg"
-                disabled={!allAnswered || finishing}
+                disabled={!canFinish || finishing}
                 onClick={handleFinish}
               >
                 {finishing ? "Finishing…" : finishLabel}
