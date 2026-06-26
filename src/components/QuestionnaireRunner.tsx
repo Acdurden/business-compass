@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,17 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   requireFinancialInput?: boolean;
 };
 
+function fmtCurrencyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  const num = Number(digits);
+  if (!Number.isFinite(num)) return "";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(num);
+}
 
 export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const {
@@ -81,6 +92,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const [finBasis, setFinBasis] = useState<"netfeeincome" | "ebitda">("netfeeincome");
   const [finAmount, setFinAmount] = useState<string>("");
   const [finError, setFinError] = useState<string | null>(null);
+  const finInputRef = useRef<HTMLInputElement | null>(null);
 
   // Stable identity for effect dependency
   const sourceKey =
@@ -224,9 +236,10 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const pct = total === 0 ? 0 : Math.round((answered / total) * 100);
   const allAnswered = total > 0 && answered === total;
   const requireFin = !!props.requireFinancialInput && props.mode === "client";
-  const parsedAmount = Number(finAmount.replace(/[,\s]/g, ""));
+  const cleanFin = finAmount.replace(/[$,\s]/g, "");
+  const parsedAmount = Number(cleanFin);
   const financialReady =
-    !requireFin || (finAmount.trim() !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
+    !requireFin || (cleanFin !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
   const canFinish = allAnswered && financialReady;
 
   async function handleSelect(question: Question, option: AnswerOption) {
@@ -269,7 +282,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     const finishMode = props.finishMode ?? "complete";
     setFinError(null);
     if (requireFin) {
-      if (finAmount.trim() === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      if (cleanFin === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
         setFinError("Enter your financial amount before submitting.");
         toast.error("Enter your financial amount before submitting.");
         return;
@@ -484,13 +497,31 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                     </label>
                     <input
                       id="fin-amount"
+                      ref={finInputRef}
                       type="text"
                       inputMode="decimal"
                       autoComplete="off"
                       value={finAmount}
                       onChange={(e) => {
-                        setFinAmount(e.target.value);
+                        const input = e.target;
+                        const selectionStart = input.selectionStart ?? 0;
+                        const digitsBeforeCursor = input.value
+                          .slice(0, selectionStart)
+                          .replace(/\D/g, "").length;
+                        const formatted = fmtCurrencyInput(input.value);
+                        setFinAmount(formatted);
                         if (finError) setFinError(null);
+                        requestAnimationFrame(() => {
+                          if (!finInputRef.current) return;
+                          let digitCount = 0;
+                          let newPos = 0;
+                          for (let i = 0; i < formatted.length; i++) {
+                            if (/\d/.test(formatted[i])) digitCount++;
+                            newPos = i + 1;
+                            if (digitCount >= digitsBeforeCursor) break;
+                          }
+                          finInputRef.current.setSelectionRange(newPos, newPos);
+                        });
                       }}
                       placeholder=""
                       className={cn(
