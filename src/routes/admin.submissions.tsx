@@ -71,6 +71,7 @@ async function copy(text: string, label: string) {
 
 function AdminSubmissionsPage() {
   const navigate = useNavigate();
+  const listAll = useServerFn(listAllSubmissions);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [origin, setOrigin] = useState("");
@@ -84,16 +85,16 @@ function AdminSubmissionsPage() {
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    void supabase
-      .from("submissions")
-      .select("submission_id,client_token,company_name,client_status,advisor_status,updated_at")
-      .order("updated_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) toast.error("Failed to load submissions");
+    listAll()
+      .then((data) => {
         setRows((data ?? []) as Row[]);
         setLoading(false);
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to load submissions");
+        setLoading(false);
       });
-  }, []);
+  }, [listAll]);
 
   return (
     <main className="min-h-screen">
