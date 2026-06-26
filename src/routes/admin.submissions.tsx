@@ -177,6 +177,8 @@ function AdminSubmissionsPage() {
       <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
         <InviteClientCard />
         <CreateTestClientCard />
+        <CreateAdvisorCard />
+
 
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
           <Input
