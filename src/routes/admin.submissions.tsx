@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { LogOut, FileDown, Mail, Unlock, RotateCcw, ClipboardList } from "lucide-react";
+import { LogOut, FileDown, Mail, Unlock, RotateCcw, ClipboardList, Eye } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { inviteClient, createTestClient, createAdvisor } from "@/lib/client-invites.functions";
@@ -85,6 +85,32 @@ function AdvisoryButton({
       <Link to="/advisor/$submissionId" params={{ submissionId }}>
         <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
         {label}
+      </Link>
+    </Button>
+  );
+}
+
+function ViewResultsButton({
+  submissionId,
+  clientStatus,
+}: {
+  submissionId: string;
+  clientStatus: string;
+}) {
+  const ready = clientStatus === "submitted" || clientStatus === "complete";
+  if (!ready) {
+    return (
+      <Button size="sm" variant="outline" disabled title="Awaiting client submission">
+        <Eye className="h-3.5 w-3.5 mr-1.5" />
+        View results
+      </Button>
+    );
+  }
+  return (
+    <Button size="sm" variant="outline" asChild>
+      <Link to="/admin/results/$submissionId" params={{ submissionId }}>
+        <Eye className="h-3.5 w-3.5 mr-1.5" />
+        View results
       </Link>
     </Button>
   );
@@ -238,6 +264,10 @@ function AdminSubmissionsPage() {
                       submissionId={r.submission_id}
                       clientStatus={r.client_status}
                       advisorStatus={r.advisor_status}
+                    />
+                    <ViewResultsButton
+                      submissionId={r.submission_id}
+                      clientStatus={r.client_status}
                     />
                     {r.client_status === "submitted" && (
                       <UnlockButton
