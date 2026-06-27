@@ -218,6 +218,13 @@ function AuthPage() {
         </form>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
+          Can't get in?{" "}
+          <Link to="/reset-password" className="underline">
+            Reset your password
+          </Link>
+        </p>
+
+        <p className="mt-3 text-center text-xs text-muted-foreground">
           Client questionnaire?{" "}
           <Link to="/" className="underline">
             Go to client home
