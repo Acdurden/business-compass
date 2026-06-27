@@ -25,6 +25,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // If already signed in, bounce away.
   useEffect(() => {
@@ -38,24 +39,27 @@ function AuthPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !password) return;
+    setAuthError(null);
     setBusy(true);
     try {
       if (mode === "signin") {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        const { data: isClient } = await supabase.rpc("has_role", {
+        const { data: isClient, error: clientRoleError } = await supabase.rpc("has_role", {
           _user_id: data.user!.id,
           _role: "client",
         });
+        if (clientRoleError) throw clientRoleError;
         if (isClient) {
           toast.success("Signed in");
           navigate({ to: "/client" });
           return;
         }
-        const { data: isAdvisor } = await supabase.rpc("has_role", {
+        const { data: isAdvisor, error: advisorRoleError } = await supabase.rpc("has_role", {
           _user_id: data.user!.id,
           _role: "advisor",
         });
+        if (advisorRoleError) throw advisorRoleError;
         if (!isAdvisor) {
           await supabase.auth.signOut();
           throw new Error("This account does not have advisor access.");
@@ -77,7 +81,9 @@ function AuthPage() {
       }
       navigate({ to: redirect ?? "/admin/submissions" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Authentication failed");
+      const message = err instanceof Error ? err.message : "Authentication failed";
+      setAuthError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -136,6 +142,16 @@ function AuthPage() {
                 ? "Sign in"
                 : "Create account"}
           </Button>
+
+          {authError ? (
+            <p
+              role="alert"
+              aria-live="polite"
+              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {authError}
+            </p>
+          ) : null}
 
           <p className="text-center text-[11px] text-muted-foreground">
             Advisor accounts are created by an existing advisor from the admin panel.
