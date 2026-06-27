@@ -11,6 +11,39 @@ const searchSchema = z.object({
   redirect: z.string().optional(),
 });
 
+const AUTH_TIMEOUT_MS = 15000;
+
+function describeAuthError(err: unknown) {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "string" && err.trim()) return err;
+  return "Authentication failed";
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, label: string) {
+  return Promise.race<T>([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => {
+        reject(new Error(`${label} timed out. Please try again.`));
+      }, AUTH_TIMEOUT_MS);
+    }),
+  ]);
+}
+
+function advisorDestination(redirect: string | undefined) {
+  if (!redirect) return "/admin/submissions";
+  try {
+    const url = new URL(redirect, window.location.origin);
+    if (url.origin !== window.location.origin) return "/admin/submissions";
+    if (url.pathname === "/auth" || url.pathname === "/client/auth") {
+      return "/admin/submissions";
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/admin/submissions";
+  }
+}
+
 export const Route = createFileRoute("/auth")({
   ssr: false,
   validateSearch: searchSchema,
@@ -26,13 +59,16 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
 
   // If already signed in, bounce away.
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
-        navigate({ to: redirect ?? "/admin/submissions" });
+        navigate({ to: advisorDestination(redirect) });
       }
+    }).catch((err) => {
+      setAuthError(`Could not read existing session: ${describeAuthError(err)}`);
     });
   }, [navigate, redirect]);
 
@@ -40,25 +76,36 @@ function AuthPage() {
     e.preventDefault();
     if (!email || !password) return;
     setAuthError(null);
+    setStatus("Signing in…");
     setBusy(true);
     try {
       if (mode === "signin") {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await withTimeout(
+          supabase.auth.signInWithPassword({ email, password }),
+          "Sign in",
+        );
         if (error) throw error;
+        if (!data.user) throw new Error("Sign in returned no user session.");
+
+        setStatus("Checking account access…");
         const { data: isClient, error: clientRoleError } = await supabase.rpc("has_role", {
-          _user_id: data.user!.id,
+          _user_id: data.user.id,
           _role: "client",
         });
         if (clientRoleError) throw clientRoleError;
         if (isClient) {
           toast.success("Signed in");
-          navigate({ to: "/client" });
+          setStatus("Opening client area…");
+          await navigate({ to: "/client" });
           return;
         }
-        const { data: isAdvisor, error: advisorRoleError } = await supabase.rpc("has_role", {
-          _user_id: data.user!.id,
-          _role: "advisor",
-        });
+        const { data: isAdvisor, error: advisorRoleError } = await withTimeout(
+          supabase.rpc("has_role", {
+            _user_id: data.user.id,
+            _role: "advisor",
+          }),
+          "Advisor access check",
+        );
         if (advisorRoleError) throw advisorRoleError;
         if (!isAdvisor) {
           await supabase.auth.signOut();
@@ -70,21 +117,27 @@ function AuthPage() {
           return;
         }
         toast.success("Signed in");
+        setStatus("Opening advisor dashboard…");
       } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin + "/auth" },
-        });
+        const { error } = await withTimeout(
+          supabase.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: window.location.origin + "/auth" },
+          }),
+          "Account creation",
+        );
         if (error) throw error;
         toast.success("Account created");
       }
-      navigate({ to: redirect ?? "/admin/submissions" });
+      await navigate({ to: advisorDestination(redirect) });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Authentication failed";
+      const message = describeAuthError(err);
+      console.error("Advisor sign-in failed", err);
       setAuthError(message);
       toast.error(message);
     } finally {
+      setStatus(null);
       setBusy(false);
     }
   }
@@ -137,11 +190,17 @@ function AuthPage() {
           </div>
           <Button type="submit" size="lg" className="w-full" disabled={busy}>
             {busy
-              ? "Please wait…"
+              ? (status ?? "Please wait…")
               : mode === "signin"
                 ? "Sign in"
                 : "Create account"}
           </Button>
+
+          {status ? (
+            <p className="text-center text-xs text-muted-foreground" aria-live="polite">
+              {status}
+            </p>
+          ) : null}
 
           {authError ? (
             <p
