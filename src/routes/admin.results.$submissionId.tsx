@@ -241,7 +241,6 @@ function ResultsPage() {
                 <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground border-b border-border">
                   <th className="py-2 pr-3">Basis</th>
                   <th className="py-2 pr-3">Market position</th>
-                  <th className="py-2 pr-3 text-right">Multiple</th>
                   <th className="py-2 text-right">Estimated valuation</th>
                 </tr>
               </thead>
@@ -343,7 +342,6 @@ function ValuationRow({
     <tr className={highlight ? "bg-primary/5" : ""}>
       <td className="py-2.5 pr-3 font-medium">{label}</td>
       <td className="py-2.5 pr-3">{leg.marketPosition || "—"}</td>
-      <td className="py-2.5 pr-3 text-right">{fmtMultiple(leg.multiple)}</td>
       <td className="py-2.5 text-right">
         <div className="font-semibold">{fmtCurrency(leg.estimatedValuation)}</div>
         <div className="text-xs text-muted-foreground mt-0.5">{fmtRange(leg.estimatedValuation)}</div>
