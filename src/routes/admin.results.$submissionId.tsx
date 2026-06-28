@@ -54,6 +54,12 @@ function fmtScore(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "0";
   return Math.round(n).toString();
 }
+function fmtRange(n: number | null | undefined) {
+  if (n == null || !isFinite(n)) return "—";
+  const low = Math.round(n * 0.95);
+  const high = Math.round(n * 1.05);
+  return `${fmtCurrency(low)} – ${fmtCurrency(high)}`;
+}
 
 function ResultsPage() {
   const { submissionId } = Route.useParams();
@@ -338,7 +344,10 @@ function ValuationRow({
       <td className="py-2.5 pr-3 font-medium">{label}</td>
       <td className="py-2.5 pr-3">{leg.marketPosition || "—"}</td>
       <td className="py-2.5 pr-3 text-right">{fmtMultiple(leg.multiple)}</td>
-      <td className="py-2.5 text-right font-semibold">{fmtCurrency(leg.estimatedValuation)}</td>
+      <td className="py-2.5 text-right">
+        <div className="font-semibold">{fmtCurrency(leg.estimatedValuation)}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{fmtRange(leg.estimatedValuation)}</div>
+      </td>
     </tr>
   );
 }
