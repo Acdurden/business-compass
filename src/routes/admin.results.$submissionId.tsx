@@ -344,7 +344,10 @@ function ValuationRow({
       <td className="py-2.5 pr-3 font-medium">{label}</td>
       <td className="py-2.5 pr-3">{leg.marketPosition || "—"}</td>
       <td className="py-2.5 pr-3 text-right">{fmtMultiple(leg.multiple)}</td>
-      <td className="py-2.5 text-right font-semibold">{fmtCurrency(leg.estimatedValuation)}</td>
+      <td className="py-2.5 text-right">
+        <div className="font-semibold">{fmtCurrency(leg.estimatedValuation)}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{fmtRange(leg.estimatedValuation)}</div>
+      </td>
     </tr>
   );
 }
