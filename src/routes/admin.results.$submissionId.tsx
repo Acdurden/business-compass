@@ -54,6 +54,12 @@ function fmtScore(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "0";
   return Math.round(n).toString();
 }
+function fmtRange(n: number | null | undefined) {
+  if (n == null || !isFinite(n)) return "—";
+  const low = Math.round(n * 0.95);
+  const high = Math.round(n * 1.05);
+  return `${fmtCurrency(low)} – ${fmtCurrency(high)}`;
+}
 
 function ResultsPage() {
   const { submissionId } = Route.useParams();
