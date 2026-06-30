@@ -50,6 +50,8 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   /** When true, render a required final "Financial information" step
    *  (basis + amount) before allowing finish. Client mode only. */
   requireFinancialInput?: boolean;
+  /** When true, render answers but disable editing and hide submit (advisor review). */
+  readOnly?: boolean;
 };
 
 function fmtCurrencyInput(raw: string): string {
