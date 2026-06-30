@@ -481,7 +481,15 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                     Financial information
                   </h2>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-5">
+                <div
+                  ref={finSectionRef}
+                  className={cn(
+                    "rounded-xl border bg-card p-5 shadow-sm space-y-5 transition-colors",
+                    attemptedSubmit && !financialReady
+                      ? "border-destructive bg-destructive/5"
+                      : "border-border",
+                  )}
+                >
                   <div>
                     <p className="font-medium leading-snug mb-3">
                       Which figure are you providing?
