@@ -588,12 +588,34 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       {!loading && total > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
           <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">
-              {!allAnswered
-                ? `${total - answered} question${total - answered === 1 ? "" : "s"} remaining`
-                : requireFin && !financialReady
-                  ? "Enter your financial information to submit."
-                  : "Ready to submit."}
+            <div className="text-sm">
+              {(() => {
+                const missingCount = total - answered;
+                const finBlank = requireFin && !financialReady;
+                if (attemptedSubmit && (missingCount > 0 || finBlank)) {
+                  const parts: string[] = [];
+                  if (missingCount > 0) {
+                    parts.push(
+                      `${missingCount} question${missingCount === 1 ? "" : "s"}`,
+                    );
+                  }
+                  if (finBlank) parts.push("financial information");
+                  return (
+                    <span className="text-destructive">
+                      Please answer all questions before submitting ({parts.join(" + ")} remaining).
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-muted-foreground">
+                    {!allAnswered
+                      ? `${missingCount} question${missingCount === 1 ? "" : "s"} remaining`
+                      : finBlank
+                        ? "Enter your financial information to submit."
+                        : "Ready to submit."}
+                  </span>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" asChild>
@@ -601,11 +623,12 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
               </Button>
               <Button
                 size="lg"
-                disabled={!canFinish || finishing}
+                disabled={finishing}
                 onClick={handleFinish}
               >
                 {finishing ? "Finishing…" : finishLabel}
               </Button>
+
             </div>
           </div>
         </div>
