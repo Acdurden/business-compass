@@ -339,7 +339,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     } else {
       try {
         await setAdvStatus({
-          data: { submissionId: props.submissionId, status: "complete" },
+          data: { submissionId: props.submissionId, status: "submitted" },
         });
       } catch (e) {
         error = e;
