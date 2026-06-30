@@ -92,7 +92,10 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const [finBasis, setFinBasis] = useState<"netfeeincome" | "ebitda">("netfeeincome");
   const [finAmount, setFinAmount] = useState<string>("");
   const [finError, setFinError] = useState<string | null>(null);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const finInputRef = useRef<HTMLInputElement | null>(null);
+  const finSectionRef = useRef<HTMLDivElement | null>(null);
+  const questionRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
   // Stable identity for effect dependency
   const sourceKey =
@@ -240,7 +243,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const parsedAmount = Number(cleanFin);
   const financialReady =
     !requireFin || (cleanFin !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
-  const canFinish = allAnswered && financialReady;
+  
 
   async function handleSelect(question: Question, option: AnswerOption) {
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
@@ -281,13 +284,31 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   async function handleFinish() {
     const finishMode = props.finishMode ?? "complete";
     setFinError(null);
-    if (requireFin) {
-      if (cleanFin === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-        setFinError("Enter your financial amount before submitting.");
-        toast.error("Enter your financial amount before submitting.");
-        return;
+
+    // Build list of missing questions in page order.
+    const missingQuestionIds: string[] = [];
+    for (const { questions: qs } of sectionsWithQuestions) {
+      for (const q of qs) {
+        if (!responses[q.question_id]) missingQuestionIds.push(q.question_id);
       }
     }
+    const finBlank =
+      requireFin && (cleanFin === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0);
+
+    if (missingQuestionIds.length > 0 || finBlank) {
+      setAttemptedSubmit(true);
+      const firstMissingEl = missingQuestionIds.length
+        ? questionRefs.current[missingQuestionIds[0]]
+        : finSectionRef.current;
+      if (firstMissingEl) {
+        firstMissingEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      if (finBlank) {
+        setFinError("Enter your financial amount before submitting.");
+      }
+      return;
+    }
+
     setFinishing(true);
     let error: unknown = null;
     if (requireFin) {
@@ -388,12 +409,22 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                   {qs.map((q) => {
                     const opts = optionsByQuestion[q.question_id] ?? [];
                     const selected = responses[q.question_id];
+                    const isMissing = attemptedSubmit && !selected;
                     return (
                       <li
                         key={q.question_id}
-                        className="rounded-xl border border-border bg-card p-5 shadow-sm"
+                        ref={(el) => {
+                          questionRefs.current[q.question_id] = el;
+                        }}
+                        className={cn(
+                          "rounded-xl border bg-card p-5 shadow-sm transition-colors",
+                          isMissing
+                            ? "border-destructive bg-destructive/5"
+                            : "border-border",
+                        )}
                       >
                         <div className="flex items-start justify-between gap-3">
+
                           <p className="font-medium leading-snug">{q.question_text}</p>
                           {saving === q.question_id && (
                             <span className="text-[11px] text-muted-foreground shrink-0 mt-1">
@@ -450,7 +481,15 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                     Financial information
                   </h2>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-5">
+                <div
+                  ref={finSectionRef}
+                  className={cn(
+                    "rounded-xl border bg-card p-5 shadow-sm space-y-5 transition-colors",
+                    attemptedSubmit && !financialReady
+                      ? "border-destructive bg-destructive/5"
+                      : "border-border",
+                  )}
+                >
                   <div>
                     <p className="font-medium leading-snug mb-3">
                       Which figure are you providing?
@@ -526,7 +565,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                       placeholder=""
                       className={cn(
                         "w-full rounded-md border bg-background px-4 py-3 text-sm outline-none transition-colors",
-                        finError
+                        finError || (attemptedSubmit && !financialReady)
                           ? "border-destructive focus:border-destructive"
                           : "border-border focus:border-primary",
                       )}
@@ -549,12 +588,34 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       {!loading && total > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
           <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">
-              {!allAnswered
-                ? `${total - answered} question${total - answered === 1 ? "" : "s"} remaining`
-                : requireFin && !financialReady
-                  ? "Enter your financial information to submit."
-                  : "Ready to submit."}
+            <div className="text-sm">
+              {(() => {
+                const missingCount = total - answered;
+                const finBlank = requireFin && !financialReady;
+                if (attemptedSubmit && (missingCount > 0 || finBlank)) {
+                  const parts: string[] = [];
+                  if (missingCount > 0) {
+                    parts.push(
+                      `${missingCount} question${missingCount === 1 ? "" : "s"}`,
+                    );
+                  }
+                  if (finBlank) parts.push("financial information");
+                  return (
+                    <span className="text-destructive">
+                      Please answer all questions before submitting ({parts.join(" + ")} remaining).
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-muted-foreground">
+                    {!allAnswered
+                      ? `${missingCount} question${missingCount === 1 ? "" : "s"} remaining`
+                      : finBlank
+                        ? "Enter your financial information to submit."
+                        : "Ready to submit."}
+                  </span>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" asChild>
@@ -562,11 +623,12 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
               </Button>
               <Button
                 size="lg"
-                disabled={!canFinish || finishing}
+                disabled={finishing}
                 onClick={handleFinish}
               >
                 {finishing ? "Finishing…" : finishLabel}
               </Button>
+
             </div>
           </div>
         </div>
