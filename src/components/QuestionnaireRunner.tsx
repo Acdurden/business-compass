@@ -190,19 +190,21 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         if (!cancelled) setOptions((opts ?? []) as AnswerOption[]);
       }
 
-      // mark in-progress if not already complete
-      if (props.mode === "client") {
-        await supabase.rpc("set_client_submission_status", {
-          p_token: props.token,
-          p_status: "inprogress",
-        });
-      } else {
-        try {
-          await setAdvStatus({
-            data: { submissionId: props.submissionId, status: "inprogress", onlyIfNotComplete: true },
+      // mark in-progress if not already started (skip in read-only mode)
+      if (!props.readOnly) {
+        if (props.mode === "client") {
+          await supabase.rpc("set_client_submission_status", {
+            p_token: props.token,
+            p_status: "inprogress",
           });
-        } catch {
-          /* non-fatal */
+        } else {
+          try {
+            await setAdvStatus({
+              data: { submissionId: props.submissionId, status: "inprogress", onlyIfNotStarted: true },
+            });
+          } catch {
+            /* non-fatal */
+          }
         }
       }
 
