@@ -565,7 +565,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                       placeholder=""
                       className={cn(
                         "w-full rounded-md border bg-background px-4 py-3 text-sm outline-none transition-colors",
-                        finError
+                        finError || (attemptedSubmit && !financialReady)
                           ? "border-destructive focus:border-destructive"
                           : "border-border focus:border-primary",
                       )}
