@@ -63,11 +63,45 @@ type Row = {
   advisor_id: string | null;
 };
 
-function advisorPath(id: string) {
-  return `/advisor/${id}`;
+function normalizeAdvisoryStatus(status: string | null | undefined): "notstarted" | "inprogress" | "submitted" | "final" {
+  if (status === "submitted" || status === "final" || status === "inprogress") return status;
+  return "notstarted";
 }
 
-function AdvisoryButton({
+const ADVISORY_STATUS_LABEL: Record<string, string> = {
+  notstarted: "Not Started",
+  inprogress: "In Progress",
+  submitted: "Submitted",
+  final: "Final",
+};
+
+// Sort order so null/notstarted/inprogress cluster together at the start.
+const ADVISORY_SORT_ORDER: Record<string, number> = {
+  notstarted: 0,
+  inprogress: 1,
+  submitted: 2,
+  final: 3,
+};
+
+function AdvisoryStatusPill({ status }: { status: string }) {
+  const norm = normalizeAdvisoryStatus(status);
+  const tone =
+    norm === "final"
+      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+      : norm === "submitted"
+        ? "bg-primary/10 text-primary border-primary/30"
+        : norm === "inprogress"
+          ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+          : "bg-muted text-muted-foreground border-border";
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${tone}`}>
+      <span className="opacity-60">Advisory</span>
+      <span className="font-medium">{ADVISORY_STATUS_LABEL[norm]}</span>
+    </span>
+  );
+}
+
+function StartAdvisoryButton({
   submissionId,
   clientStatus,
   advisorStatus,
@@ -85,18 +119,96 @@ function AdvisoryButton({
       </Button>
     );
   }
-  const label =
-    advisorStatus === "complete"
-      ? "Review advisory answers"
-      : advisorStatus === "inprogress"
-        ? "Resume advisory questionnaire"
-        : "Complete advisory questionnaire";
+  const norm = normalizeAdvisoryStatus(advisorStatus);
+  // submitted/final get specialized actions elsewhere — only show this when not yet submitted.
+  if (norm === "submitted" || norm === "final") return null;
+  const label = norm === "inprogress" ? "Resume advisory questionnaire" : "Complete advisory questionnaire";
   return (
     <Button size="sm" asChild>
       <Link to="/advisor/$submissionId" params={{ submissionId }}>
         <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
         {label}
       </Link>
+    </Button>
+  );
+}
+
+function ReviewAdvisoryButton({ submissionId }: { submissionId: string }) {
+  return (
+    <Button size="sm" variant="outline" asChild>
+      <Link
+        to="/advisor/$submissionId"
+        params={{ submissionId }}
+        search={{ mode: "review" as const }}
+      >
+        <Eye className="h-3.5 w-3.5 mr-1.5" />
+        Review
+      </Link>
+    </Button>
+  );
+}
+
+function EditAdvisoryButton({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: () => void;
+}) {
+  const setStatus = useServerFn(setAdvisorStatus);
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    if (
+      !window.confirm(
+        "Reopen the advisory questionnaire for editing? You'll need to resubmit when finished.",
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await setStatus({ data: { submissionId, status: "inprogress" } });
+      onDone();
+      navigate({ to: "/advisor/$submissionId", params: { submissionId } });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not reopen");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Reopening…" : "Edit/Update Answers"}
+    </Button>
+  );
+}
+
+function MarkFinalButton({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: () => void;
+}) {
+  const setStatus = useServerFn(setAdvisorStatus);
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    setBusy(true);
+    try {
+      await setStatus({ data: { submissionId, status: "final" } });
+      toast.success("Marked as final");
+      onDone();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not mark as final");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Button size="sm" onClick={() => void handle()} disabled={busy}>
+      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Marking…" : "Mark as Final"}
     </Button>
   );
 }
@@ -127,7 +239,17 @@ function ViewResultsButton({
   );
 }
 
-type FilterKey = "all" | "awaiting_advisory" | "in_progress" | "complete" | "not_started";
+type FilterKey =
+  | "all"
+  | "awaiting_advisory"
+  | "client_in_progress"
+  | "not_started"
+  | "adv_in_progress"
+  | "adv_submitted"
+  | "adv_submitted_not_final"
+  | "adv_final";
+
+type SortKey = "updated_desc" | "advisory_asc" | "advisory_desc" | "company_asc";
 
 function AdminSubmissionsPage() {
   const navigate = useNavigate();
@@ -136,6 +258,7 @@ function AdminSubmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [sort, setSort] = useState<SortKey>("updated_desc");
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -155,34 +278,76 @@ function AdminSubmissionsPage() {
       });
   }, [listAll]);
 
+  function updateRow(submissionId: string, patch: Partial<Row>) {
+    setRows((prev) =>
+      prev.map((x) => (x.submission_id === submissionId ? { ...x, ...patch } : x)),
+    );
+  }
+
   const q = search.trim().toLowerCase();
-  const filteredRows = rows.filter((r) => {
-    if (q && !r.company_name.toLowerCase().includes(q) && !r.submission_id.toLowerCase().includes(q)) {
-      return false;
-    }
-    switch (filter) {
-      case "awaiting_advisory":
-        return (
-          (r.client_status === "submitted" || r.client_status === "complete") &&
-          r.advisor_status !== "complete"
-        );
-      case "in_progress":
-        return r.client_status === "inprogress";
-      case "complete":
-        return r.advisor_status === "complete";
-      case "not_started":
-        return r.client_status === "notstarted";
-      default:
-        return true;
-    }
-  });
+  const filteredRows = useMemo(() => {
+    const filtered = rows.filter((r) => {
+      if (q && !r.company_name.toLowerCase().includes(q) && !r.submission_id.toLowerCase().includes(q)) {
+        return false;
+      }
+      const adv = normalizeAdvisoryStatus(r.advisor_status);
+      switch (filter) {
+        case "awaiting_advisory":
+          return (
+            (r.client_status === "submitted" || r.client_status === "complete") &&
+            adv !== "submitted" && adv !== "final"
+          );
+        case "client_in_progress":
+          return r.client_status === "inprogress";
+        case "not_started":
+          return r.client_status === "notstarted";
+        case "adv_in_progress":
+          return adv === "inprogress" || adv === "notstarted";
+        case "adv_submitted":
+          return adv === "submitted";
+        case "adv_submitted_not_final":
+          return adv === "submitted";
+        case "adv_final":
+          return adv === "final";
+        default:
+          return true;
+      }
+    });
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      switch (sort) {
+        case "advisory_asc":
+        case "advisory_desc": {
+          const av = ADVISORY_SORT_ORDER[normalizeAdvisoryStatus(a.advisor_status)] ?? 0;
+          const bv = ADVISORY_SORT_ORDER[normalizeAdvisoryStatus(b.advisor_status)] ?? 0;
+          if (av !== bv) return sort === "advisory_asc" ? av - bv : bv - av;
+          return (b.updated_at || "").localeCompare(a.updated_at || "");
+        }
+        case "company_asc":
+          return a.company_name.localeCompare(b.company_name);
+        default:
+          return (b.updated_at || "").localeCompare(a.updated_at || "");
+      }
+    });
+    return sorted;
+  }, [rows, q, filter, sort]);
 
   const filterOptions: { key: FilterKey; label: string }[] = [
     { key: "all", label: "All" },
     { key: "awaiting_advisory", label: "Awaiting my advisory" },
-    { key: "in_progress", label: "Client in progress" },
+    { key: "client_in_progress", label: "Client in progress" },
     { key: "not_started", label: "Not started" },
-    { key: "complete", label: "Complete" },
+    { key: "adv_in_progress", label: "Advisory: In Progress" },
+    { key: "adv_submitted", label: "Advisory: Submitted" },
+    { key: "adv_submitted_not_final", label: "Submitted, not Final" },
+    { key: "adv_final", label: "Advisory: Final" },
+  ];
+
+  const sortOptions: { key: SortKey; label: string }[] = [
+    { key: "updated_desc", label: "Recently updated" },
+    { key: "advisory_asc", label: "Advisory status ↑" },
+    { key: "advisory_desc", label: "Advisory status ↓" },
+    { key: "company_asc", label: "Company A–Z" },
   ];
 
   return (
@@ -236,6 +401,22 @@ function AdminSubmissionsPage() {
               {filteredRows.length} of {rows.length}
             </span>
           </div>
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/60">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1">
+              <ArrowUpDown className="h-3 w-3" /> Sort
+            </span>
+            {sortOptions.map((s) => (
+              <Button
+                key={s.key}
+                type="button"
+                size="sm"
+                variant={sort === s.key ? "secondary" : "ghost"}
+                onClick={() => setSort(s.key)}
+              >
+                {s.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -247,6 +428,9 @@ function AdminSubmissionsPage() {
         ) : (
           <ul className="space-y-3">
             {filteredRows.map((r) => {
+              const adv = normalizeAdvisoryStatus(r.advisor_status);
+              const isSubmitted = adv === "submitted";
+              const isFinal = adv === "final";
               return (
                 <li
                   key={r.submission_id}
@@ -264,18 +448,33 @@ function AdminSubmissionsPage() {
                         ) : null}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] shrink-0">
+                    <div className="flex items-center gap-2 text-[11px] shrink-0 flex-wrap justify-end">
                       <StatusPill label="Client" status={r.client_status} />
-                      <StatusPill label="Advisor" status={r.advisor_status} />
+                      <AdvisoryStatusPill status={r.advisor_status} />
                     </div>
                   </div>
 
                   <div className="flex flex-wrap justify-end gap-2">
-                    <AdvisoryButton
+                    <StartAdvisoryButton
                       submissionId={r.submission_id}
                       clientStatus={r.client_status}
                       advisorStatus={r.advisor_status}
                     />
+                    {(isSubmitted || isFinal) && (
+                      <>
+                        <ReviewAdvisoryButton submissionId={r.submission_id} />
+                        <EditAdvisoryButton
+                          submissionId={r.submission_id}
+                          onDone={() => updateRow(r.submission_id, { advisor_status: "inprogress" })}
+                        />
+                        {isSubmitted && (
+                          <MarkFinalButton
+                            submissionId={r.submission_id}
+                            onDone={() => updateRow(r.submission_id, { advisor_status: "final" })}
+                          />
+                        )}
+                      </>
+                    )}
                     <ViewResultsButton
                       submissionId={r.submission_id}
                       clientStatus={r.client_status}
@@ -283,28 +482,12 @@ function AdminSubmissionsPage() {
                     {r.client_status === "submitted" && (
                       <UnlockButton
                         submissionId={r.submission_id}
-                        onDone={(next) =>
-                          setRows((prev) =>
-                            prev.map((x) =>
-                              x.submission_id === r.submission_id
-                                ? { ...x, client_status: next }
-                                : x,
-                            ),
-                          )
-                        }
+                        onDone={(next) => updateRow(r.submission_id, { client_status: next })}
                       />
                     )}
                     <ResetButton
                       submissionId={r.submission_id}
-                      onDone={() =>
-                        setRows((prev) =>
-                          prev.map((x) =>
-                            x.submission_id === r.submission_id
-                              ? { ...x, client_status: "notstarted" }
-                              : x,
-                          ),
-                        )
-                      }
+                      onDone={() => updateRow(r.submission_id, { client_status: "notstarted" })}
                     />
                     <DownloadPdfButton submissionId={r.submission_id} />
                   </div>
