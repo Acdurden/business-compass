@@ -250,6 +250,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   
 
   async function handleSelect(question: Question, option: AnswerOption) {
+    if (props.readOnly) return;
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
     setSaving(question.question_id);
     let error: unknown = null;
