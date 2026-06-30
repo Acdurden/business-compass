@@ -590,7 +590,20 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         )}
       </div>
 
-      {!loading && total > 0 && (
+      {!loading && total > 0 && props.readOnly && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
+          <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">
+              Review mode — answers are read-only.
+            </span>
+            <Button asChild>
+              <Link to={exitTo}>Back to hub</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!loading && total > 0 && !props.readOnly && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
           <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
             <div className="text-sm">
