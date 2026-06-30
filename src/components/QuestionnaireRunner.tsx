@@ -50,6 +50,8 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   /** When true, render a required final "Financial information" step
    *  (basis + amount) before allowing finish. Client mode only. */
   requireFinancialInput?: boolean;
+  /** When true, render answers but disable editing and hide submit (advisor review). */
+  readOnly?: boolean;
 };
 
 function fmtCurrencyInput(raw: string): string {
@@ -188,19 +190,21 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         if (!cancelled) setOptions((opts ?? []) as AnswerOption[]);
       }
 
-      // mark in-progress if not already complete
-      if (props.mode === "client") {
-        await supabase.rpc("set_client_submission_status", {
-          p_token: props.token,
-          p_status: "inprogress",
-        });
-      } else {
-        try {
-          await setAdvStatus({
-            data: { submissionId: props.submissionId, status: "inprogress", onlyIfNotComplete: true },
+      // mark in-progress if not already started (skip in read-only mode)
+      if (!props.readOnly) {
+        if (props.mode === "client") {
+          await supabase.rpc("set_client_submission_status", {
+            p_token: props.token,
+            p_status: "inprogress",
           });
-        } catch {
-          /* non-fatal */
+        } else {
+          try {
+            await setAdvStatus({
+              data: { submissionId: props.submissionId, status: "inprogress", onlyIfNotStarted: true },
+            });
+          } catch {
+            /* non-fatal */
+          }
         }
       }
 
@@ -246,6 +250,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   
 
   async function handleSelect(question: Question, option: AnswerOption) {
+    if (props.readOnly) return;
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
     setSaving(question.question_id);
     let error: unknown = null;
@@ -335,7 +340,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     } else {
       try {
         await setAdvStatus({
-          data: { submissionId: props.submissionId, status: "complete" },
+          data: { submissionId: props.submissionId, status: "submitted" },
         });
       } catch (e) {
         error = e;
@@ -585,7 +590,20 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         )}
       </div>
 
-      {!loading && total > 0 && (
+      {!loading && total > 0 && props.readOnly && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
+          <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">
+              Review mode — answers are read-only.
+            </span>
+            <Button asChild>
+              <Link to={exitTo}>Back to hub</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!loading && total > 0 && !props.readOnly && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
           <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
             <div className="text-sm">

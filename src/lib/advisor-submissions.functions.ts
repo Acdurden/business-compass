@@ -114,7 +114,11 @@ export const saveAdvisorResponse = createServerFn({ method: "POST" })
 export const setAdvisorStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (data: { submissionId: string; status: "inprogress" | "complete"; onlyIfNotComplete?: boolean }) => data,
+    (data: {
+      submissionId: string;
+      status: "notstarted" | "inprogress" | "submitted" | "final";
+      onlyIfNotStarted?: boolean;
+    }) => data,
   )
   .handler(async ({ data, context }) => {
     await ensureAdvisor(context);
@@ -123,7 +127,7 @@ export const setAdvisorStatus = createServerFn({ method: "POST" })
       .from("submissions")
       .update({ advisor_status: data.status, updated_at: new Date().toISOString() })
       .eq("submission_id", data.submissionId);
-    if (data.onlyIfNotComplete) q = q.neq("advisor_status", "complete");
+    if (data.onlyIfNotStarted) q = q.eq("advisor_status", "notstarted");
     const { error } = await q;
     if (error) throw new Error(error.message);
     return { ok: true };
