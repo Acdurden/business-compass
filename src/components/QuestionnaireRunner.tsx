@@ -409,12 +409,22 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                   {qs.map((q) => {
                     const opts = optionsByQuestion[q.question_id] ?? [];
                     const selected = responses[q.question_id];
+                    const isMissing = attemptedSubmit && !selected;
                     return (
                       <li
                         key={q.question_id}
-                        className="rounded-xl border border-border bg-card p-5 shadow-sm"
+                        ref={(el) => {
+                          questionRefs.current[q.question_id] = el;
+                        }}
+                        className={cn(
+                          "rounded-xl border bg-card p-5 shadow-sm transition-colors",
+                          isMissing
+                            ? "border-destructive bg-destructive/5"
+                            : "border-border",
+                        )}
                       >
                         <div className="flex items-start justify-between gap-3">
+
                           <p className="font-medium leading-snug">{q.question_text}</p>
                           {saving === q.question_id && (
                             <span className="text-[11px] text-muted-foreground shrink-0 mt-1">
