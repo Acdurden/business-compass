@@ -284,13 +284,31 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   async function handleFinish() {
     const finishMode = props.finishMode ?? "complete";
     setFinError(null);
-    if (requireFin) {
-      if (cleanFin === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-        setFinError("Enter your financial amount before submitting.");
-        toast.error("Enter your financial amount before submitting.");
-        return;
+
+    // Build list of missing questions in page order.
+    const missingQuestionIds: string[] = [];
+    for (const { questions: qs } of sectionsWithQuestions) {
+      for (const q of qs) {
+        if (!responses[q.question_id]) missingQuestionIds.push(q.question_id);
       }
     }
+    const finBlank =
+      requireFin && (cleanFin === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0);
+
+    if (missingQuestionIds.length > 0 || finBlank) {
+      setAttemptedSubmit(true);
+      const firstMissingEl = missingQuestionIds.length
+        ? questionRefs.current[missingQuestionIds[0]]
+        : finSectionRef.current;
+      if (firstMissingEl) {
+        firstMissingEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      if (finBlank) {
+        setFinError("Enter your financial amount before submitting.");
+      }
+      return;
+    }
+
     setFinishing(true);
     let error: unknown = null;
     if (requireFin) {
