@@ -243,7 +243,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const parsedAmount = Number(cleanFin);
   const financialReady =
     !requireFin || (cleanFin !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
-  void allAnswered;
+  
 
   async function handleSelect(question: Question, option: AnswerOption) {
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
