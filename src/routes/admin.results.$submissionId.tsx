@@ -157,7 +157,7 @@ function ResultsPage() {
     );
   }
 
-  const advisoryComplete = sub.advisor_status === "complete";
+  const advisoryComplete = sub.advisor_status === "submitted" || sub.advisor_status === "final";
   const objSections = sections
     .filter((s) => s.questionnaire_type === "objective")
     .sort((a, b) => a.sort_order - b.sort_order);

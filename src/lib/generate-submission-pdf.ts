@@ -85,7 +85,7 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
     targetValuation: target,
   });
 
-  const advisoryComplete = sub.advisor_status === "complete";
+  const advisoryComplete = sub.advisor_status === "submitted" || sub.advisor_status === "final";
   const hasAdvisory = responses.some((r) => r.questionnaire_type === "advisory");
   const includeAdjusted = advisoryComplete || hasAdvisory;
 
