@@ -409,6 +409,7 @@ function AdminSubmissionsPage() {
             <h1 className="text-lg font-semibold tracking-tight">Submissions</h1>
           </div>
           <div className="flex gap-2">
+            <CopyClientLoginLinkButton />
             <Button asChild variant="ghost" size="sm">
               <Link to="/">Home</Link>
             </Button>
