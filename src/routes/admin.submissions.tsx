@@ -17,6 +17,8 @@ import {
   Pencil,
   CheckCircle2,
   ArrowUpDown,
+  Link as LinkIcon,
+  Check,
 } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
