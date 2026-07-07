@@ -46,6 +46,52 @@ function DownloadPdfButton({ submissionId }: { submissionId: string }) {
   );
 }
 
+const CLIENT_LOGIN_URL = "https://valscore.lovable.app";
+
+function CopyClientLoginLinkButton() {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(CLIENT_LOGIN_URL);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = CLIENT_LOGIN_URL;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        if (!ok) throw new Error("execCommand copy failed");
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Could not copy link");
+    }
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => void handleCopy()}
+      aria-live="polite"
+      aria-label="Copy client login link"
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 mr-1.5" />
+      ) : (
+        <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
+      )}
+      {copied ? "Copied!" : "Copy client login link"}
+    </Button>
+  );
+}
+
 export const Route = createFileRoute("/admin/submissions")({
   ssr: false,
   beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
