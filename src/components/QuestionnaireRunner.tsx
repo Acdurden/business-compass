@@ -52,6 +52,10 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   requireFinancialInput?: boolean;
   /** When true, render answers but disable editing and hide submit (advisor review). */
   readOnly?: boolean;
+  /** When true, present the questionnaire one section at a time (wizard),
+   *  with Back/Continue navigation and per-section completion gating.
+   *  When false (default), all sections render on one scrolling page. */
+  stepped?: boolean;
 };
 
 function fmtCurrencyInput(raw: string): string {
@@ -95,6 +99,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const [finAmount, setFinAmount] = useState<string>("");
   const [finError, setFinError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
   const finInputRef = useRef<HTMLInputElement | null>(null);
   const finSectionRef = useRef<HTMLDivElement | null>(null);
   const questionRefs = useRef<Record<string, HTMLLIElement | null>>({});
@@ -247,6 +252,39 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const parsedAmount = Number(cleanFin);
   const financialReady =
     !requireFin || (cleanFin !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
+
+  // Wizard (one-section-at-a-time) mode. Only active for the client-facing,
+  // editable questionnaire — never in advisor mode or read-only review.
+  const stepped = !!props.stepped && !props.readOnly && props.mode === "client";
+
+  // Steps: each real section in order, then (if required) a final financial step.
+  // A step is { kind: "section", data } or { kind: "financial" }.
+  type Step =
+    | { kind: "section"; section: Section; questions: Question[] }
+    | { kind: "financial" };
+  const steps = useMemo<Step[]>(() => {
+    const list: Step[] = sectionsWithQuestions.map(({ section, questions }) => ({
+      kind: "section" as const,
+      section,
+      questions,
+    }));
+    if (requireFin) list.push({ kind: "financial" as const });
+    return list;
+  }, [sectionsWithQuestions, requireFin]);
+
+  const stepCount = steps.length;
+  const safeStepIndex = Math.min(stepIndex, Math.max(0, stepCount - 1));
+  const currentStep = steps[safeStepIndex];
+  const isLastStep = safeStepIndex === stepCount - 1;
+
+  // Is the current step fully answered? Sections require all their questions;
+  // the financial step requires a valid amount.
+  function stepComplete(step: Step | undefined): boolean {
+    if (!step) return false;
+    if (step.kind === "financial") return financialReady;
+    return step.questions.every((q) => !!responses[q.question_id]);
+  }
+  const currentStepComplete = stepComplete(currentStep);
   
 
   async function handleSelect(question: Question, option: AnswerOption) {
@@ -286,6 +324,41 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     }
   }
 
+  function goBack() {
+    if (safeStepIndex === 0) return;
+    setAttemptedSubmit(false);
+    setStepIndex(safeStepIndex - 1);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function goNext() {
+    // Gate: the current section must be fully answered before advancing.
+    if (!currentStepComplete) {
+      setAttemptedSubmit(true);
+      // Scroll to the first unanswered question in this section (financial
+      // step has no per-question refs; its own error styling covers it).
+      if (currentStep && currentStep.kind === "section") {
+        const firstMissing = currentStep.questions.find(
+          (q) => !responses[q.question_id],
+        );
+        if (firstMissing) {
+          questionRefs.current[firstMissing.question_id]?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }
+      return;
+    }
+    setAttemptedSubmit(false);
+    setStepIndex(safeStepIndex + 1);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
   async function handleFinish() {
     const finishMode = props.finishMode ?? "complete";
     setFinError(null);
@@ -302,6 +375,29 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
 
     if (missingQuestionIds.length > 0 || finBlank) {
       setAttemptedSubmit(true);
+      if (stepped) {
+        // In wizard mode, jump to the step that contains the first gap
+        // rather than scrolling to a section that isn't currently rendered.
+        let targetStep = -1;
+        if (missingQuestionIds.length > 0) {
+          const firstMissingId = missingQuestionIds[0];
+          targetStep = steps.findIndex(
+            (st) =>
+              st.kind === "section" &&
+              st.questions.some((q) => q.question_id === firstMissingId),
+          );
+        } else if (finBlank) {
+          targetStep = steps.findIndex((st) => st.kind === "financial");
+        }
+        if (targetStep >= 0) setStepIndex(targetStep);
+        if (finBlank) {
+          setFinError("Enter your financial amount before submitting.");
+        }
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        return;
+      }
       const firstMissingEl = missingQuestionIds.length
         ? questionRefs.current[missingQuestionIds[0]]
         : finSectionRef.current;
@@ -365,6 +461,196 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   }
 
 
+  function renderSection(section: Section, qs: Question[], displayIndex: number) {
+    return (
+      <section key={section.section_id}>
+        <div className="flex items-baseline gap-3 mb-6">
+          <span className="text-xs font-mono text-muted-foreground tabular-nums">
+            {String(displayIndex + 1).padStart(2, "0")}
+          </span>
+          <h2 className="text-xl font-semibold tracking-tight">
+            {section.section_name}
+          </h2>
+        </div>
+        <ol className="space-y-5">
+          {qs.map((q) => {
+            const opts = optionsByQuestion[q.question_id] ?? [];
+            const selected = responses[q.question_id];
+            const isMissing = attemptedSubmit && !selected;
+            return (
+              <li
+                key={q.question_id}
+                ref={(el) => {
+                  questionRefs.current[q.question_id] = el;
+                }}
+                className={cn(
+                  "rounded-xl border bg-card p-5 shadow-sm transition-colors",
+                  isMissing
+                    ? "border-destructive bg-destructive/5"
+                    : "border-border",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-medium leading-snug">{q.question_text}</p>
+                  {saving === q.question_id && (
+                    <span className="text-[11px] text-muted-foreground shrink-0 mt-1">
+                      saving…
+                    </span>
+                  )}
+                </div>
+                <div className="mt-4 grid gap-2">
+                  {opts.map((o) => {
+                    const isSelected = selected === o.id;
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => handleSelect(q, o)}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-foreground/30 hover:bg-muted/40",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center transition-colors",
+                            isSelected
+                              ? "border-primary"
+                              : "border-muted-foreground/40",
+                          )}
+                        >
+                          {isSelected && (
+                            <span className="h-2 w-2 rounded-full bg-primary" />
+                          )}
+                        </span>
+                        <span className="flex-1">{o.answer_text}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    );
+  }
+
+  function renderFinancial(displayIndex: number) {
+    return (
+      <section>
+        <div className="flex items-baseline gap-3 mb-6">
+          <span className="text-xs font-mono text-muted-foreground tabular-nums">
+            {String(displayIndex + 1).padStart(2, "0")}
+          </span>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Financial information
+          </h2>
+        </div>
+        <div
+          ref={finSectionRef}
+          className={cn(
+            "rounded-xl border bg-card p-5 shadow-sm space-y-5 transition-colors",
+            attemptedSubmit && !financialReady
+              ? "border-destructive bg-destructive/5"
+              : "border-border",
+          )}
+        >
+          <div>
+            <p className="font-medium leading-snug mb-3">
+              Which figure are you providing?
+            </p>
+            <div className="grid gap-2">
+              {(
+                [
+                  { v: "netfeeincome", label: "Net fee income" },
+                  { v: "ebitda", label: "EBITDA" },
+                ] as const
+              ).map((o) => {
+                const isSelected = finBasis === o.v;
+                return (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => setFinBasis(o.v)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm transition-colors",
+                      isSelected
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-foreground/30 hover:bg-muted/40",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center",
+                        isSelected ? "border-primary" : "border-muted-foreground/40",
+                      )}
+                    >
+                      {isSelected && (
+                        <span className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </span>
+                    <span className="flex-1">{o.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <label htmlFor="fin-amount" className="font-medium leading-snug block mb-2">
+              Amount (USD) <span className="text-destructive">*</span>
+            </label>
+            <input
+              id="fin-amount"
+              ref={finInputRef}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={finAmount}
+              onChange={(e) => {
+                const input = e.target;
+                const selectionStart = input.selectionStart ?? 0;
+                const digitsBeforeCursor = input.value
+                  .slice(0, selectionStart)
+                  .replace(/\D/g, "").length;
+                const formatted = fmtCurrencyInput(input.value);
+                setFinAmount(formatted);
+                if (finError) setFinError(null);
+                requestAnimationFrame(() => {
+                  if (!finInputRef.current) return;
+                  let digitCount = 0;
+                  let newPos = 0;
+                  for (let i = 0; i < formatted.length; i++) {
+                    if (/\d/.test(formatted[i])) digitCount++;
+                    newPos = i + 1;
+                    if (digitCount >= digitsBeforeCursor) break;
+                  }
+                  finInputRef.current.setSelectionRange(newPos, newPos);
+                });
+              }}
+              placeholder=""
+              className={cn(
+                "w-full rounded-md border bg-background px-4 py-3 text-sm outline-none transition-colors",
+                finError || (attemptedSubmit && !financialReady)
+                  ? "border-destructive focus:border-destructive"
+                  : "border-border focus:border-primary",
+              )}
+            />
+            {finError ? (
+              <p className="mt-2 text-xs text-destructive">{finError}</p>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Required. Enter the actual figure — no default is provided.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <main className="min-h-screen pb-32">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 backdrop-blur">
@@ -398,194 +684,22 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             No active {questionnaireType} questions found.
           </div>
+        ) : stepped ? (
+          <div className="space-y-14">
+            {currentStep && currentStep.kind === "section"
+              ? renderSection(
+                  currentStep.section,
+                  currentStep.questions,
+                  safeStepIndex,
+                )
+              : renderFinancial(safeStepIndex)}
+          </div>
         ) : (
           <div className="space-y-14">
-            {sectionsWithQuestions.map(({ section, questions: qs }, sIdx) => (
-              <section key={section.section_id}>
-                <div className="flex items-baseline gap-3 mb-6">
-                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
-                    {String(sIdx + 1).padStart(2, "0")}
-                  </span>
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    {section.section_name}
-                  </h2>
-                </div>
-                <ol className="space-y-5">
-                  {qs.map((q) => {
-                    const opts = optionsByQuestion[q.question_id] ?? [];
-                    const selected = responses[q.question_id];
-                    const isMissing = attemptedSubmit && !selected;
-                    return (
-                      <li
-                        key={q.question_id}
-                        ref={(el) => {
-                          questionRefs.current[q.question_id] = el;
-                        }}
-                        className={cn(
-                          "rounded-xl border bg-card p-5 shadow-sm transition-colors",
-                          isMissing
-                            ? "border-destructive bg-destructive/5"
-                            : "border-border",
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-
-                          <p className="font-medium leading-snug">{q.question_text}</p>
-                          {saving === q.question_id && (
-                            <span className="text-[11px] text-muted-foreground shrink-0 mt-1">
-                              saving…
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-4 grid gap-2">
-                          {opts.map((o) => {
-                            const isSelected = selected === o.id;
-                            return (
-                              <button
-                                key={o.id}
-                                type="button"
-                                onClick={() => handleSelect(q, o)}
-                                className={cn(
-                                  "group flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm transition-colors",
-                                  isSelected
-                                    ? "border-primary bg-primary/5"
-                                    : "border-border hover:border-foreground/30 hover:bg-muted/40",
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center transition-colors",
-                                    isSelected
-                                      ? "border-primary"
-                                      : "border-muted-foreground/40",
-                                  )}
-                                >
-                                  {isSelected && (
-                                    <span className="h-2 w-2 rounded-full bg-primary" />
-                                  )}
-                                </span>
-                                <span className="flex-1">{o.answer_text}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </section>
-            ))}
-
-            {requireFin && (
-              <section>
-                <div className="flex items-baseline gap-3 mb-6">
-                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
-                    {String(sectionsWithQuestions.length + 1).padStart(2, "0")}
-                  </span>
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    Financial information
-                  </h2>
-                </div>
-                <div
-                  ref={finSectionRef}
-                  className={cn(
-                    "rounded-xl border bg-card p-5 shadow-sm space-y-5 transition-colors",
-                    attemptedSubmit && !financialReady
-                      ? "border-destructive bg-destructive/5"
-                      : "border-border",
-                  )}
-                >
-                  <div>
-                    <p className="font-medium leading-snug mb-3">
-                      Which figure are you providing?
-                    </p>
-                    <div className="grid gap-2">
-                      {(
-                        [
-                          { v: "netfeeincome", label: "Net fee income" },
-                          { v: "ebitda", label: "EBITDA" },
-                        ] as const
-                      ).map((o) => {
-                        const isSelected = finBasis === o.v;
-                        return (
-                          <button
-                            key={o.v}
-                            type="button"
-                            onClick={() => setFinBasis(o.v)}
-                            className={cn(
-                              "flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm transition-colors",
-                              isSelected
-                                ? "border-primary bg-primary/5"
-                                : "border-border hover:border-foreground/30 hover:bg-muted/40",
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center",
-                                isSelected ? "border-primary" : "border-muted-foreground/40",
-                              )}
-                            >
-                              {isSelected && (
-                                <span className="h-2 w-2 rounded-full bg-primary" />
-                              )}
-                            </span>
-                            <span className="flex-1">{o.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="fin-amount" className="font-medium leading-snug block mb-2">
-                      Amount (USD) <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      id="fin-amount"
-                      ref={finInputRef}
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      value={finAmount}
-                      onChange={(e) => {
-                        const input = e.target;
-                        const selectionStart = input.selectionStart ?? 0;
-                        const digitsBeforeCursor = input.value
-                          .slice(0, selectionStart)
-                          .replace(/\D/g, "").length;
-                        const formatted = fmtCurrencyInput(input.value);
-                        setFinAmount(formatted);
-                        if (finError) setFinError(null);
-                        requestAnimationFrame(() => {
-                          if (!finInputRef.current) return;
-                          let digitCount = 0;
-                          let newPos = 0;
-                          for (let i = 0; i < formatted.length; i++) {
-                            if (/\d/.test(formatted[i])) digitCount++;
-                            newPos = i + 1;
-                            if (digitCount >= digitsBeforeCursor) break;
-                          }
-                          finInputRef.current.setSelectionRange(newPos, newPos);
-                        });
-                      }}
-                      placeholder=""
-                      className={cn(
-                        "w-full rounded-md border bg-background px-4 py-3 text-sm outline-none transition-colors",
-                        finError || (attemptedSubmit && !financialReady)
-                          ? "border-destructive focus:border-destructive"
-                          : "border-border focus:border-primary",
-                      )}
-                    />
-                    {finError ? (
-                      <p className="mt-2 text-xs text-destructive">{finError}</p>
-                    ) : (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Required. Enter the actual figure — no default is provided.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </section>
+            {sectionsWithQuestions.map(({ section, questions: qs }, sIdx) =>
+              renderSection(section, qs, sIdx),
             )}
+            {requireFin && renderFinancial(sectionsWithQuestions.length)}
           </div>
         )}
       </div>
@@ -603,7 +717,65 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         </div>
       )}
 
-      {!loading && total > 0 && !props.readOnly && (
+      {/* Stepped (one-section-at-a-time) footer: Back / Continue / Submit */}
+      {!loading && total > 0 && !props.readOnly && stepped && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
+          <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
+            <div className="text-sm">
+              {(() => {
+                if (attemptedSubmit && !currentStepComplete) {
+                  if (currentStep?.kind === "financial") {
+                    return (
+                      <span className="text-destructive">
+                        Enter your financial information to continue.
+                      </span>
+                    );
+                  }
+                  const missingInStep =
+                    currentStep?.kind === "section"
+                      ? currentStep.questions.filter(
+                          (q) => !responses[q.question_id],
+                        ).length
+                      : 0;
+                  return (
+                    <span className="text-destructive">
+                      Please answer all questions in this section ({missingInStep}{" "}
+                      remaining).
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-muted-foreground">
+                    Section {safeStepIndex + 1} of {stepCount}
+                  </span>
+                );
+              })()}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" asChild>
+                <Link to={exitTo}>Exit</Link>
+              </Button>
+              {safeStepIndex > 0 && (
+                <Button variant="outline" onClick={goBack} disabled={finishing}>
+                  Back
+                </Button>
+              )}
+              {isLastStep ? (
+                <Button size="lg" disabled={finishing} onClick={handleFinish}>
+                  {finishing ? "Finishing…" : finishLabel}
+                </Button>
+              ) : (
+                <Button size="lg" onClick={goNext}>
+                  Continue
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Single-page footer (advisor questionnaire, and client when not stepped) */}
+      {!loading && total > 0 && !props.readOnly && !stepped && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
           <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
             <div className="text-sm">
