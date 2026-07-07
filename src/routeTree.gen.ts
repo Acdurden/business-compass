@@ -9,14 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
-import { Route as ResultsTokenRouteImport } from './routes/results.$token'
-import { Route as QTokenRouteImport } from './routes/q.$token'
+import { Route as ClientQuestionnaireRouteImport } from './routes/client.questionnaire'
+import { Route as ClientAuthRouteImport } from './routes/client.auth'
+import { Route as AdvisorChangePasswordRouteImport } from './routes/advisor.change-password'
 import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
 import { Route as AdminSubmissionsRouteImport } from './routes/admin.submissions'
+import { Route as AdminResultsSubmissionIdRouteImport } from './routes/admin.results.$submissionId'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -27,19 +36,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientIndexRoute = ClientIndexRouteImport.update({
+  id: '/client/',
+  path: '/client/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdvisorIndexRoute = AdvisorIndexRouteImport.update({
   id: '/advisor/',
   path: '/advisor/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResultsTokenRoute = ResultsTokenRouteImport.update({
-  id: '/results/$token',
-  path: '/results/$token',
+const ClientQuestionnaireRoute = ClientQuestionnaireRouteImport.update({
+  id: '/client/questionnaire',
+  path: '/client/questionnaire',
   getParentRoute: () => rootRouteImport,
 } as any)
-const QTokenRoute = QTokenRouteImport.update({
-  id: '/q/$token',
-  path: '/q/$token',
+const ClientAuthRoute = ClientAuthRouteImport.update({
+  id: '/client/auth',
+  path: '/client/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvisorChangePasswordRoute = AdvisorChangePasswordRouteImport.update({
+  id: '/advisor/change-password',
+  path: '/advisor/change-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdvisorSubmissionIdRoute = AdvisorSubmissionIdRouteImport.update({
@@ -52,77 +71,118 @@ const AdminSubmissionsRoute = AdminSubmissionsRouteImport.update({
   path: '/admin/submissions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminResultsSubmissionIdRoute =
+  AdminResultsSubmissionIdRouteImport.update({
+    id: '/admin/results/$submissionId',
+    path: '/admin/results/$submissionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
-  '/q/$token': typeof QTokenRoute
-  '/results/$token': typeof ResultsTokenRoute
+  '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/auth': typeof ClientAuthRoute
+  '/client/questionnaire': typeof ClientQuestionnaireRoute
   '/advisor/': typeof AdvisorIndexRoute
+  '/client/': typeof ClientIndexRoute
+  '/admin/results/$submissionId': typeof AdminResultsSubmissionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
-  '/q/$token': typeof QTokenRoute
-  '/results/$token': typeof ResultsTokenRoute
+  '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/auth': typeof ClientAuthRoute
+  '/client/questionnaire': typeof ClientQuestionnaireRoute
   '/advisor': typeof AdvisorIndexRoute
+  '/client': typeof ClientIndexRoute
+  '/admin/results/$submissionId': typeof AdminResultsSubmissionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
-  '/q/$token': typeof QTokenRoute
-  '/results/$token': typeof ResultsTokenRoute
+  '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/auth': typeof ClientAuthRoute
+  '/client/questionnaire': typeof ClientQuestionnaireRoute
   '/advisor/': typeof AdvisorIndexRoute
+  '/client/': typeof ClientIndexRoute
+  '/admin/results/$submissionId': typeof AdminResultsSubmissionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/reset-password'
     | '/admin/submissions'
     | '/advisor/$submissionId'
-    | '/q/$token'
-    | '/results/$token'
+    | '/advisor/change-password'
+    | '/client/auth'
+    | '/client/questionnaire'
     | '/advisor/'
+    | '/client/'
+    | '/admin/results/$submissionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/reset-password'
     | '/admin/submissions'
     | '/advisor/$submissionId'
-    | '/q/$token'
-    | '/results/$token'
+    | '/advisor/change-password'
+    | '/client/auth'
+    | '/client/questionnaire'
     | '/advisor'
+    | '/client'
+    | '/admin/results/$submissionId'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/reset-password'
     | '/admin/submissions'
     | '/advisor/$submissionId'
-    | '/q/$token'
-    | '/results/$token'
+    | '/advisor/change-password'
+    | '/client/auth'
+    | '/client/questionnaire'
     | '/advisor/'
+    | '/client/'
+    | '/admin/results/$submissionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   AdminSubmissionsRoute: typeof AdminSubmissionsRoute
   AdvisorSubmissionIdRoute: typeof AdvisorSubmissionIdRoute
-  QTokenRoute: typeof QTokenRoute
-  ResultsTokenRoute: typeof ResultsTokenRoute
+  AdvisorChangePasswordRoute: typeof AdvisorChangePasswordRoute
+  ClientAuthRoute: typeof ClientAuthRoute
+  ClientQuestionnaireRoute: typeof ClientQuestionnaireRoute
   AdvisorIndexRoute: typeof AdvisorIndexRoute
+  ClientIndexRoute: typeof ClientIndexRoute
+  AdminResultsSubmissionIdRoute: typeof AdminResultsSubmissionIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -137,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/': {
+      id: '/client/'
+      path: '/client'
+      fullPath: '/client/'
+      preLoaderRoute: typeof ClientIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/advisor/': {
       id: '/advisor/'
       path: '/advisor'
@@ -144,18 +211,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdvisorIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/results/$token': {
-      id: '/results/$token'
-      path: '/results/$token'
-      fullPath: '/results/$token'
-      preLoaderRoute: typeof ResultsTokenRouteImport
+    '/client/questionnaire': {
+      id: '/client/questionnaire'
+      path: '/client/questionnaire'
+      fullPath: '/client/questionnaire'
+      preLoaderRoute: typeof ClientQuestionnaireRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/q/$token': {
-      id: '/q/$token'
-      path: '/q/$token'
-      fullPath: '/q/$token'
-      preLoaderRoute: typeof QTokenRouteImport
+    '/client/auth': {
+      id: '/client/auth'
+      path: '/client/auth'
+      fullPath: '/client/auth'
+      preLoaderRoute: typeof ClientAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advisor/change-password': {
+      id: '/advisor/change-password'
+      path: '/advisor/change-password'
+      fullPath: '/advisor/change-password'
+      preLoaderRoute: typeof AdvisorChangePasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/advisor/$submissionId': {
@@ -172,28 +246,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSubmissionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/results/$submissionId': {
+      id: '/admin/results/$submissionId'
+      path: '/admin/results/$submissionId'
+      fullPath: '/admin/results/$submissionId'
+      preLoaderRoute: typeof AdminResultsSubmissionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   AdminSubmissionsRoute: AdminSubmissionsRoute,
   AdvisorSubmissionIdRoute: AdvisorSubmissionIdRoute,
-  QTokenRoute: QTokenRoute,
-  ResultsTokenRoute: ResultsTokenRoute,
+  AdvisorChangePasswordRoute: AdvisorChangePasswordRoute,
+  ClientAuthRoute: ClientAuthRoute,
+  ClientQuestionnaireRoute: ClientQuestionnaireRoute,
   AdvisorIndexRoute: AdvisorIndexRoute,
+  ClientIndexRoute: ClientIndexRoute,
+  AdminResultsSubmissionIdRoute: AdminResultsSubmissionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

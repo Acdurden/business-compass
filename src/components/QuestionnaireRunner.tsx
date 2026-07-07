@@ -1,9 +1,15 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  getAdvisorSubmission,
+  saveAdvisorResponse,
+  setAdvisorStatus,
+} from "@/lib/advisor-submissions.functions";
 
 type Section = {
   section_id: string;
@@ -34,9 +40,35 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   statusField: "client_status" | "advisor_status";
   eyebrow: string;
   finishLabel: string;
-  exitTo: "/" | "/advisor";
-  notFoundTo: "/" | "/advisor";
+  exitTo: "/" | "/advisor" | "/client" | "/admin/submissions";
+  notFoundTo: "/" | "/advisor" | "/client" | "/admin/submissions";
+  /** Where to send the user when they click "Finish". Defaults to exitTo. */
+  finishTo?: { to: string; params?: Record<string, string> };
+  /** "complete" (default) marks complete + shows results.
+   *  "submitlock" calls submit_my_client_submission and returns to exitTo. */
+  finishMode?: "complete" | "submitlock";
+  /** When true, render a required final "Financial information" step
+   *  (basis + amount) before allowing finish. Client mode only. */
+  requireFinancialInput?: boolean;
+  /** When true, render answers but disable editing and hide submit (advisor review). */
+  readOnly?: boolean;
+  /** When true, present the questionnaire one section at a time (wizard),
+   *  with Back/Continue navigation and per-section completion gating.
+   *  When false (default), all sections render on one scrolling page. */
+  stepped?: boolean;
 };
+
+function fmtCurrencyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  const num = Number(digits);
+  if (!Number.isFinite(num)) return "";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(num);
+}
 
 export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const {
@@ -48,6 +80,9 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     notFoundTo,
   } = props;
   const navigate = useNavigate();
+  const loadAdvisor = useServerFn(getAdvisorSubmission);
+  const saveAdvisor = useServerFn(saveAdvisorResponse);
+  const setAdvStatus = useServerFn(setAdvisorStatus);
 
   const [companyName, setCompanyName] = useState("");
   const [clientToken, setClientToken] = useState<string | null>(
@@ -60,6 +95,14 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [finBasis, setFinBasis] = useState<"netfeeincome" | "ebitda">("netfeeincome");
+  const [finAmount, setFinAmount] = useState<string>("");
+  const [finError, setFinError] = useState<string | null>(null);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
+  const finInputRef = useRef<HTMLInputElement | null>(null);
+  const finSectionRef = useRef<HTMLDivElement | null>(null);
+  const questionRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
   // Stable identity for effect dependency
   const sourceKey =
@@ -100,28 +143,21 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           }
         }
       } else {
-        const subRes = await supabase
-          .from("submissions")
-          .select("company_name,client_token")
-          .eq("submission_id", props.submissionId)
-          .maybeSingle();
-        if (cancelled) return;
-        if (subRes.error || !subRes.data) {
-          toast.error("Submission not found");
+        try {
+          const load = await loadAdvisor({
+            data: { submissionId: props.submissionId, questionnaireType },
+          });
+          if (cancelled) return;
+          companyNameVal = load.company_name;
+          tokenVal = load.client_token;
+          for (const r of load.responses) {
+            responseMap[r.question_id] = r.answer_option_id;
+          }
+        } catch (err) {
+          if (cancelled) return;
+          toast.error(err instanceof Error ? err.message : "Submission not found");
           navigate({ to: notFoundTo });
           return;
-        }
-        companyNameVal = subRes.data.company_name;
-        tokenVal = subRes.data.client_token as string;
-
-        const respRes = await supabase
-          .from("responses")
-          .select("question_id,answer_option_id")
-          .eq("submission_id", props.submissionId)
-          .eq("questionnaire_type", questionnaireType);
-        if (cancelled) return;
-        for (const r of respRes.data ?? []) {
-          responseMap[r.question_id] = r.answer_option_id;
         }
       }
 
@@ -159,22 +195,22 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         if (!cancelled) setOptions((opts ?? []) as AnswerOption[]);
       }
 
-      // mark in-progress if not already complete
-      if (props.mode === "client") {
-        await supabase.rpc("set_client_submission_status", {
-          p_token: props.token,
-          p_status: "inprogress",
-        });
-      } else {
-        const update: { advisor_status: string; updated_at: string } = {
-          advisor_status: "inprogress",
-          updated_at: new Date().toISOString(),
-        };
-        await supabase
-          .from("submissions")
-          .update(update)
-          .eq("submission_id", props.submissionId)
-          .neq(statusField, "complete");
+      // mark in-progress if not already started (skip in read-only mode)
+      if (!props.readOnly) {
+        if (props.mode === "client") {
+          await supabase.rpc("set_client_submission_status", {
+            p_token: props.token,
+            p_status: "inprogress",
+          });
+        } else {
+          try {
+            await setAdvStatus({
+              data: { submissionId: props.submissionId, status: "inprogress", onlyIfNotStarted: true },
+            });
+          } catch {
+            /* non-fatal */
+          }
+        }
       }
 
       setLoading(false);
@@ -211,8 +247,48 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const total = questions.length;
   const pct = total === 0 ? 0 : Math.round((answered / total) * 100);
   const allAnswered = total > 0 && answered === total;
+  const requireFin = !!props.requireFinancialInput && props.mode === "client";
+  const cleanFin = finAmount.replace(/[$,\s]/g, "");
+  const parsedAmount = Number(cleanFin);
+  const financialReady =
+    !requireFin || (cleanFin !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0);
+
+  // Wizard (one-section-at-a-time) mode. Only active for the client-facing,
+  // editable questionnaire — never in advisor mode or read-only review.
+  const stepped = !!props.stepped && !props.readOnly && props.mode === "client";
+
+  // Steps: each real section in order, then (if required) a final financial step.
+  // A step is { kind: "section", data } or { kind: "financial" }.
+  type Step =
+    | { kind: "section"; section: Section; questions: Question[] }
+    | { kind: "financial" };
+  const steps = useMemo<Step[]>(() => {
+    const list: Step[] = sectionsWithQuestions.map(({ section, questions }) => ({
+      kind: "section" as const,
+      section,
+      questions,
+    }));
+    if (requireFin) list.push({ kind: "financial" as const });
+    return list;
+  }, [sectionsWithQuestions, requireFin]);
+
+  const stepCount = steps.length;
+  const safeStepIndex = Math.min(stepIndex, Math.max(0, stepCount - 1));
+  const currentStep = steps[safeStepIndex];
+  const isLastStep = safeStepIndex === stepCount - 1;
+
+  // Is the current step fully answered? Sections require all their questions;
+  // the financial step requires a valid amount.
+  function stepComplete(step: Step | undefined): boolean {
+    if (!step) return false;
+    if (step.kind === "financial") return financialReady;
+    return step.questions.every((q) => !!responses[q.question_id]);
+  }
+  const currentStepComplete = stepComplete(currentStep);
+  
 
   async function handleSelect(question: Question, option: AnswerOption) {
+    if (props.readOnly) return;
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
     setSaving(question.question_id);
     let error: unknown = null;
@@ -224,24 +300,22 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       });
       error = res.error;
     } else {
-      const responseId = `${props.submissionId}_${question.question_id}`;
-      const res = await supabase.from("responses").upsert(
-        {
-          response_id: responseId,
-          submission_id: props.submissionId,
-          question_id: question.question_id,
-          answer_option_id: option.id,
-          section_id: question.section_id,
-          questionnaire_type: questionnaireType,
-          unique_id_response: option.unique_id_responses,
-          selected_answer_text: option.answer_text,
-          points_awarded: option.points ?? 0,
-          answered_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "submission_id,question_id" },
-      );
-      error = res.error;
+      try {
+        await saveAdvisor({
+          data: {
+            submissionId: props.submissionId,
+            questionnaireType,
+            questionId: question.question_id,
+            sectionId: question.section_id,
+            answerOptionId: option.id,
+            answerText: option.answer_text,
+            points: option.points ?? 0,
+            uniqueIdResponse: option.unique_id_responses,
+          },
+        });
+      } catch (e) {
+        error = e;
+      }
     }
     setSaving(null);
     if (error) {
@@ -250,36 +324,331 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     }
   }
 
+  function goBack() {
+    if (safeStepIndex === 0) return;
+    setAttemptedSubmit(false);
+    setStepIndex(safeStepIndex - 1);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function goNext() {
+    // Gate: the current section must be fully answered before advancing.
+    if (!currentStepComplete) {
+      setAttemptedSubmit(true);
+      // Scroll to the first unanswered question in this section (financial
+      // step has no per-question refs; its own error styling covers it).
+      if (currentStep && currentStep.kind === "section") {
+        const firstMissing = currentStep.questions.find(
+          (q) => !responses[q.question_id],
+        );
+        if (firstMissing) {
+          questionRefs.current[firstMissing.question_id]?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }
+      return;
+    }
+    setAttemptedSubmit(false);
+    setStepIndex(safeStepIndex + 1);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
   async function handleFinish() {
+    const finishMode = props.finishMode ?? "complete";
+    setFinError(null);
+
+    // Build list of missing questions in page order.
+    const missingQuestionIds: string[] = [];
+    for (const { questions: qs } of sectionsWithQuestions) {
+      for (const q of qs) {
+        if (!responses[q.question_id]) missingQuestionIds.push(q.question_id);
+      }
+    }
+    const finBlank =
+      requireFin && (cleanFin === "" || !Number.isFinite(parsedAmount) || parsedAmount <= 0);
+
+    if (missingQuestionIds.length > 0 || finBlank) {
+      setAttemptedSubmit(true);
+      if (stepped) {
+        // In wizard mode, jump to the step that contains the first gap
+        // rather than scrolling to a section that isn't currently rendered.
+        let targetStep = -1;
+        if (missingQuestionIds.length > 0) {
+          const firstMissingId = missingQuestionIds[0];
+          targetStep = steps.findIndex(
+            (st) =>
+              st.kind === "section" &&
+              st.questions.some((q) => q.question_id === firstMissingId),
+          );
+        } else if (finBlank) {
+          targetStep = steps.findIndex((st) => st.kind === "financial");
+        }
+        if (targetStep >= 0) setStepIndex(targetStep);
+        if (finBlank) {
+          setFinError("Enter your financial amount before submitting.");
+        }
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        return;
+      }
+      const firstMissingEl = missingQuestionIds.length
+        ? questionRefs.current[missingQuestionIds[0]]
+        : finSectionRef.current;
+      if (firstMissingEl) {
+        firstMissingEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      if (finBlank) {
+        setFinError("Enter your financial amount before submitting.");
+      }
+      return;
+    }
+
     setFinishing(true);
     let error: unknown = null;
-    if (props.mode === "client") {
+    if (requireFin) {
+      const res = await supabase.rpc("set_my_client_valuation", {
+        p_input_type: finBasis,
+        p_input_amount: parsedAmount,
+      });
+      if (res.error) {
+        setFinishing(false);
+        toast.error("Couldn't save financial information");
+        return;
+      }
+    }
+
+    if (finishMode === "submitlock") {
+      const res = await supabase.rpc("submit_my_client_submission");
+      error = res.error;
+    } else if (props.mode === "client") {
       const res = await supabase.rpc("set_client_submission_status", {
         p_token: props.token,
         p_status: "complete",
       });
       error = res.error;
     } else {
-      const update: { advisor_status: string; updated_at: string } = {
-        advisor_status: "complete",
-        updated_at: new Date().toISOString(),
-      };
-      const res = await supabase
-        .from("submissions")
-        .update(update)
-        .eq("submission_id", props.submissionId);
-      error = res.error;
+      try {
+        await setAdvStatus({
+          data: { submissionId: props.submissionId, status: "submitted" },
+        });
+      } catch (e) {
+        error = e;
+      }
     }
     setFinishing(false);
     if (error) {
       toast.error("Couldn't finalize submission");
       return;
     }
-    if (!clientToken) {
-      toast.error("Missing token");
-      return;
+    if (finishMode === "submitlock") {
+      toast.success("Submitted");
+    } else {
+      toast.success("Saved");
     }
-    navigate({ to: "/results/$token", params: { token: clientToken } });
+    const finishTo = props.finishTo;
+    if (finishMode !== "submitlock" && finishTo) {
+      navigate({ to: finishTo.to, params: finishTo.params } as never);
+    } else {
+      navigate({ to: exitTo });
+    }
+  }
+
+
+  function renderSection(section: Section, qs: Question[], displayIndex: number) {
+    return (
+      <section key={section.section_id}>
+        <div className="flex items-baseline gap-3 mb-6">
+          <span className="text-xs font-mono text-muted-foreground tabular-nums">
+            {String(displayIndex + 1).padStart(2, "0")}
+          </span>
+          <h2 className="text-xl font-semibold tracking-tight">
+            {section.section_name}
+          </h2>
+        </div>
+        <ol className="space-y-5">
+          {qs.map((q) => {
+            const opts = optionsByQuestion[q.question_id] ?? [];
+            const selected = responses[q.question_id];
+            const isMissing = attemptedSubmit && !selected;
+            return (
+              <li
+                key={q.question_id}
+                ref={(el) => {
+                  questionRefs.current[q.question_id] = el;
+                }}
+                className={cn(
+                  "rounded-xl border bg-card p-5 shadow-sm transition-colors",
+                  isMissing
+                    ? "border-destructive bg-destructive/5"
+                    : "border-border",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-medium leading-snug">{q.question_text}</p>
+                  {saving === q.question_id && (
+                    <span className="text-[11px] text-muted-foreground shrink-0 mt-1">
+                      saving…
+                    </span>
+                  )}
+                </div>
+                <div className="mt-4 grid gap-2">
+                  {opts.map((o) => {
+                    const isSelected = selected === o.id;
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => handleSelect(q, o)}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-foreground/30 hover:bg-muted/40",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center transition-colors",
+                            isSelected
+                              ? "border-primary"
+                              : "border-muted-foreground/40",
+                          )}
+                        >
+                          {isSelected && (
+                            <span className="h-2 w-2 rounded-full bg-primary" />
+                          )}
+                        </span>
+                        <span className="flex-1">{o.answer_text}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    );
+  }
+
+  function renderFinancial(displayIndex: number) {
+    return (
+      <section>
+        <div className="flex items-baseline gap-3 mb-6">
+          <span className="text-xs font-mono text-muted-foreground tabular-nums">
+            {String(displayIndex + 1).padStart(2, "0")}
+          </span>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Financial information
+          </h2>
+        </div>
+        <div
+          ref={finSectionRef}
+          className={cn(
+            "rounded-xl border bg-card p-5 shadow-sm space-y-5 transition-colors",
+            attemptedSubmit && !financialReady
+              ? "border-destructive bg-destructive/5"
+              : "border-border",
+          )}
+        >
+          <div>
+            <p className="font-medium leading-snug mb-3">
+              Which figure are you providing?
+            </p>
+            <div className="grid gap-2">
+              {(
+                [
+                  { v: "netfeeincome", label: "Net fee income" },
+                  { v: "ebitda", label: "EBITDA" },
+                ] as const
+              ).map((o) => {
+                const isSelected = finBasis === o.v;
+                return (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => setFinBasis(o.v)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm transition-colors",
+                      isSelected
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-foreground/30 hover:bg-muted/40",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center",
+                        isSelected ? "border-primary" : "border-muted-foreground/40",
+                      )}
+                    >
+                      {isSelected && (
+                        <span className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </span>
+                    <span className="flex-1">{o.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <label htmlFor="fin-amount" className="font-medium leading-snug block mb-2">
+              Amount (USD) <span className="text-destructive">*</span>
+            </label>
+            <input
+              id="fin-amount"
+              ref={finInputRef}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={finAmount}
+              onChange={(e) => {
+                const input = e.target;
+                const selectionStart = input.selectionStart ?? 0;
+                const digitsBeforeCursor = input.value
+                  .slice(0, selectionStart)
+                  .replace(/\D/g, "").length;
+                const formatted = fmtCurrencyInput(input.value);
+                setFinAmount(formatted);
+                if (finError) setFinError(null);
+                requestAnimationFrame(() => {
+                  if (!finInputRef.current) return;
+                  let digitCount = 0;
+                  let newPos = 0;
+                  for (let i = 0; i < formatted.length; i++) {
+                    if (/\d/.test(formatted[i])) digitCount++;
+                    newPos = i + 1;
+                    if (digitCount >= digitsBeforeCursor) break;
+                  }
+                  finInputRef.current.setSelectionRange(newPos, newPos);
+                });
+              }}
+              placeholder=""
+              className={cn(
+                "w-full rounded-md border bg-background px-4 py-3 text-sm outline-none transition-colors",
+                finError || (attemptedSubmit && !financialReady)
+                  ? "border-destructive focus:border-destructive"
+                  : "border-border focus:border-primary",
+              )}
+            />
+            {finError ? (
+              <p className="mt-2 text-xs text-destructive">{finError}</p>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Required. Enter the actual figure — no default is provided.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -315,84 +684,128 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             No active {questionnaireType} questions found.
           </div>
+        ) : stepped ? (
+          <div className="space-y-14">
+            {currentStep && currentStep.kind === "section"
+              ? renderSection(
+                  currentStep.section,
+                  currentStep.questions,
+                  safeStepIndex,
+                )
+              : renderFinancial(safeStepIndex)}
+          </div>
         ) : (
           <div className="space-y-14">
-            {sectionsWithQuestions.map(({ section, questions: qs }, sIdx) => (
-              <section key={section.section_id}>
-                <div className="flex items-baseline gap-3 mb-6">
-                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
-                    {String(sIdx + 1).padStart(2, "0")}
-                  </span>
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    {section.section_name}
-                  </h2>
-                </div>
-                <ol className="space-y-5">
-                  {qs.map((q) => {
-                    const opts = optionsByQuestion[q.question_id] ?? [];
-                    const selected = responses[q.question_id];
-                    return (
-                      <li
-                        key={q.question_id}
-                        className="rounded-xl border border-border bg-card p-5 shadow-sm"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="font-medium leading-snug">{q.question_text}</p>
-                          {saving === q.question_id && (
-                            <span className="text-[11px] text-muted-foreground shrink-0 mt-1">
-                              saving…
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-4 grid gap-2">
-                          {opts.map((o) => {
-                            const isSelected = selected === o.id;
-                            return (
-                              <button
-                                key={o.id}
-                                type="button"
-                                onClick={() => handleSelect(q, o)}
-                                className={cn(
-                                  "group flex items-center gap-3 rounded-md border px-4 py-3 text-left text-sm transition-colors",
-                                  isSelected
-                                    ? "border-primary bg-primary/5"
-                                    : "border-border hover:border-foreground/30 hover:bg-muted/40",
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center transition-colors",
-                                    isSelected
-                                      ? "border-primary"
-                                      : "border-muted-foreground/40",
-                                  )}
-                                >
-                                  {isSelected && (
-                                    <span className="h-2 w-2 rounded-full bg-primary" />
-                                  )}
-                                </span>
-                                <span className="flex-1">{o.answer_text}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </section>
-            ))}
+            {sectionsWithQuestions.map(({ section, questions: qs }, sIdx) =>
+              renderSection(section, qs, sIdx),
+            )}
+            {requireFin && renderFinancial(sectionsWithQuestions.length)}
           </div>
         )}
       </div>
 
-      {!loading && total > 0 && (
+      {!loading && total > 0 && props.readOnly && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
           <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">
-              {allAnswered
-                ? "All questions answered."
-                : `${total - answered} question${total - answered === 1 ? "" : "s"} remaining`}
+            <span className="text-sm text-muted-foreground">
+              Review mode — answers are read-only.
+            </span>
+            <Button asChild>
+              <Link to={exitTo}>Back to hub</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Stepped (one-section-at-a-time) footer: Back / Continue / Submit */}
+      {!loading && total > 0 && !props.readOnly && stepped && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
+          <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
+            <div className="text-sm">
+              {(() => {
+                if (attemptedSubmit && !currentStepComplete) {
+                  if (currentStep?.kind === "financial") {
+                    return (
+                      <span className="text-destructive">
+                        Enter your financial information to continue.
+                      </span>
+                    );
+                  }
+                  const missingInStep =
+                    currentStep?.kind === "section"
+                      ? currentStep.questions.filter(
+                          (q) => !responses[q.question_id],
+                        ).length
+                      : 0;
+                  return (
+                    <span className="text-destructive">
+                      Please answer all questions in this section ({missingInStep}{" "}
+                      remaining).
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-muted-foreground">
+                    Section {safeStepIndex + 1} of {stepCount}
+                  </span>
+                );
+              })()}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" asChild>
+                <Link to={exitTo}>Exit</Link>
+              </Button>
+              {safeStepIndex > 0 && (
+                <Button variant="outline" onClick={goBack} disabled={finishing}>
+                  Back
+                </Button>
+              )}
+              {isLastStep ? (
+                <Button size="lg" disabled={finishing} onClick={handleFinish}>
+                  {finishing ? "Finishing…" : finishLabel}
+                </Button>
+              ) : (
+                <Button size="lg" onClick={goNext}>
+                  Continue
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Single-page footer (advisor questionnaire, and client when not stepped) */}
+      {!loading && total > 0 && !props.readOnly && !stepped && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
+          <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
+            <div className="text-sm">
+              {(() => {
+                const missingCount = total - answered;
+                const finBlank = requireFin && !financialReady;
+                if (attemptedSubmit && (missingCount > 0 || finBlank)) {
+                  const parts: string[] = [];
+                  if (missingCount > 0) {
+                    parts.push(
+                      `${missingCount} question${missingCount === 1 ? "" : "s"}`,
+                    );
+                  }
+                  if (finBlank) parts.push("financial information");
+                  return (
+                    <span className="text-destructive">
+                      Please answer all questions before submitting ({parts.join(" + ")} remaining).
+                    </span>
+                  );
+                }
+                return (
+                  <span className="text-muted-foreground">
+                    {!allAnswered
+                      ? `${missingCount} question${missingCount === 1 ? "" : "s"} remaining`
+                      : finBlank
+                        ? "Enter your financial information to submit."
+                        : "Ready to submit."}
+                  </span>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" asChild>
@@ -400,11 +813,12 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
               </Button>
               <Button
                 size="lg"
-                disabled={!allAnswered || finishing}
+                disabled={finishing}
                 onClick={handleFinish}
               >
                 {finishing ? "Finishing…" : finishLabel}
               </Button>
+
             </div>
           </div>
         </div>

@@ -85,7 +85,7 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
     targetValuation: target,
   });
 
-  const advisoryComplete = sub.advisor_status === "complete";
+  const advisoryComplete = sub.advisor_status === "submitted" || sub.advisor_status === "final";
   const hasAdvisory = responses.some((r) => r.questionnaire_type === "advisory");
   const includeAdjusted = advisoryComplete || hasAdvisory;
 
@@ -222,7 +222,6 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
     body: [
       ["Basis", inputType === "ebitda" ? "EBITDA" : "Net Fee Income"],
       ["Amount", fmtCurrency(amount)],
-      ["Target valuation", target > 0 ? fmtCurrency(target) : "—"],
     ],
     theme: "plain",
     margin: { left: margin, right: margin },
@@ -238,24 +237,15 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   y = ensureSpace(doc, y, 140, margin);
   y = sectionHeading(doc, "Valuation Results", y, margin, primary);
 
-  const obj = result.objective;
+  const adj = result.adjusted;
   const valuationRows: string[][] = [
     [
-      "Objective",
-      obj.marketPosition || "—",
-      fmtMultiple(obj.multiple),
-      fmtCurrency(obj.estimatedValuation),
-    ],
-  ];
-  if (includeAdjusted) {
-    const adj = result.adjusted;
-    valuationRows.push([
       "ValScore",
       adj.marketPosition || "—",
       fmtMultiple(adj.multiple),
       fmtCurrency(adj.estimatedValuation),
-    ]);
-  }
+    ],
+  ];
 
   autoTable(doc, {
     startY: y,
@@ -293,44 +283,6 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
     y += 60;
   }
 
-  // Target analysis
-  if (target > 0) {
-    if (!includeAdjusted && obj.target) {
-      y = ensureSpace(doc, y, 140, margin);
-      y = sectionHeading(doc, "Target Analysis", y, margin, primary);
-      y = renderTargetBlock(
-        doc,
-        "Objective target gap",
-        obj.target,
-        result.objectiveScore,
-        obj.estimatedValuation,
-        target,
-        y,
-        margin,
-        pageW,
-        primary,
-        muted,
-      );
-    }
-
-    if (includeAdjusted && result.adjusted.target) {
-      y = ensureSpace(doc, y, 140, margin);
-      y = sectionHeading(doc, "Target Analysis", y, margin, primary);
-      y = renderTargetBlock(
-        doc,
-        "ValScore target gap",
-        result.adjusted.target,
-        result.valScore,
-        result.adjusted.estimatedValuation,
-        target,
-        y,
-        margin,
-        pageW,
-        primary,
-        muted,
-      );
-    }
-  }
 
   // Footer on each page
   const pageCount = doc.getNumberOfPages();

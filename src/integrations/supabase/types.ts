@@ -362,6 +362,7 @@ export type Database = {
           client_token: string
           company_name: string
           created_at: string
+          owner_user_id: string | null
           submission_id: string
           target_valuation: number | null
           updated_at: string
@@ -375,6 +376,7 @@ export type Database = {
           client_token?: string
           company_name: string
           created_at?: string
+          owner_user_id?: string | null
           submission_id: string
           target_valuation?: number | null
           updated_at?: string
@@ -388,6 +390,7 @@ export type Database = {
           client_token?: string
           company_name?: string
           created_at?: string
+          owner_user_id?: string | null
           submission_id?: string
           target_valuation?: number | null
           updated_at?: string
@@ -396,11 +399,40 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      advisor_reset_client_responses: {
+        Args: { p_submission_id: string }
+        Returns: undefined
+      }
+      advisor_unlock_submission: {
+        Args: { p_submission_id: string }
+        Returns: undefined
+      }
       get_client_responses: {
         Args: { p_token: string }
         Returns: {
@@ -422,6 +454,22 @@ export type Database = {
           valuation_input_type: string
         }[]
       }
+      get_my_client_submission: {
+        Args: never
+        Returns: {
+          client_status: string
+          client_token: string
+          company_name: string
+          submission_id: string
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       save_client_response: {
         Args: {
           p_answer_option_id: string
@@ -434,10 +482,24 @@ export type Database = {
         Args: { p_status: string; p_token: string }
         Returns: undefined
       }
+      set_my_client_valuation: {
+        Args: { p_input_amount: number; p_input_type: string }
+        Returns: undefined
+      }
       start_client_submission: {
         Args: { p_company_name: string; p_submission_id: string }
         Returns: string
       }
+      start_my_client_submission: {
+        Args: { p_company_name: string }
+        Returns: {
+          client_status: string
+          client_token: string
+          company_name: string
+          submission_id: string
+        }[]
+      }
+      submit_my_client_submission: { Args: never; Returns: undefined }
       update_client_valuation_inputs: {
         Args: {
           p_input_amount: number
@@ -449,7 +511,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "advisor" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -576,6 +638,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["advisor", "client"],
+    },
   },
 } as const
