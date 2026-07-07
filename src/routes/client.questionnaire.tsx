@@ -69,6 +69,8 @@ function ClientQuestionnaire() {
       exitTo="/client"
       notFoundTo="/client"
       requireFinancialInput
+      stepped
     />
   );
 }
+
