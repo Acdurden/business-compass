@@ -85,6 +85,23 @@ function ClientAuthPage() {
     }
   }
 
+  async function onForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/client/auth`,
+      });
+      if (error) throw error;
+      toast.success("Password reset email sent. Check your inbox.");
+      setMode("signin");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send reset email");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-screen grid place-items-center px-4">
       <div className="w-full max-w-sm">
