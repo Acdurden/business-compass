@@ -19,10 +19,14 @@ import {
   ArrowUpDown,
   Link as LinkIcon,
   Check,
+  KeyRound,
+  Users,
 } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { inviteClient, createTestClient, createAdvisor } from "@/lib/client-invites.functions";
+import { resetClientPassword } from "@/lib/password-admin.functions";
+import { TempPasswordDialog } from "@/components/temp-password-dialog";
 import { listAllSubmissions, setAdvisorStatus } from "@/lib/advisor-submissions.functions";
 
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
