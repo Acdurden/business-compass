@@ -38,6 +38,23 @@ type SectionRow = {
   questionnaire_type: string;
 };
 
+type QuestionRow = {
+  question_id: string;
+  section_id: string;
+  questionnaire_type: string;
+  question_text: string;
+  sort_order: number;
+  max_score: number | null;
+};
+
+type ResponseRow = {
+  question_id: string;
+  section_id: string;
+  questionnaire_type: string;
+  selected_answer_text: string | null;
+  points_awarded: number | null;
+};
+
 function fmtCurrency(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
   return new Intl.NumberFormat("en-US", {
