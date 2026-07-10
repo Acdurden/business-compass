@@ -128,16 +128,12 @@ export const createTestClient = createServerFn({ method: "POST" })
 
 export const createAdvisor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { email: string; password: string }) => {
+  .inputValidator((input: { email: string }) => {
     const email = String(input?.email ?? "").trim().toLowerCase();
-    const password = String(input?.password ?? "");
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error("Invalid email");
     }
-    if (password.length < 8) {
-      throw new Error("Password must be at least 8 characters");
-    }
-    return { email, password };
+    return { email };
   })
   .handler(async ({ data, context }) => {
     // Caller must explicitly hold the advisor role.
@@ -151,10 +147,12 @@ export const createAdvisor = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const password = generateTempPassword();
+
     let userId: string | null = null;
     const created = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
-      password: data.password,
+      password,
       email_confirm: true,
       user_metadata: { must_change_password: true },
     });
@@ -170,7 +168,7 @@ export const createAdvisor = createServerFn({ method: "POST" })
       }
       userId = found.id;
       const upd = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: data.password,
+        password,
         email_confirm: true,
         user_metadata: { must_change_password: true },
       });
@@ -193,6 +191,7 @@ export const createAdvisor = createServerFn({ method: "POST" })
       .upsert({ user_id: userId, role: "advisor" }, { onConflict: "user_id,role" });
     if (roleErr) throw new Error(roleErr.message);
 
-    return { ok: true, userId, email: data.email };
+    return { ok: true, userId, email: data.email, tempPassword: password };
+
   });
 
