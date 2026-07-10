@@ -548,6 +548,9 @@ function AdminSubmissionsPage() {
                       submissionId={r.submission_id}
                       onDone={() => updateRow(r.submission_id, { client_status: "notstarted" })}
                     />
+                    {r.owner_user_id && (
+                      <ResetClientPasswordButton submissionId={r.submission_id} />
+                    )}
                     <DownloadPdfButton submissionId={r.submission_id} />
                   </div>
                 </li>
