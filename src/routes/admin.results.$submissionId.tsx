@@ -82,6 +82,8 @@ function ResultsPage() {
   const { submissionId } = Route.useParams();
   const [sub, setSub] = useState<Submission | null>(null);
   const [sections, setSections] = useState<SectionRow[]>([]);
+  const [questionsList, setQuestionsList] = useState<QuestionRow[]>([]);
+  const [responsesList, setResponsesList] = useState<ResponseRow[]>([]);
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,11 +112,12 @@ function ResultsPage() {
           .order("sort_order"),
         supabase
           .from("questions")
-          .select("question_id,section_id,questionnaire_type,max_score")
-          .eq("active", true),
+          .select("question_id,section_id,questionnaire_type,question_text,sort_order,max_score")
+          .eq("active", true)
+          .order("sort_order"),
         supabase
           .from("responses")
-          .select("question_id,section_id,questionnaire_type,points_awarded")
+          .select("question_id,section_id,questionnaire_type,selected_answer_text,points_awarded")
           .eq("submission_id", submissionId),
       ]);
       if (cancelled) return;
@@ -136,6 +139,8 @@ function ResultsPage() {
 
       setSub(subData as Submission);
       setSections((sectionsRes.data ?? []) as SectionRow[]);
+      setQuestionsList((questionsRes.data ?? []) as QuestionRow[]);
+      setResponsesList((responsesRes.data ?? []) as ResponseRow[]);
       setResult(computed);
       setLoading(false);
     }
