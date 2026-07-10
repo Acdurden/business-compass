@@ -619,25 +619,30 @@ function InviteClientCard() {
 function CreateTestClientCard() {
   const create = useServerFn(createTestClient);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<{ email: string; tempPassword: string } | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = email.trim();
-    if (!trimmed || password.length < 8) return;
+    if (!trimmed) return;
     setBusy(true);
     try {
-      await create({ data: { email: trimmed, password } });
+      const res = await create({ data: { email: trimmed } });
+      setResult({ email: res.email, tempPassword: res.tempPassword });
+      setOpen(true);
       toast.success(`Test client ready: ${trimmed}`);
       setEmail("");
-      setPassword("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not create test client");
     } finally {
       setBusy(false);
     }
   }
+
+  const loginUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
 
   return (
     <form
@@ -649,10 +654,10 @@ function CreateTestClientCard() {
           Create test client (no email)
         </p>
         <p className="text-[11px] text-muted-foreground mt-1">
-          Creates a confirmed client account with the password you choose. Sign in at <code>/client/auth</code>.
+          Creates a confirmed client account with an auto-generated temporary password shown once. Sign in at <code>/client/auth</code>.
         </p>
       </div>
-      <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
+      <div className="grid md:grid-cols-[1fr_auto] gap-3 md:items-end">
         <div>
           <Label htmlFor="test-email" className="text-xs uppercase tracking-wide text-muted-foreground">
             Email
@@ -666,26 +671,22 @@ function CreateTestClientCard() {
             className="mt-1.5"
           />
         </div>
-        <div>
-          <Label htmlFor="test-password" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Password (min 8)
-          </Label>
-          <Input
-            id="test-password"
-            type="text"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="choose a password"
-            className="mt-1.5 font-mono"
-          />
-        </div>
-        <Button type="submit" disabled={busy || !email.trim() || password.length < 8}>
+        <Button type="submit" disabled={busy || !email.trim()}>
           {busy ? "Creating…" : "Create test client"}
         </Button>
       </div>
+      <TempPasswordDialog
+        open={open}
+        onOpenChange={setOpen}
+        email={result?.email ?? null}
+        password={result?.tempPassword ?? null}
+        loginUrl={loginUrl}
+        title="Test client created"
+      />
     </form>
   );
 }
+
 
 function CreateAdvisorCard() {
   const create = useServerFn(createAdvisor);
