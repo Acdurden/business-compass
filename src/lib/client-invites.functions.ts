@@ -93,22 +93,10 @@ export const createTestClient = createServerFn({ method: "POST" })
 
     const password = generateTempPassword();
 
-  .handler(async ({ data, context }) => {
-    const { data: isAdvisor } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "advisor",
-    });
-    if (isAdvisor !== true) {
-      throw new Error("Forbidden: advisor role required");
-    }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // Try to create a new confirmed user. If they already exist, update password.
     let userId: string | null = null;
     const created = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
-      password: data.password,
+      password,
       email_confirm: true,
     });
     if (created.data?.user?.id) {
@@ -123,7 +111,7 @@ export const createTestClient = createServerFn({ method: "POST" })
       }
       userId = found.id;
       const upd = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: data.password,
+        password,
         email_confirm: true,
       });
       if (upd.error) throw new Error(upd.error.message);
@@ -134,8 +122,9 @@ export const createTestClient = createServerFn({ method: "POST" })
       .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
     if (roleErr) throw new Error(roleErr.message);
 
-    return { ok: true, userId, email: data.email };
+    return { ok: true, userId, email: data.email, tempPassword: password };
   });
+
 
 export const createAdvisor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
