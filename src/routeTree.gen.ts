@@ -19,6 +19,7 @@ import { Route as ClientAuthRouteImport } from './routes/client.auth'
 import { Route as AdvisorChangePasswordRouteImport } from './routes/advisor.change-password'
 import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
 import { Route as AdminSubmissionsRouteImport } from './routes/admin.submissions'
+import { Route as AdminClientsRouteImport } from './routes/admin.clients'
 import { Route as AdminAdvisorsRouteImport } from './routes/admin.advisors'
 import { Route as AdminResultsSubmissionIdRouteImport } from './routes/admin.results.$submissionId'
 
@@ -72,6 +73,11 @@ const AdminSubmissionsRoute = AdminSubmissionsRouteImport.update({
   path: '/admin/submissions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminClientsRoute = AdminClientsRouteImport.update({
+  id: '/admin/clients',
+  path: '/admin/clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAdvisorsRoute = AdminAdvisorsRouteImport.update({
   id: '/admin/advisors',
   path: '/admin/advisors',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/advisors': typeof AdminAdvisorsRoute
+  '/admin/clients': typeof AdminClientsRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/advisors': typeof AdminAdvisorsRoute
+  '/admin/clients': typeof AdminClientsRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/advisors': typeof AdminAdvisorsRoute
+  '/admin/clients': typeof AdminClientsRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin/advisors'
+    | '/admin/clients'
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin/advisors'
+    | '/admin/clients'
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin/advisors'
+    | '/admin/clients'
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   AdminAdvisorsRoute: typeof AdminAdvisorsRoute
+  AdminClientsRoute: typeof AdminClientsRoute
   AdminSubmissionsRoute: typeof AdminSubmissionsRoute
   AdvisorSubmissionIdRoute: typeof AdvisorSubmissionIdRoute
   AdvisorChangePasswordRoute: typeof AdvisorChangePasswordRoute
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSubmissionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/clients': {
+      id: '/admin/clients'
+      path: '/admin/clients'
+      fullPath: '/admin/clients'
+      preLoaderRoute: typeof AdminClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/advisors': {
       id: '/admin/advisors'
       path: '/admin/advisors'
@@ -281,6 +301,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   AdminAdvisorsRoute: AdminAdvisorsRoute,
+  AdminClientsRoute: AdminClientsRoute,
   AdminSubmissionsRoute: AdminSubmissionsRoute,
   AdvisorSubmissionIdRoute: AdvisorSubmissionIdRoute,
   AdvisorChangePasswordRoute: AdvisorChangePasswordRoute,
