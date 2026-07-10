@@ -110,7 +110,11 @@ function ClientAuthPage() {
             Client portal
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {mode === "setpassword" ? "Set your password" : "Client sign-in"}
+            {mode === "setpassword"
+              ? "Set your password"
+              : mode === "forgot"
+                ? "Reset your password"
+                : "Client sign-in"}
           </h1>
         </div>
 
