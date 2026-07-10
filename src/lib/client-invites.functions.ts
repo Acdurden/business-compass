@@ -73,17 +73,26 @@ export const inviteClient = createServerFn({ method: "POST" })
 
 export const createTestClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { email: string; password: string }) => {
+  .inputValidator((input: { email: string }) => {
     const email = String(input?.email ?? "").trim().toLowerCase();
-    const password = String(input?.password ?? "");
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error("Invalid email");
     }
-    if (password.length < 8) {
-      throw new Error("Password must be at least 8 characters");
-    }
-    return { email, password };
+    return { email };
   })
+  .handler(async ({ data, context }) => {
+    const { data: isAdvisor } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "advisor",
+    });
+    if (isAdvisor !== true) {
+      throw new Error("Forbidden: advisor role required");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const password = generateTempPassword();
+
   .handler(async ({ data, context }) => {
     const { data: isAdvisor } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
