@@ -162,6 +162,40 @@ function ClientAuthPage() {
               Already set your password? Sign in
             </button>
           </form>
+        ) : mode === "forgot" ? (
+          <form
+            onSubmit={onForgot}
+            className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
+          >
+            <p className="text-xs text-muted-foreground">
+              Enter your email and we'll send you a link to reset your password.
+            </p>
+            <div>
+              <Label htmlFor="forgot-email" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Email
+              </Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+                className="mt-1.5"
+              />
+            </div>
+            <Button type="submit" size="lg" className="w-full" disabled={busy}>
+              {busy ? "Sending…" : "Send reset link"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              Back to sign in
+            </button>
+          </form>
         ) : (
           <form
             onSubmit={onSignIn}
@@ -199,6 +233,13 @@ function ClientAuthPage() {
             <Button type="submit" size="lg" className="w-full" disabled={busy}>
               {busy ? "Please wait…" : "Sign in"}
             </Button>
+            <button
+              type="button"
+              onClick={() => setMode("forgot")}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              Forgot password?
+            </button>
           </form>
         )}
 
