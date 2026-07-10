@@ -14,7 +14,7 @@ export const Route = createFileRoute("/client/auth")({
 
 function ClientAuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "setpassword">("signin");
+  const [mode, setMode] = useState<"signin" | "setpassword" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
