@@ -415,11 +415,18 @@ function AdminSubmissionsPage() {
           <div className="flex gap-2">
             <CopyClientLoginLinkButton />
             <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/clients">
+                <Users className="h-3.5 w-3.5 mr-1.5" />
+                Clients
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
               <Link to="/admin/advisors">
                 <Users className="h-3.5 w-3.5 mr-1.5" />
                 Advisors
               </Link>
             </Button>
+
             <Button asChild variant="ghost" size="sm">
               <Link to="/">Home</Link>
             </Button>

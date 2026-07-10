@@ -134,3 +134,87 @@ export const resetAdvisorPassword = createServerFn({ method: "POST" })
       tempPassword,
     };
   });
+
+export type ClientAccountRow = {
+  user_id: string;
+  email: string | null;
+  created_at: string | null;
+  company_names: string[];
+};
+
+export const listClientAccounts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<ClientAccountRow[]> => {
+    await assertRole(context, "advisor");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: roles, error: rolesErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id, role")
+      .eq("role", "client");
+    if (rolesErr) throw new Error(rolesErr.message);
+
+    const clientIds = new Set((roles ?? []).map((r) => r.user_id));
+    if (clientIds.size === 0) return [];
+
+    const { data: subs, error: subsErr } = await supabaseAdmin
+      .from("submissions")
+      .select("owner_user_id, company_name")
+      .not("owner_user_id", "is", null);
+    if (subsErr) throw new Error(subsErr.message);
+
+    const companiesByUser = new Map<string, string[]>();
+    for (const s of subs ?? []) {
+      if (!s.owner_user_id) continue;
+      const arr = companiesByUser.get(s.owner_user_id) ?? [];
+      if (s.company_name) arr.push(s.company_name);
+      companiesByUser.set(s.owner_user_id, arr);
+    }
+
+    const list = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
+    if (list.error) throw new Error(list.error.message);
+
+    return (list.data?.users ?? [])
+      .filter((u) => clientIds.has(u.id))
+      .map((u) => ({
+        user_id: u.id,
+        email: u.email ?? null,
+        created_at: u.created_at ?? null,
+        company_names: companiesByUser.get(u.id) ?? [],
+      }))
+      .sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
+  });
+
+export const resetClientPasswordByUserId = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => {
+    const userId = String(input?.userId ?? "").trim();
+    if (!userId) throw new Error("userId required");
+    return { userId };
+  })
+  .handler(async ({ data, context }) => {
+    await assertRole(context, "advisor");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: role, error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", data.userId)
+      .eq("role", "client")
+      .maybeSingle();
+    if (roleErr) throw new Error(roleErr.message);
+    if (!role) throw new Error("Target user is not a client");
+
+    const tempPassword = generateTempPassword();
+    const upd = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      password: tempPassword,
+      email_confirm: true,
+    });
+    if (upd.error) throw new Error(upd.error.message);
+
+    return {
+      ok: true,
+      email: upd.data.user?.email ?? null,
+      tempPassword,
+    };
+  });
