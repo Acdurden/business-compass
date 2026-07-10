@@ -14,7 +14,7 @@ export const Route = createFileRoute("/client/auth")({
 
 function ClientAuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "setpassword">("signin");
+  const [mode, setMode] = useState<"signin" | "setpassword" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -85,6 +85,23 @@ function ClientAuthPage() {
     }
   }
 
+  async function onForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/client/auth`,
+      });
+      if (error) throw error;
+      toast.success("Password reset email sent. Check your inbox.");
+      setMode("signin");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send reset email");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-screen grid place-items-center px-4">
       <div className="w-full max-w-sm">
@@ -93,7 +110,11 @@ function ClientAuthPage() {
             Client portal
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {mode === "setpassword" ? "Set your password" : "Client sign-in"}
+            {mode === "setpassword"
+              ? "Set your password"
+              : mode === "forgot"
+                ? "Reset your password"
+                : "Client sign-in"}
           </h1>
         </div>
 
@@ -141,6 +162,40 @@ function ClientAuthPage() {
               Already set your password? Sign in
             </button>
           </form>
+        ) : mode === "forgot" ? (
+          <form
+            onSubmit={onForgot}
+            className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
+          >
+            <p className="text-xs text-muted-foreground">
+              Enter your email and we'll send you a link to reset your password.
+            </p>
+            <div>
+              <Label htmlFor="forgot-email" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Email
+              </Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+                className="mt-1.5"
+              />
+            </div>
+            <Button type="submit" size="lg" className="w-full" disabled={busy}>
+              {busy ? "Sending…" : "Send reset link"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              Back to sign in
+            </button>
+          </form>
         ) : (
           <form
             onSubmit={onSignIn}
@@ -178,6 +233,13 @@ function ClientAuthPage() {
             <Button type="submit" size="lg" className="w-full" disabled={busy}>
               {busy ? "Please wait…" : "Sign in"}
             </Button>
+            <button
+              type="button"
+              onClick={() => setMode("forgot")}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              Forgot password?
+            </button>
           </form>
         )}
 
