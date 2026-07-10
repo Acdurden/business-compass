@@ -38,6 +38,23 @@ type SectionRow = {
   questionnaire_type: string;
 };
 
+type QuestionRow = {
+  question_id: string;
+  section_id: string;
+  questionnaire_type: string;
+  question_text: string;
+  sort_order: number;
+  max_score: number | null;
+};
+
+type ResponseRow = {
+  question_id: string;
+  section_id: string;
+  questionnaire_type: string;
+  selected_answer_text: string | null;
+  points_awarded: number | null;
+};
+
 function fmtCurrency(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
   return new Intl.NumberFormat("en-US", {
@@ -65,6 +82,8 @@ function ResultsPage() {
   const { submissionId } = Route.useParams();
   const [sub, setSub] = useState<Submission | null>(null);
   const [sections, setSections] = useState<SectionRow[]>([]);
+  const [questionsList, setQuestionsList] = useState<QuestionRow[]>([]);
+  const [responsesList, setResponsesList] = useState<ResponseRow[]>([]);
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,11 +112,12 @@ function ResultsPage() {
           .order("sort_order"),
         supabase
           .from("questions")
-          .select("question_id,section_id,questionnaire_type,max_score")
-          .eq("active", true),
+          .select("question_id,section_id,questionnaire_type,question_text,sort_order,max_score")
+          .eq("active", true)
+          .order("sort_order"),
         supabase
           .from("responses")
-          .select("question_id,section_id,questionnaire_type,points_awarded")
+          .select("question_id,section_id,questionnaire_type,selected_answer_text,points_awarded")
           .eq("submission_id", submissionId),
       ]);
       if (cancelled) return;
@@ -119,6 +139,8 @@ function ResultsPage() {
 
       setSub(subData as Submission);
       setSections((sectionsRes.data ?? []) as SectionRow[]);
+      setQuestionsList((questionsRes.data ?? []) as QuestionRow[]);
+      setResponsesList((responsesRes.data ?? []) as ResponseRow[]);
       setResult(computed);
       setLoading(false);
     }
@@ -255,8 +277,87 @@ function ResultsPage() {
             <Meta label="ValScore">{fmtScore(result.valScore)}</Meta>
           </dl>
         </section>
+
+        <AnswersReview
+          title="Objective answers"
+          sections={objSections}
+          questions={questionsList.filter((q) => q.questionnaire_type === "objective")}
+          responses={responsesList.filter((r) => r.questionnaire_type === "objective")}
+        />
+        {advSections.length > 0 && (
+          <AnswersReview
+            title="Advisor answers"
+            sections={advSections}
+            questions={questionsList.filter((q) => q.questionnaire_type === "advisory")}
+            responses={responsesList.filter((r) => r.questionnaire_type === "advisory")}
+          />
+        )}
       </div>
     </main>
+  );
+}
+
+function AnswersReview({
+  title,
+  sections,
+  questions,
+  responses,
+}: {
+  title: string;
+  sections: SectionRow[];
+  questions: QuestionRow[];
+  responses: ResponseRow[];
+}) {
+  const respByQ = new Map(responses.map((r) => [r.question_id, r]));
+  return (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <h2 className="text-sm font-semibold mb-4">{title}</h2>
+      <div className="space-y-6">
+        {sections.map((s) => {
+          const qs = questions
+            .filter((q) => q.section_id === s.section_id)
+            .sort((a, b) => a.sort_order - b.sort_order);
+          if (qs.length === 0) return null;
+          return (
+            <div key={s.section_id}>
+              <h3 className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                {s.section_name}
+              </h3>
+              <ol className="space-y-3">
+                {qs.map((q) => {
+                  const r = respByQ.get(q.question_id);
+                  return (
+                    <li
+                      key={q.question_id}
+                      className="rounded-md border border-border/60 p-3 text-sm"
+                    >
+                      <p className="font-medium leading-snug">{q.question_text}</p>
+                      <div className="mt-1.5 flex items-baseline justify-between gap-3">
+                        <p
+                          className={
+                            r?.selected_answer_text
+                              ? "text-foreground"
+                              : "text-muted-foreground italic"
+                          }
+                        >
+                          {r?.selected_answer_text ?? "No answer"}
+                        </p>
+                        {r && (
+                          <span className="text-[11px] font-mono text-muted-foreground shrink-0">
+                            {fmtScore(r.points_awarded)}
+                            {q.max_score != null ? ` / ${fmtScore(q.max_score)}` : ""} pts
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
