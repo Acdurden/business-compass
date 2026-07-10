@@ -19,10 +19,14 @@ import {
   ArrowUpDown,
   Link as LinkIcon,
   Check,
+  KeyRound,
+  Users,
 } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { inviteClient, createTestClient, createAdvisor } from "@/lib/client-invites.functions";
+import { resetClientPassword } from "@/lib/password-admin.functions";
+import { TempPasswordDialog } from "@/components/temp-password-dialog";
 import { listAllSubmissions, setAdvisorStatus } from "@/lib/advisor-submissions.functions";
 
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
@@ -411,6 +415,12 @@ function AdminSubmissionsPage() {
           <div className="flex gap-2">
             <CopyClientLoginLinkButton />
             <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/advisors">
+                <Users className="h-3.5 w-3.5 mr-1.5" />
+                Advisors
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
               <Link to="/">Home</Link>
             </Button>
             <Button variant="ghost" size="sm" onClick={() => void signOut()}>
@@ -538,6 +548,9 @@ function AdminSubmissionsPage() {
                       submissionId={r.submission_id}
                       onDone={() => updateRow(r.submission_id, { client_status: "notstarted" })}
                     />
+                    {r.owner_user_id && (
+                      <ResetClientPasswordButton submissionId={r.submission_id} />
+                    )}
                     <DownloadPdfButton submissionId={r.submission_id} />
                   </div>
                 </li>
@@ -821,6 +834,53 @@ function ResetButton({
     </Button>
   );
 }
+
+function ResetClientPasswordButton({ submissionId }: { submissionId: string }) {
+  const reset = useServerFn(resetClientPassword);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<{ email: string | null; tempPassword: string } | null>(null);
+
+  async function handle() {
+    if (
+      !window.confirm(
+        "Reset this client's password? They'll be signed out and will need the new temporary password to sign in.",
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const res = await reset({ data: { submissionId } });
+      setResult({ email: res.email, tempPassword: res.tempPassword });
+      setOpen(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not reset password");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const loginUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+        <KeyRound className="h-3.5 w-3.5 mr-1.5" />
+        {busy ? "Resetting…" : "Reset password"}
+      </Button>
+      <TempPasswordDialog
+        open={open}
+        onOpenChange={setOpen}
+        email={result?.email ?? null}
+        password={result?.tempPassword ?? null}
+        loginUrl={loginUrl}
+        title="Client password reset"
+      />
+    </>
+  );
+}
+
 
 
 
