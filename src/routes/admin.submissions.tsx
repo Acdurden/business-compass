@@ -835,6 +835,53 @@ function ResetButton({
   );
 }
 
+function ResetClientPasswordButton({ submissionId }: { submissionId: string }) {
+  const reset = useServerFn(resetClientPassword);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<{ email: string | null; tempPassword: string } | null>(null);
+
+  async function handle() {
+    if (
+      !window.confirm(
+        "Reset this client's password? They'll be signed out and will need the new temporary password to sign in.",
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const res = await reset({ data: { submissionId } });
+      setResult({ email: res.email, tempPassword: res.tempPassword });
+      setOpen(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not reset password");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const loginUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+        <KeyRound className="h-3.5 w-3.5 mr-1.5" />
+        {busy ? "Resetting…" : "Reset password"}
+      </Button>
+      <TempPasswordDialog
+        open={open}
+        onOpenChange={setOpen}
+        email={result?.email ?? null}
+        password={result?.tempPassword ?? null}
+        loginUrl={loginUrl}
+        title="Client password reset"
+      />
+    </>
+  );
+}
+
+
 
 
 
