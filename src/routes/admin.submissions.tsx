@@ -541,6 +541,12 @@ function AdminSubmissionsPage() {
                         )}
                       </>
                     )}
+                    {adv !== "notstarted" && (
+                      <ResetAdvisorButton
+                        submissionId={r.submission_id}
+                        onDone={() => updateRow(r.submission_id, { advisor_status: "notstarted" })}
+                      />
+                    )}
                     <ViewResultsButton
                       submissionId={r.submission_id}
                       clientStatus={r.client_status}
@@ -555,6 +561,7 @@ function AdminSubmissionsPage() {
                       submissionId={r.submission_id}
                       onDone={() => updateRow(r.submission_id, { client_status: "notstarted" })}
                     />
+
                     {r.owner_user_id && (
                       <ResetClientPasswordButton submissionId={r.submission_id} />
                     )}
@@ -831,6 +838,42 @@ function ResetButton({
     </Button>
   );
 }
+
+function ResetAdvisorButton({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    if (
+      !window.confirm(
+        "Reset advisor answers for this submission? All advisory responses will be cleared and status set back to Not started.",
+      )
+    )
+      return;
+    setBusy(true);
+    const { error } = await supabase.rpc("advisor_reset_advisor_responses", {
+      p_submission_id: submissionId,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message ?? "Could not reset");
+      return;
+    }
+    toast.success("Advisor answers reset");
+    onDone();
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Resetting…" : "Reset advisor answers"}
+    </Button>
+  );
+}
+
 
 function ResetClientPasswordButton({ submissionId }: { submissionId: string }) {
   const reset = useServerFn(resetClientPassword);

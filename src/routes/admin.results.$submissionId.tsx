@@ -278,13 +278,15 @@ function ResultsPage() {
           </dl>
         </section>
 
-        <AnswersReview
-          title="Objective answers"
-          sections={objSections}
-          questions={questionsList.filter((q) => q.questionnaire_type === "objective")}
-          responses={responsesList.filter((r) => r.questionnaire_type === "objective")}
-        />
-        {advSections.length > 0 && (
+        {sub.client_status !== "notstarted" && (
+          <AnswersReview
+            title="Objective answers"
+            sections={objSections}
+            questions={questionsList.filter((q) => q.questionnaire_type === "objective")}
+            responses={responsesList.filter((r) => r.questionnaire_type === "objective")}
+          />
+        )}
+        {advSections.length > 0 && sub.advisor_status !== "notstarted" && (
           <AnswersReview
             title="Advisor answers"
             sections={advSections}
@@ -292,6 +294,7 @@ function ResultsPage() {
             responses={responsesList.filter((r) => r.questionnaire_type === "advisory")}
           />
         )}
+
       </div>
     </main>
   );
