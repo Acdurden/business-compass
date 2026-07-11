@@ -425,6 +425,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advisor_reset_advisor_responses: {
+        Args: { p_submission_id: string }
+        Returns: undefined
+      }
       advisor_reset_client_responses: {
         Args: { p_submission_id: string }
         Returns: undefined
