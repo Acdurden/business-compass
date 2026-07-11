@@ -27,6 +27,7 @@ import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { inviteClient, createTestClient, createAdvisor } from "@/lib/client-invites.functions";
 import { resetClientPassword } from "@/lib/password-admin.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { listAllSubmissions, setAdvisorStatus } from "@/lib/advisor-submissions.functions";
 
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
@@ -812,13 +813,8 @@ function ResetButton({
   onDone: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   async function handle() {
-    if (
-      !window.confirm(
-        "Reset this client's questionnaire? All of their objective answers will be cleared.",
-      )
-    )
-      return;
     setBusy(true);
     const { error } = await supabase.rpc("advisor_reset_client_responses", {
       p_submission_id: submissionId,
@@ -832,10 +828,21 @@ function ResetButton({
     onDone();
   }
   return (
-    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
-      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-      {busy ? "Resetting…" : "Reset client answers"}
-    </Button>
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} disabled={busy}>
+        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+        {busy ? "Resetting…" : "Reset client answers"}
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Reset client answers?"
+        description="This will permanently clear all objective answers for this client. This action cannot be undone."
+        confirmLabel="Reset client answers"
+        destructive
+        onConfirm={() => void handle()}
+      />
+    </>
   );
 }
 
@@ -847,13 +854,8 @@ function ResetAdvisorButton({
   onDone: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   async function handle() {
-    if (
-      !window.confirm(
-        "Reset advisor answers for this submission? All advisory responses will be cleared and status set back to Not started.",
-      )
-    )
-      return;
     setBusy(true);
     const { error } = await supabase.rpc("advisor_reset_advisor_responses", {
       p_submission_id: submissionId,
@@ -867,10 +869,21 @@ function ResetAdvisorButton({
     onDone();
   }
   return (
-    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
-      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-      {busy ? "Resetting…" : "Reset advisor answers"}
-    </Button>
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} disabled={busy}>
+        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+        {busy ? "Resetting…" : "Reset advisor answers"}
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Reset advisor answers?"
+        description="This will permanently clear all advisory responses and set the advisor status back to Not Started. This action cannot be undone."
+        confirmLabel="Reset advisor answers"
+        destructive
+        onConfirm={() => void handle()}
+      />
+    </>
   );
 }
 
