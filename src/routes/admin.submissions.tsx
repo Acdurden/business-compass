@@ -830,6 +830,13 @@ function ResetButton({
     }
     toast.success("Client questionnaire reset");
     onDone();
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Resetting…" : "Reset client answers"}
+    </Button>
+  );
 }
 
 function ResetAdvisorButton({
@@ -867,13 +874,6 @@ function ResetAdvisorButton({
   );
 }
 
-  return (
-    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
-      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-      {busy ? "Resetting…" : "Reset client answers"}
-    </Button>
-  );
-}
 
 function ResetClientPasswordButton({ submissionId }: { submissionId: string }) {
   const reset = useServerFn(resetClientPassword);
