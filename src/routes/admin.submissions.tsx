@@ -541,6 +541,12 @@ function AdminSubmissionsPage() {
                         )}
                       </>
                     )}
+                    {adv !== "notstarted" && (
+                      <ResetAdvisorButton
+                        submissionId={r.submission_id}
+                        onDone={() => updateRow(r.submission_id, { advisor_status: "notstarted" })}
+                      />
+                    )}
                     <ViewResultsButton
                       submissionId={r.submission_id}
                       clientStatus={r.client_status}
@@ -555,6 +561,7 @@ function AdminSubmissionsPage() {
                       submissionId={r.submission_id}
                       onDone={() => updateRow(r.submission_id, { client_status: "notstarted" })}
                     />
+
                     {r.owner_user_id && (
                       <ResetClientPasswordButton submissionId={r.submission_id} />
                     )}
