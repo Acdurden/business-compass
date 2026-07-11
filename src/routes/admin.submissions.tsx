@@ -830,7 +830,43 @@ function ResetButton({
     }
     toast.success("Client questionnaire reset");
     onDone();
+}
+
+function ResetAdvisorButton({
+  submissionId,
+  onDone,
+}: {
+  submissionId: string;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function handle() {
+    if (
+      !window.confirm(
+        "Reset advisor answers for this submission? All advisory responses will be cleared and status set back to Not started.",
+      )
+    )
+      return;
+    setBusy(true);
+    const { error } = await supabase.rpc("advisor_reset_advisor_responses", {
+      p_submission_id: submissionId,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message ?? "Could not reset");
+      return;
+    }
+    toast.success("Advisor answers reset");
+    onDone();
   }
+  return (
+    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
+      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+      {busy ? "Resetting…" : "Reset advisor answers"}
+    </Button>
+  );
+}
+
   return (
     <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
       <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
