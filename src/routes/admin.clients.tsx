@@ -4,13 +4,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, KeyRound, LogOut } from "lucide-react";
+import { ArrowLeft, KeyRound, LogOut, Trash2 } from "lucide-react";
 import {
   listClientAccounts,
   resetClientPasswordByUserId,
+  deleteClientAccount,
   type ClientAccountRow,
 } from "@/lib/password-admin.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 async function requireAdvisorAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
