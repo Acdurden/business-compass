@@ -53,6 +53,11 @@ function HomePage() {
         await supabase.auth.signOut();
         throw new Error("This account is not a client account. Please use the advisor sign-in.");
       }
+      if (data.user?.user_metadata?.must_change_password) {
+        toast.message("Please set a new password to continue");
+        navigate({ to: "/client/change-password" });
+        return;
+      }
       toast.success("Signed in");
       navigate({ to: "/client" });
     } catch (err) {
