@@ -209,6 +209,7 @@ export const resetClientPasswordByUserId = createServerFn({ method: "POST" })
     const upd = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       password: tempPassword,
       email_confirm: true,
+      user_metadata: { must_change_password: true },
     });
     if (upd.error) throw new Error(upd.error.message);
 

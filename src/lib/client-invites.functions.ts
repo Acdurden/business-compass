@@ -98,6 +98,7 @@ export const createTestClient = createServerFn({ method: "POST" })
       email: data.email,
       password,
       email_confirm: true,
+      user_metadata: { must_change_password: true },
     });
     if (created.data?.user?.id) {
       userId = created.data.user.id;
@@ -113,6 +114,7 @@ export const createTestClient = createServerFn({ method: "POST" })
       const upd = await supabaseAdmin.auth.admin.updateUserById(userId, {
         password,
         email_confirm: true,
+        user_metadata: { must_change_password: true },
       });
       if (upd.error) throw new Error(upd.error.message);
     }
