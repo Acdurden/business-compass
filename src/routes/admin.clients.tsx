@@ -109,10 +109,19 @@ function ClientsPage() {
                     {r.user_id}
                   </p>
                 </div>
-                <ResetClientPasswordButton
-                  userId={r.user_id}
-                  email={r.email}
-                />
+                <div className="flex gap-2">
+                  <ResetClientPasswordButton
+                    userId={r.user_id}
+                    email={r.email}
+                  />
+                  <DeleteClientButton
+                    userId={r.user_id}
+                    email={r.email}
+                    onDeleted={() =>
+                      setRows((prev) => prev.filter((x) => x.user_id !== r.user_id))
+                    }
+                  />
+                </div>
               </li>
             ))}
           </ul>
