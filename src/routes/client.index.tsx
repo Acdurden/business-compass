@@ -21,6 +21,9 @@ export const Route = createFileRoute("/client/")({
     if (!isClient) {
       throw redirect({ to: "/client/auth" });
     }
+    if (data.session.user.user_metadata?.must_change_password) {
+      throw redirect({ to: "/client/change-password" });
+    }
     return { email: data.session.user.email ?? "" };
   },
   head: () => ({ meta: [{ title: "Client portal" }] }),
