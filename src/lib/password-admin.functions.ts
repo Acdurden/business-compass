@@ -219,3 +219,45 @@ export const resetClientPasswordByUserId = createServerFn({ method: "POST" })
       tempPassword,
     };
   });
+
+export const deleteClientAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => {
+    const userId = String(input?.userId ?? "").trim();
+    if (!userId) throw new Error("userId required");
+    return { userId };
+  })
+  .handler(async ({ data, context }) => {
+    await assertRole(context, "advisor");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Confirm target is actually a client.
+    const { data: role, error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", data.userId)
+      .eq("role", "client")
+      .maybeSingle();
+    if (roleErr) throw new Error(roleErr.message);
+    if (!role) throw new Error("Target user is not a client");
+
+    // Detach any submissions owned by this user so history is preserved.
+    const detach = await supabaseAdmin
+      .from("submissions")
+      .update({ owner_user_id: null })
+      .eq("owner_user_id", data.userId);
+    if (detach.error) throw new Error(detach.error.message);
+
+    // Remove role row(s).
+    const delRole = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", data.userId);
+    if (delRole.error) throw new Error(delRole.error.message);
+
+    // Delete the auth user.
+    const del = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (del.error) throw new Error(del.error.message);
+
+    return { ok: true };
+  });

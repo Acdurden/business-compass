@@ -4,13 +4,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, KeyRound, LogOut } from "lucide-react";
+import { ArrowLeft, KeyRound, LogOut, Trash2 } from "lucide-react";
 import {
   listClientAccounts,
   resetClientPasswordByUserId,
+  deleteClientAccount,
   type ClientAccountRow,
 } from "@/lib/password-admin.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 async function requireAdvisorAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
@@ -107,10 +109,19 @@ function ClientsPage() {
                     {r.user_id}
                   </p>
                 </div>
-                <ResetClientPasswordButton
-                  userId={r.user_id}
-                  email={r.email}
-                />
+                <div className="flex gap-2">
+                  <ResetClientPasswordButton
+                    userId={r.user_id}
+                    email={r.email}
+                  />
+                  <DeleteClientButton
+                    userId={r.user_id}
+                    email={r.email}
+                    onDeleted={() =>
+                      setRows((prev) => prev.filter((x) => x.user_id !== r.user_id))
+                    }
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -169,6 +180,57 @@ function ResetClientPasswordButton({
         password={result?.tempPassword ?? null}
         loginUrl={loginUrl}
         title="Client password reset"
+      />
+    </>
+  );
+}
+
+function DeleteClientButton({
+  userId,
+  email,
+  onDeleted,
+}: {
+  userId: string;
+  email: string | null;
+  onDeleted: () => void;
+}) {
+  const del = useServerFn(deleteClientAccount);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  async function handle() {
+    setBusy(true);
+    try {
+      await del({ data: { userId } });
+      toast.success(`Deleted ${email ?? "client"}`);
+      onDeleted();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete client");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setOpen(true)}
+        disabled={busy}
+        className="text-destructive hover:text-destructive"
+      >
+        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+        {busy ? "Deleting…" : "Delete"}
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Delete client account?"
+        description={`This permanently deletes the account for ${email ?? "this client"}. Their submissions will be kept but detached from any user. This cannot be undone.`}
+        confirmLabel="Delete account"
+        destructive
+        onConfirm={() => void handle()}
       />
     </>
   );
