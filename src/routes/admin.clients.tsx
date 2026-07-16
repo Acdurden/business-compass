@@ -184,3 +184,54 @@ function ResetClientPasswordButton({
     </>
   );
 }
+
+function DeleteClientButton({
+  userId,
+  email,
+  onDeleted,
+}: {
+  userId: string;
+  email: string | null;
+  onDeleted: () => void;
+}) {
+  const del = useServerFn(deleteClientAccount);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  async function handle() {
+    setBusy(true);
+    try {
+      await del({ data: { userId } });
+      toast.success(`Deleted ${email ?? "client"}`);
+      onDeleted();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete client");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setOpen(true)}
+        disabled={busy}
+        className="text-destructive hover:text-destructive"
+      >
+        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+        {busy ? "Deleting…" : "Delete"}
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Delete client account?"
+        description={`This permanently deletes the account for ${email ?? "this client"}. Their submissions will be kept but detached from any user. This cannot be undone.`}
+        confirmLabel="Delete account"
+        destructive
+        onConfirm={() => void handle()}
+      />
+    </>
+  );
+}
