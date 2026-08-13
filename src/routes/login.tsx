@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { KRITERION_LOGO } from "@/assets/kriterionLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/login")({
       {
         name: "description",
         content:
-          "Sign in to your ValScore client portal to start or continue your business valuation assessment.",
+          "Sign in to your Kriterion client portal to start or continue your business valuation assessment.",
       },
     ],
   }),
@@ -71,12 +72,7 @@ function HomePage() {
     <main className="min-h-screen flex flex-col">
       <header className="border-b border-border/60 bg-card/60 backdrop-blur">
         <div className="mx-auto max-w-5xl px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground grid place-items-center text-sm font-semibold">
-              V
-            </div>
-            <span className="font-semibold tracking-tight">ValScore</span>
-          </div>
+          <img src={KRITERION_LOGO} alt="Kriterion" className="h-6 w-auto" />
           <span className="text-xs text-muted-foreground">Confidential client portal</span>
         </div>
       </header>

@@ -103,7 +103,7 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...muted);
-  doc.text("VALSCORE VALUATION REPORT", margin, y);
+  doc.text("KRITERION VALUATION REPORT", margin, y);
   doc.text(
     new Date().toLocaleDateString("en-US", {
       year: "numeric",
@@ -305,7 +305,7 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   }
 
   const safeName = sub.company_name.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");
-  doc.save(`ValScore_${safeName || sub.submission_id}.pdf`);
+  doc.save(`Kriterion_${safeName || sub.submission_id}.pdf`);
 }
 
 function sectionHeading(
