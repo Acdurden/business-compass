@@ -197,3 +197,97 @@ export const createAdvisor = createServerFn({ method: "POST" })
 
   });
 
+
+
+// ---------------------------------------------------------------------------
+// Standalone client self-sign-up (reusable invite link).
+// A visitor lands on /invite?code=... , enters their own email + password, and
+// this creates their client account. Gated by an active code in invite_codes.
+// No auth middleware: the code is the gate. Runs server-side via service role.
+// ---------------------------------------------------------------------------
+export const registerClientViaInvite = createServerFn({ method: "POST" })
+  .inputValidator((input: { code: string; email: string; password: string }) => {
+    const code = String(input?.code ?? "").trim();
+    const email = String(input?.email ?? "").trim().toLowerCase();
+    const password = String(input?.password ?? "");
+    if (!code) throw new Error("Missing invite code");
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Please enter a valid email address");
+    }
+    if (password.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+    return { code, email, password };
+  })
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. The invite code must exist and be active. invite_codes is not in the
+    // generated Database types (service-role-only table), so access is cast.
+    const { data: codeRow, error: codeErr } = await (supabaseAdmin as any)
+      .from("invite_codes")
+      .select("code, active")
+      .eq("code", data.code)
+      .eq("active", true)
+      .maybeSingle();
+    if (codeErr) throw new Error("Could not validate invite link");
+    if (!codeRow) {
+      throw new Error(
+        "This invite link is invalid or is no longer active. Please ask your advisor for a new one.",
+      );
+    }
+
+    // 2. Create the client account, email pre-confirmed so they can sign in now.
+    const created = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+    });
+
+    if (created.error || !created.data?.user?.id) {
+      // Most common cause: an account already exists for this email.
+      const existing = await supabaseAdmin.auth.admin.listUsers();
+      const found = existing.data?.users.find(
+        (u) => (u.email ?? "").toLowerCase() === data.email,
+      );
+      if (found) {
+        return { ok: false as const, reason: "exists" as const, email: data.email };
+      }
+      throw new Error(created.error?.message ?? "Could not create your account");
+    }
+
+    const userId = created.data.user.id;
+
+    // 3. Grant the client role (idempotent).
+    const { error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
+    if (roleErr) throw new Error(roleErr.message);
+
+    return { ok: true as const, userId, email: data.email };
+  });
+
+// Returns the current active invite code so the admin UI can build the
+// shareable sign-up link. Advisor-only.
+export const getActiveInviteCode = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isAdvisor } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "advisor",
+    });
+    if (isAdvisor !== true) {
+      throw new Error("Forbidden: advisor role required");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await (supabaseAdmin as any)
+      .from("invite_codes")
+      .select("code")
+      .eq("active", true)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    return { code: (row?.code as string | undefined) ?? null };
+  });

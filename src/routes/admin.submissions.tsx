@@ -24,7 +24,14 @@ import {
 } from "lucide-react";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { inviteClient, createTestClient, createAdvisor } from "@/lib/client-invites.functions";
+import { createAdvisor, getActiveInviteCode } from "@/lib/client-invites.functions";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { resetClientPassword } from "@/lib/password-admin.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -51,18 +58,21 @@ function DownloadPdfButton({ submissionId }: { submissionId: string }) {
   );
 }
 
-const CLIENT_LOGIN_URL = "https://kriterionbvi.com/login";
-
-function CopyClientLoginLinkButton() {
+function InviteClientButton({ code }: { code: string | null }) {
+  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "https://kriterionbvi.com";
+  const link = code ? `${origin}/invite?code=${code}` : "";
 
   async function handleCopy() {
+    if (!link) return;
     try {
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(CLIENT_LOGIN_URL);
+        await navigator.clipboard.writeText(link);
       } else {
         const textarea = document.createElement("textarea");
-        textarea.value = CLIENT_LOGIN_URL;
+        textarea.value = link;
         textarea.style.position = "fixed";
         textarea.style.left = "-9999px";
         document.body.appendChild(textarea);
@@ -80,20 +90,46 @@ function CopyClientLoginLinkButton() {
   }
 
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={() => void handleCopy()}
-      aria-live="polite"
-      aria-label="Copy client login link"
-    >
-      {copied ? (
-        <Check className="h-3.5 w-3.5 mr-1.5" />
-      ) : (
-        <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
-      )}
-      {copied ? "Copied!" : "Copy client login link"}
-    </Button>
+    <>
+      <Button size="sm" onClick={() => setOpen(true)}>
+        <Mail className="h-3.5 w-3.5 mr-1.5" />
+        Invite a client
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite a client</DialogTitle>
+            <DialogDescription>
+              Share this link with anyone you'd like to onboard. They set up their own
+              account and start their assessment &mdash; no password for you to relay.
+            </DialogDescription>
+          </DialogHeader>
+          {link ? (
+            <div className="flex items-center gap-2">
+              <code className="flex-1 truncate rounded-md border border-border bg-muted px-3 py-2 text-xs">
+                {link}
+              </code>
+              <Button size="sm" variant="outline" onClick={() => void handleCopy()}>
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 mr-1.5" />
+                ) : (
+                  <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No active invite link is configured yet.
+            </p>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            This is your reusable sign-up link. It can be regenerated later if you ever
+            want to retire the old one.
+          </p>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -307,6 +343,8 @@ type SortKey = "updated_desc" | "advisory_asc" | "advisory_desc" | "company_asc"
 function AdminSubmissionsPage() {
   const navigate = useNavigate();
   const listAll = useServerFn(listAllSubmissions);
+  const getInviteCode = useServerFn(getActiveInviteCode);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -330,6 +368,12 @@ function AdminSubmissionsPage() {
         setLoading(false);
       });
   }, [listAll]);
+
+  useEffect(() => {
+    getInviteCode()
+      .then((res) => setInviteCode(res.code))
+      .catch(() => setInviteCode(null));
+  }, [getInviteCode]);
 
   function updateRow(submissionId: string, patch: Partial<Row>) {
     setRows((prev) =>
@@ -414,7 +458,7 @@ function AdminSubmissionsPage() {
             <h1 className="text-lg font-semibold tracking-tight">Submissions</h1>
           </div>
           <div className="flex gap-2">
-            <CopyClientLoginLinkButton />
+            <InviteClientButton code={inviteCode} />
             <Button asChild variant="ghost" size="sm">
               <Link to="/admin/clients">
                 <Users className="h-3.5 w-3.5 mr-1.5" />
@@ -447,8 +491,6 @@ function AdminSubmissionsPage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
-        <InviteClientCard />
-        <CreateTestClientCard />
         <CreateAdvisorCard />
 
 
@@ -582,129 +624,6 @@ function AdminSubmissionsPage() {
         )}
       </div>
     </main>
-  );
-}
-
-function InviteClientCard() {
-  const invite = useServerFn(inviteClient);
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = email.trim();
-    if (!trimmed) return;
-    setBusy(true);
-    try {
-      await invite({
-        data: { email: trimmed, redirectTo: `${window.location.origin}/client/auth` },
-      });
-      toast.success(`Invite sent to ${trimmed}`);
-      setEmail("");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not send invite");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col md:flex-row md:items-end gap-3"
-    >
-      <div className="flex-1">
-        <Label htmlFor="invite-email" className="text-xs uppercase tracking-wide text-muted-foreground">
-          Invite a client
-        </Label>
-        <Input
-          id="invite-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="client@example.com"
-          className="mt-1.5"
-        />
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
-          Sends an email invite. The client sets their password and lands on the client portal.
-        </p>
-      </div>
-      <Button type="submit" disabled={busy || !email.trim()}>
-        <Mail className="h-3.5 w-3.5 mr-1.5" />
-        {busy ? "Sending…" : "Send invite"}
-      </Button>
-    </form>
-  );
-}
-
-function CreateTestClientCard() {
-  const create = useServerFn(createTestClient);
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [result, setResult] = useState<{ email: string; tempPassword: string } | null>(null);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = email.trim();
-    if (!trimmed) return;
-    setBusy(true);
-    try {
-      const res = await create({ data: { email: trimmed } });
-      setResult({ email: res.email, tempPassword: res.tempPassword });
-      setOpen(true);
-      toast.success(`Test client ready: ${trimmed}`);
-      setEmail("");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not create test client");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const loginUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
-
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="rounded-xl border border-dashed border-border bg-card p-5 shadow-sm space-y-3"
-    >
-      <div>
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Create test client (no email)
-        </p>
-        <p className="text-[11px] text-muted-foreground mt-1">
-          Creates a confirmed client account with an auto-generated temporary password shown once. Sign in at <code>/client/auth</code>.
-        </p>
-      </div>
-      <div className="grid md:grid-cols-[1fr_auto] gap-3 md:items-end">
-        <div>
-          <Label htmlFor="test-email" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Email
-          </Label>
-          <Input
-            id="test-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="test-client@example.com"
-            className="mt-1.5"
-          />
-        </div>
-        <Button type="submit" disabled={busy || !email.trim()}>
-          {busy ? "Creating…" : "Create test client"}
-        </Button>
-      </div>
-      <TempPasswordDialog
-        open={open}
-        onOpenChange={setOpen}
-        email={result?.email ?? null}
-        password={result?.tempPassword ?? null}
-        loginUrl={loginUrl}
-        title="Test client created"
-      />
-    </form>
   );
 }
 
