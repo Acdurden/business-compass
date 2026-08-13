@@ -226,7 +226,7 @@ function AuthPage() {
 
         <p className="mt-3 text-center text-xs text-muted-foreground">
           Client questionnaire?{" "}
-          <Link to="/" className="underline">
+          <Link to="/login" className="underline">
             Go to client home
           </Link>
         </p>

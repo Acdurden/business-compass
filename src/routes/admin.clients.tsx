@@ -25,7 +25,7 @@ async function requireAdvisorAuth(currentHref: string) {
   });
   if (!isAdvisor) {
     toast.error("Advisor role required");
-    throw redirect({ to: "/" });
+    throw redirect({ to: "/login" });
   }
   return { userId: data.session.user.id };
 }
