@@ -9,24 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ClientIndexRouteImport } from './routes/client.index'
-import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
-import { Route as ClientQuestionnaireRouteImport } from './routes/client.questionnaire'
-import { Route as ClientChangePasswordRouteImport } from './routes/client.change-password'
-import { Route as ClientAuthRouteImport } from './routes/client.auth'
-import { Route as AdvisorChangePasswordRouteImport } from './routes/advisor.change-password'
-import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
-import { Route as AdminSubmissionsRouteImport } from './routes/admin.submissions'
-import { Route as AdminClientsRouteImport } from './routes/admin.clients'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AdminAdvisorsRouteImport } from './routes/admin.advisors'
+import { Route as AdminClientsRouteImport } from './routes/admin.clients'
+import { Route as AdminSubmissionsRouteImport } from './routes/admin.submissions'
+import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
+import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
+import { Route as AdvisorChangePasswordRouteImport } from './routes/advisor.change-password'
+import { Route as ClientIndexRouteImport } from './routes/client.index'
+import { Route as ClientAuthRouteImport } from './routes/client.auth'
+import { Route as ClientChangePasswordRouteImport } from './routes/client.change-password'
+import { Route as ClientQuestionnaireRouteImport } from './routes/client.questionnaire'
 import { Route as AdminResultsSubmissionIdRouteImport } from './routes/admin.results.$submissionId'
 
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -34,49 +34,14 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ClientIndexRoute = ClientIndexRouteImport.update({
-  id: '/client/',
-  path: '/client/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdvisorIndexRoute = AdvisorIndexRouteImport.update({
-  id: '/advisor/',
-  path: '/advisor/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientQuestionnaireRoute = ClientQuestionnaireRouteImport.update({
-  id: '/client/questionnaire',
-  path: '/client/questionnaire',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientChangePasswordRoute = ClientChangePasswordRouteImport.update({
-  id: '/client/change-password',
-  path: '/client/change-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientAuthRoute = ClientAuthRouteImport.update({
-  id: '/client/auth',
-  path: '/client/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdvisorChangePasswordRoute = AdvisorChangePasswordRouteImport.update({
-  id: '/advisor/change-password',
-  path: '/advisor/change-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdvisorSubmissionIdRoute = AdvisorSubmissionIdRouteImport.update({
-  id: '/advisor/$submissionId',
-  path: '/advisor/$submissionId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminSubmissionsRoute = AdminSubmissionsRouteImport.update({
-  id: '/admin/submissions',
-  path: '/admin/submissions',
+const AdminAdvisorsRoute = AdminAdvisorsRouteImport.update({
+  id: '/admin/advisors',
+  path: '/admin/advisors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminClientsRoute = AdminClientsRouteImport.update({
@@ -84,9 +49,44 @@ const AdminClientsRoute = AdminClientsRouteImport.update({
   path: '/admin/clients',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminAdvisorsRoute = AdminAdvisorsRouteImport.update({
-  id: '/admin/advisors',
-  path: '/admin/advisors',
+const AdminSubmissionsRoute = AdminSubmissionsRouteImport.update({
+  id: '/admin/submissions',
+  path: '/admin/submissions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvisorIndexRoute = AdvisorIndexRouteImport.update({
+  id: '/advisor/',
+  path: '/advisor/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvisorSubmissionIdRoute = AdvisorSubmissionIdRouteImport.update({
+  id: '/advisor/$submissionId',
+  path: '/advisor/$submissionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvisorChangePasswordRoute = AdvisorChangePasswordRouteImport.update({
+  id: '/advisor/change-password',
+  path: '/advisor/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientIndexRoute = ClientIndexRouteImport.update({
+  id: '/client/',
+  path: '/client/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientAuthRoute = ClientAuthRouteImport.update({
+  id: '/client/auth',
+  path: '/client/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientChangePasswordRoute = ClientChangePasswordRouteImport.update({
+  id: '/client/change-password',
+  path: '/client/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientQuestionnaireRoute = ClientQuestionnaireRouteImport.update({
+  id: '/client/questionnaire',
+  path: '/client/questionnaire',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminResultsSubmissionIdRoute =
@@ -215,11 +215,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -229,67 +229,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/client/': {
-      id: '/client/'
-      path: '/client'
-      fullPath: '/client/'
-      preLoaderRoute: typeof ClientIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/advisor/': {
-      id: '/advisor/'
-      path: '/advisor'
-      fullPath: '/advisor/'
-      preLoaderRoute: typeof AdvisorIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/client/questionnaire': {
-      id: '/client/questionnaire'
-      path: '/client/questionnaire'
-      fullPath: '/client/questionnaire'
-      preLoaderRoute: typeof ClientQuestionnaireRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/client/change-password': {
-      id: '/client/change-password'
-      path: '/client/change-password'
-      fullPath: '/client/change-password'
-      preLoaderRoute: typeof ClientChangePasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/client/auth': {
-      id: '/client/auth'
-      path: '/client/auth'
-      fullPath: '/client/auth'
-      preLoaderRoute: typeof ClientAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/advisor/change-password': {
-      id: '/advisor/change-password'
-      path: '/advisor/change-password'
-      fullPath: '/advisor/change-password'
-      preLoaderRoute: typeof AdvisorChangePasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/advisor/$submissionId': {
-      id: '/advisor/$submissionId'
-      path: '/advisor/$submissionId'
-      fullPath: '/advisor/$submissionId'
-      preLoaderRoute: typeof AdvisorSubmissionIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/submissions': {
-      id: '/admin/submissions'
-      path: '/admin/submissions'
-      fullPath: '/admin/submissions'
-      preLoaderRoute: typeof AdminSubmissionsRouteImport
+    '/admin/advisors': {
+      id: '/admin/advisors'
+      path: '/admin/advisors'
+      fullPath: '/admin/advisors'
+      preLoaderRoute: typeof AdminAdvisorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/clients': {
@@ -299,11 +250,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminClientsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/advisors': {
-      id: '/admin/advisors'
-      path: '/admin/advisors'
-      fullPath: '/admin/advisors'
-      preLoaderRoute: typeof AdminAdvisorsRouteImport
+    '/admin/submissions': {
+      id: '/admin/submissions'
+      path: '/admin/submissions'
+      fullPath: '/admin/submissions'
+      preLoaderRoute: typeof AdminSubmissionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advisor/': {
+      id: '/advisor/'
+      path: '/advisor'
+      fullPath: '/advisor/'
+      preLoaderRoute: typeof AdvisorIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advisor/$submissionId': {
+      id: '/advisor/$submissionId'
+      path: '/advisor/$submissionId'
+      fullPath: '/advisor/$submissionId'
+      preLoaderRoute: typeof AdvisorSubmissionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advisor/change-password': {
+      id: '/advisor/change-password'
+      path: '/advisor/change-password'
+      fullPath: '/advisor/change-password'
+      preLoaderRoute: typeof AdvisorChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client/': {
+      id: '/client/'
+      path: '/client'
+      fullPath: '/client/'
+      preLoaderRoute: typeof ClientIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client/auth': {
+      id: '/client/auth'
+      path: '/client/auth'
+      fullPath: '/client/auth'
+      preLoaderRoute: typeof ClientAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client/change-password': {
+      id: '/client/change-password'
+      path: '/client/change-password'
+      fullPath: '/client/change-password'
+      preLoaderRoute: typeof ClientChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client/questionnaire': {
+      id: '/client/questionnaire'
+      path: '/client/questionnaire'
+      fullPath: '/client/questionnaire'
+      preLoaderRoute: typeof ClientQuestionnaireRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/results/$submissionId': {
