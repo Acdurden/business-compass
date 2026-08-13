@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
-import { computeValuation } from "@/lib/valscore_calc.js";
+import { computeValuation, buildConfig } from "@/lib/valscore_calc.js";
 import {
   DEFAULT_TARGET_VALUATION,
   DEFAULT_VALUATION_INPUT_AMOUNT,
@@ -41,10 +41,11 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
 
   if (subErr || !sub) throw new Error("Submission not found");
 
-  const [sectionsRes, questionsRes, responsesRes] = await Promise.all([
+  const [sectionsRes, questionsRes, responsesRes, scoreBandsRes, multiplesRes] = await Promise.all([
     supabase
       .from("sections")
       .select("section_id,section_name,sort_order,questionnaire_type")
+      .eq("active", true)
       .order("sort_order"),
     supabase
       .from("questions")
@@ -54,6 +55,8 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
       .from("responses")
       .select("question_id,section_id,questionnaire_type,points_awarded")
       .eq("submission_id", submissionId),
+    supabase.from("score_bands").select("band_type,min_score,max_score,label"),
+    supabase.from("valuation_multiples").select("band_index,nfi_multiple,ebitda_multiple"),
   ]);
 
   const sections = (sectionsRes.data ?? []) as Array<{
@@ -79,11 +82,21 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   const amount = Number(sub.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
   const target = Number(sub.target_valuation ?? DEFAULT_TARGET_VALUATION);
 
-  const result = computeValuation(responses, questions, {
-    valuationInputType: inputType,
-    valuationInputAmount: amount,
-    targetValuation: target,
-  });
+  const scoringConfig = buildConfig(
+    (scoreBandsRes.data ?? []) as never,
+    (multiplesRes.data ?? []) as never,
+  );
+
+  const result = computeValuation(
+    responses,
+    questions,
+    {
+      valuationInputType: inputType,
+      valuationInputAmount: amount,
+      targetValuation: target,
+    },
+    scoringConfig,
+  );
 
   const advisoryComplete = sub.advisor_status === "submitted" || sub.advisor_status === "final";
   const hasAdvisory = responses.some((r) => r.questionnaire_type === "advisory");

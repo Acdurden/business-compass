@@ -427,6 +427,12 @@ function AdminSubmissionsPage() {
                 Advisors
               </Link>
             </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/questionnaire">
+                <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+                Questionnaire
+              </Link>
+            </Button>
 
             <Button asChild variant="ghost" size="sm">
               <Link to="/login">Home</Link>

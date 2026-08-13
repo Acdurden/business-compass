@@ -166,6 +166,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           .from("sections")
           .select("section_id,section_name,sort_order")
           .eq("questionnaire_type", questionnaireType)
+          .eq("active", true)
           .order("sort_order"),
         supabase
           .from("questions")

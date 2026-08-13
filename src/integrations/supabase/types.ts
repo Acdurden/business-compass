@@ -332,6 +332,7 @@ export type Database = {
       }
       sections: {
         Row: {
+          active: boolean
           max_score: number
           questionnaire_type: string
           section_id: string
@@ -339,6 +340,7 @@ export type Database = {
           sort_order: number
         }
         Insert: {
+          active?: boolean
           max_score: number
           questionnaire_type: string
           section_id: string
@@ -346,11 +348,30 @@ export type Database = {
           sort_order: number
         }
         Update: {
+          active?: boolean
           max_score?: number
           questionnaire_type?: string
           section_id?: string
           section_name?: string
           sort_order?: number
+        }
+        Relationships: []
+      }
+      valuation_multiples: {
+        Row: {
+          band_index: number
+          ebitda_multiple: number
+          nfi_multiple: number
+        }
+        Insert: {
+          band_index: number
+          ebitda_multiple: number
+          nfi_multiple: number
+        }
+        Update: {
+          band_index?: number
+          ebitda_multiple?: number
+          nfi_multiple?: number
         }
         Relationships: []
       }

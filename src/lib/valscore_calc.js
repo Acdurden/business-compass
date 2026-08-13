@@ -3,13 +3,18 @@
 //  Reproduces the Excel model's scoring + valuation logic.
 //  Verified against sample: objective 26 -> 0.4333x -> 650,000
 //                           ValScore 64 -> 0.85x  -> 1,275,000
+//
+//  Scoring configuration (score-band floors, labels, and the
+//  valuation multiple anchors) is now DATABASE-DRIVEN. Callers load
+//  `score_bands` + `valuation_multiples` and pass a config built with
+//  buildConfig(); when no config is supplied the DEFAULT_CONFIG below
+//  is used, which mirrors the original hardcoded values exactly.
 // ============================================================
 
-// ---- Configuration pulled from your seed tables ----
+// ---- Default configuration (fallback / parity with the original model) ----
 // Band floors come from ScoreBands.min_score (per questionnaire_type).
-// Multiple anchors come from MultipleSchedule (column C = the chosen
-// basis: net_fee_income_multiple OR ebitda_multiple).
-const CONFIG = {
+// Multiple anchors come from valuation_multiples (net fee income OR ebitda basis).
+const DEFAULT_CONFIG = {
   objectiveFloors: [0, 30, 42, 51, 60],
   adjustedFloors:  [0, 50, 70, 85, 100],
   multipleAnchorsNFI:    [0, 0.5, 1.0, 1.5, 2.0],   // net fee income basis
@@ -27,6 +32,64 @@ const CONFIG = {
     { min: 85, max: 100, label: "Top band" },
   ],
 };
+
+// Backwards-compatible alias (some callers imported `CONFIG`).
+const CONFIG = DEFAULT_CONFIG;
+
+// ---- Build a runtime config from database rows ----
+// scoreBands: rows from public.score_bands
+//   { band_type: 'ObjectivePosition'|'AdjustedValueScore', min_score, max_score, label }
+// valuationMultiples: rows from public.valuation_multiples
+//   { band_index, nfi_multiple, ebitda_multiple }
+// Any missing/invalid piece falls back to the matching DEFAULT_CONFIG value so a
+// partial/empty table can never silently zero out a valuation.
+function buildConfig(scoreBands, valuationMultiples) {
+  const bandsByType = (type) =>
+    (scoreBands || [])
+      .filter((b) => b && b.band_type === type)
+      .map((b) => ({
+        min: Number(b.min_score),
+        max: Number(b.max_score),
+        label: b.label || "",
+      }))
+      .filter((b) => Number.isFinite(b.min) && Number.isFinite(b.max))
+      .sort((a, b) => a.min - b.min);
+
+  const floorsFromBands = (bands) =>
+    bands.length ? [...bands.map((b) => b.min), bands[bands.length - 1].max] : [];
+
+  const anchorCol = (key) => {
+    const rows = (valuationMultiples || [])
+      .filter((r) => r && Number.isFinite(Number(r.band_index)))
+      .slice()
+      .sort((a, b) => Number(a.band_index) - Number(b.band_index));
+    const vals = rows.map((r) => Number(r[key]));
+    return vals.every((v) => Number.isFinite(v)) ? vals : [];
+  };
+
+  const objectiveBands = bandsByType("ObjectivePosition");
+  const adjustedBands = bandsByType("AdjustedValueScore");
+  const objectiveFloors = floorsFromBands(objectiveBands);
+  const adjustedFloors = floorsFromBands(adjustedBands);
+  const nfi = anchorCol("nfi_multiple");
+  const ebitda = anchorCol("ebitda_multiple");
+
+  // A floors/anchors pair MUST be the same length for interpolation. If anything
+  // is missing or misaligned, fall back to the defaults rather than risk a broken
+  // valuation.
+  const okObjective = objectiveFloors.length >= 2 && nfi.length === objectiveFloors.length;
+  const okAdjusted = adjustedFloors.length >= 2 && nfi.length === adjustedFloors.length;
+  const okAnchors = nfi.length >= 2 && ebitda.length === nfi.length;
+
+  return {
+    objectiveFloors: okObjective ? objectiveFloors : DEFAULT_CONFIG.objectiveFloors,
+    adjustedFloors: okAdjusted ? adjustedFloors : DEFAULT_CONFIG.adjustedFloors,
+    multipleAnchorsNFI: okAnchors ? nfi : DEFAULT_CONFIG.multipleAnchorsNFI,
+    multipleAnchorsEBITDA: okAnchors ? ebitda : DEFAULT_CONFIG.multipleAnchorsEBITDA,
+    objectiveBands: objectiveBands.length ? objectiveBands : DEFAULT_CONFIG.objectiveBands,
+    adjustedBands: adjustedBands.length ? adjustedBands : DEFAULT_CONFIG.adjustedBands,
+  };
+}
 
 // ---- 1. Section + total scores from raw responses ----
 // responses: [{ questionnaire_type, section_id, points_awarded }, ...]
@@ -116,19 +179,21 @@ function targetAnalysis(targetValuation, amount, currentScore, floors, anchors) 
 // inputs: { valuationInputType: 'netfeeincome'|'ebitda',
 //           valuationInputAmount: number,
 //           targetValuation: number }
-function computeValuation(responses, questions, inputs) {
+// config: optional, from buildConfig(). Defaults to DEFAULT_CONFIG.
+function computeValuation(responses, questions, inputs, config) {
+  const cfg = config || DEFAULT_CONFIG;
   const sectionScores = computeSectionScores(responses, questions);
   const objectiveScore = totalByType(sectionScores, "objective");
   const advisoryScore  = totalByType(sectionScores, "advisory");
   const valScore = objectiveScore + advisoryScore;
 
   const anchors = inputs.valuationInputType === "ebitda"
-    ? CONFIG.multipleAnchorsEBITDA
-    : CONFIG.multipleAnchorsNFI;
+    ? cfg.multipleAnchorsEBITDA
+    : cfg.multipleAnchorsNFI;
   const amount = Number(inputs.valuationInputAmount) || 0;
 
-  const objectiveMultiple = interpolatedMultiple(objectiveScore, CONFIG.objectiveFloors, anchors);
-  const adjustedMultiple  = interpolatedMultiple(valScore,       CONFIG.adjustedFloors,  anchors);
+  const objectiveMultiple = interpolatedMultiple(objectiveScore, cfg.objectiveFloors, anchors);
+  const adjustedMultiple  = interpolatedMultiple(valScore,       cfg.adjustedFloors,  anchors);
   const maxMultiple = anchors[anchors.length - 1];
 
   return {
@@ -138,23 +203,23 @@ function computeValuation(responses, questions, inputs) {
     valScore,
     objective: {
       multiple: objectiveMultiple,
-      marketPosition: marketPosition(objectiveScore, CONFIG.objectiveBands),
+      marketPosition: marketPosition(objectiveScore, cfg.objectiveBands),
       estimatedValuation: amount * objectiveMultiple,
       maxValuation: amount * maxMultiple,
-      target: targetAnalysis(Number(inputs.targetValuation), amount, objectiveScore, CONFIG.objectiveFloors, anchors),
+      target: targetAnalysis(Number(inputs.targetValuation), amount, objectiveScore, cfg.objectiveFloors, anchors),
     },
     adjusted: {
       multiple: adjustedMultiple,
-      marketPosition: marketPosition(valScore, CONFIG.adjustedBands),
+      marketPosition: marketPosition(valScore, cfg.adjustedBands),
       estimatedValuation: amount * adjustedMultiple,
       maxValuation: amount * maxMultiple,
-      target: targetAnalysis(Number(inputs.targetValuation), amount, valScore, CONFIG.adjustedFloors, anchors),
+      target: targetAnalysis(Number(inputs.targetValuation), amount, valScore, cfg.adjustedFloors, anchors),
     },
     inputs,
   };
 }
 
 export {
-  CONFIG, computeSectionScores, totalByType,
+  CONFIG, DEFAULT_CONFIG, buildConfig, computeSectionScores, totalByType,
   interpolatedMultiple, marketPosition, computeValuation,
 };

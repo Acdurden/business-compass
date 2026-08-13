@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
-import { computeValuation, type ValuationResult } from "@/lib/valscore_calc";
+import { computeValuation, buildConfig, type ValuationResult } from "@/lib/valscore_calc";
 import {
   DEFAULT_TARGET_VALUATION,
   DEFAULT_VALUATION_INPUT_AMOUNT,
@@ -105,10 +105,11 @@ function ResultsPage() {
         setLoading(false);
         return;
       }
-      const [sectionsRes, questionsRes, responsesRes] = await Promise.all([
+      const [sectionsRes, questionsRes, responsesRes, scoreBandsRes, multiplesRes] = await Promise.all([
         supabase
           .from("sections")
           .select("section_id,section_name,sort_order,questionnaire_type")
+          .eq("active", true)
           .order("sort_order"),
         supabase
           .from("questions")
@@ -119,6 +120,8 @@ function ResultsPage() {
           .from("responses")
           .select("question_id,section_id,questionnaire_type,selected_answer_text,points_awarded")
           .eq("submission_id", submissionId),
+        supabase.from("score_bands").select("band_type,min_score,max_score,label"),
+        supabase.from("valuation_multiples").select("band_index,nfi_multiple,ebitda_multiple"),
       ]);
       if (cancelled) return;
 
@@ -126,6 +129,11 @@ function ResultsPage() {
         (subData.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
       const amount = Number(subData.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
       const target = Number(subData.target_valuation ?? DEFAULT_TARGET_VALUATION);
+
+      const scoringConfig = buildConfig(
+        (scoreBandsRes.data ?? []) as never,
+        (multiplesRes.data ?? []) as never,
+      );
 
       const computed = computeValuation(
         (responsesRes.data ?? []) as never,
@@ -135,6 +143,7 @@ function ResultsPage() {
           valuationInputAmount: amount,
           targetValuation: target,
         },
+        scoringConfig,
       );
 
       setSub(subData as Submission);
