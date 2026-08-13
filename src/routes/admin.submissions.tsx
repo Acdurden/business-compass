@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   LogOut,
@@ -16,15 +15,25 @@ import {
   Eye,
   Pencil,
   CheckCircle2,
-  ArrowUpDown,
   Link as LinkIcon,
   Check,
   KeyRound,
   Users,
+  MoreHorizontal,
+  ArrowRight,
+  Trash2,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { createAdvisor, getActiveInviteCode } from "@/lib/client-invites.functions";
+import { getActiveInviteCode } from "@/lib/client-invites.functions";
 import {
   Dialog,
   DialogContent,
@@ -35,26 +44,150 @@ import {
 import { resetClientPassword } from "@/lib/password-admin.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { listAllSubmissions, setAdvisorStatus } from "@/lib/advisor-submissions.functions";
+import {
+  deleteSubmission,
+  listAllSubmissions,
+  setAdvisorStatus,
+} from "@/lib/advisor-submissions.functions";
 
-function DownloadPdfButton({ submissionId }: { submissionId: string }) {
-  const [busy, setBusy] = useState(false);
-  async function handle() {
-    setBusy(true);
-    try {
-      await generateSubmissionPdf(submissionId);
-    } catch (e) {
-      console.error(e);
-      toast.error("Could not generate PDF");
-    } finally {
-      setBusy(false);
-    }
+export const Route = createFileRoute("/admin/submissions")({
+  ssr: false,
+  beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
+  head: () => ({
+    meta: [{ title: "Admin · Submissions" }],
+  }),
+  component: AdminSubmissionsPage,
+});
+
+type Row = {
+  submission_id: string;
+  company_name: string;
+  client_status: string;
+  advisor_status: string;
+  updated_at: string;
+  owner_user_id: string | null;
+  advisor_id: string | null;
+};
+
+function normalizeAdvisoryStatus(
+  status: string | null | undefined,
+): "notstarted" | "inprogress" | "submitted" | "final" {
+  if (status === "submitted" || status === "final" || status === "inprogress") return status;
+  return "notstarted";
+}
+
+const ADVISORY_STATUS_LABEL: Record<string, string> = {
+  notstarted: "Not started",
+  inprogress: "In progress",
+  submitted: "Submitted",
+  final: "Final",
+};
+
+const CLIENT_STATUS_LABEL: Record<string, string> = {
+  notstarted: "Not started",
+  inprogress: "In progress",
+  submitted: "Submitted",
+  complete: "Complete",
+};
+
+// -------------------------------------------------------------------------
+// Pipeline logic — one place that decides, for a row, the plain-English next
+// step and which single action is primary.
+// -------------------------------------------------------------------------
+
+type PrimaryKind = "awaiting_client" | "do_advisory" | "mark_final" | "view_results";
+
+function clientReady(clientStatus: string): boolean {
+  return clientStatus === "submitted" || clientStatus === "complete";
+}
+
+function derive(r: Row): { kind: PrimaryKind; next: string } {
+  const adv = normalizeAdvisoryStatus(r.advisor_status);
+  if (!clientReady(r.client_status)) {
+    return r.client_status === "inprogress"
+      ? { kind: "awaiting_client", next: "Client is completing their assessment." }
+      : { kind: "awaiting_client", next: "Waiting on the client to start their assessment." };
   }
+  if (adv === "notstarted") return { kind: "do_advisory", next: "Ready for your advisory interview." };
+  if (adv === "inprogress") return { kind: "do_advisory", next: "Advisory in progress — resume when ready." };
+  if (adv === "submitted") return { kind: "mark_final", next: "Advisory submitted — review & finalize." };
+  return { kind: "view_results", next: "Complete — results ready to share." };
+}
+
+// Action-first ordering: rows that need the advisor float to the top.
+function sortPriority(r: Row): number {
+  const adv = normalizeAdvisoryStatus(r.advisor_status);
+  if (clientReady(r.client_status) && (adv === "notstarted" || adv === "inprogress")) return 0;
+  if (adv === "submitted") return 1;
+  if (r.client_status === "inprogress") return 2;
+  if (r.client_status === "notstarted") return 3;
+  if (adv === "final") return 5;
+  return 4;
+}
+
+type FilterKey =
+  | "all"
+  | "awaiting_advisory"
+  | "client_in_progress"
+  | "submitted"
+  | "not_started"
+  | "adv_final";
+
+function matchesFilter(r: Row, filter: FilterKey): boolean {
+  const adv = normalizeAdvisoryStatus(r.advisor_status);
+  switch (filter) {
+    case "awaiting_advisory":
+      return clientReady(r.client_status) && adv !== "submitted" && adv !== "final";
+    case "client_in_progress":
+      return r.client_status === "inprogress";
+    case "submitted":
+      return r.client_status === "submitted";
+    case "not_started":
+      return r.client_status === "notstarted";
+    case "adv_final":
+      return adv === "final";
+    default:
+      return true;
+  }
+}
+
+// -------------------------------------------------------------------------
+// Small presentational bits
+// -------------------------------------------------------------------------
+
+type Tone = "green" | "blue" | "amber" | "gray";
+
+function toneClass(tone: Tone): string {
+  switch (tone) {
+    case "green":
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
+    case "blue":
+      return "bg-primary/10 text-primary border-primary/30";
+    case "amber":
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30";
+    default:
+      return "bg-muted text-muted-foreground border-border";
+  }
+}
+
+function clientTone(status: string): Tone {
+  return status === "complete" ? "green" : status === "submitted" ? "blue" : status === "inprogress" ? "amber" : "gray";
+}
+
+function advisoryTone(adv: string): Tone {
+  return adv === "final" ? "green" : adv === "submitted" ? "blue" : adv === "inprogress" ? "amber" : "gray";
+}
+
+function Pill({ label, value, tone }: { label: string; value: string; tone: Tone }) {
   return (
-    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
-      <FileDown className="h-3.5 w-3.5 mr-1.5" />
-      {busy ? "Generating…" : "Download PDF"}
-    </Button>
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] ${toneClass(
+        tone,
+      )}`}
+    >
+      <span className="opacity-60">{label}</span>
+      <span className="font-medium">{value}</span>
+    </span>
   );
 }
 
@@ -133,212 +266,403 @@ function InviteClientButton({ code }: { code: string | null }) {
   );
 }
 
-export const Route = createFileRoute("/admin/submissions")({
-  ssr: false,
-  beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
-  head: () => ({
-    meta: [{ title: "Admin · Submissions" }],
-  }),
-  component: AdminSubmissionsPage,
-});
+// -------------------------------------------------------------------------
+// Row
+// -------------------------------------------------------------------------
 
-type Row = {
-  submission_id: string;
-  company_name: string;
-  client_status: string;
-  advisor_status: string;
-  updated_at: string;
-  owner_user_id: string | null;
-  advisor_id: string | null;
-};
-
-function normalizeAdvisoryStatus(status: string | null | undefined): "notstarted" | "inprogress" | "submitted" | "final" {
-  if (status === "submitted" || status === "final" || status === "inprogress") return status;
-  return "notstarted";
-}
-
-const ADVISORY_STATUS_LABEL: Record<string, string> = {
-  notstarted: "Not Started",
-  inprogress: "In Progress",
-  submitted: "Submitted",
-  final: "Final",
-};
-
-// Sort order so null/notstarted/inprogress cluster together at the start.
-const ADVISORY_SORT_ORDER: Record<string, number> = {
-  notstarted: 0,
-  inprogress: 1,
-  submitted: 2,
-  final: 3,
-};
-
-function AdvisoryStatusPill({ status }: { status: string }) {
-  const norm = normalizeAdvisoryStatus(status);
-  const tone =
-    norm === "final"
-      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-      : norm === "submitted"
-        ? "bg-primary/10 text-primary border-primary/30"
-        : norm === "inprogress"
-          ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
-          : "bg-muted text-muted-foreground border-border";
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${tone}`}>
-      <span className="opacity-60">Advisory</span>
-      <span className="font-medium">{ADVISORY_STATUS_LABEL[norm]}</span>
-    </span>
-  );
-}
-
-function StartAdvisoryButton({
-  submissionId,
-  clientStatus,
-  advisorStatus,
+function SubmissionRow({
+  r,
+  onPatch,
+  onDelete,
 }: {
-  submissionId: string;
-  clientStatus: string;
-  advisorStatus: string;
+  r: Row;
+  onPatch: (patch: Partial<Row>) => void;
+  onDelete: () => void;
 }) {
-  const ready = clientStatus === "submitted" || clientStatus === "complete";
-  if (!ready) {
-    return (
-      <Button size="sm" variant="outline" disabled title="Awaiting client submission">
-        <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-        Awaiting client submission
-      </Button>
-    );
-  }
-  const norm = normalizeAdvisoryStatus(advisorStatus);
-  // submitted/final get specialized actions elsewhere — only show this when not yet submitted.
-  if (norm === "submitted" || norm === "final") return null;
-  const label = norm === "inprogress" ? "Resume advisory questionnaire" : "Complete advisory questionnaire";
-  return (
-    <Button size="sm" asChild>
-      <Link to="/advisor/$submissionId" params={{ submissionId }}>
-        <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-        {label}
-      </Link>
-    </Button>
-  );
-}
-
-function ReviewAdvisoryButton({ submissionId }: { submissionId: string }) {
-  return (
-    <Button size="sm" variant="outline" asChild>
-      <Link
-        to="/advisor/$submissionId"
-        params={{ submissionId }}
-        search={{ mode: "review" as const }}
-      >
-        <Eye className="h-3.5 w-3.5 mr-1.5" />
-        Review
-      </Link>
-    </Button>
-  );
-}
-
-function EditAdvisoryButton({
-  submissionId,
-  onDone,
-}: {
-  submissionId: string;
-  onDone: () => void;
-}) {
-  const setStatus = useServerFn(setAdvisorStatus);
   const navigate = useNavigate();
-  const [busy, setBusy] = useState(false);
-  async function handle() {
+  const setStatus = useServerFn(setAdvisorStatus);
+  const resetPw = useServerFn(resetClientPassword);
+  const del = useServerFn(deleteSubmission);
+
+  const [pending, setPending] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<null | "reset_client" | "reset_advisor" | "delete">(null);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwResult, setPwResult] = useState<{ email: string | null; tempPassword: string } | null>(
+    null,
+  );
+
+  const adv = normalizeAdvisoryStatus(r.advisor_status);
+  const ready = clientReady(r.client_status);
+  const { kind, next } = derive(r);
+
+  async function markFinal() {
+    setPending("final");
+    try {
+      await setStatus({ data: { submissionId: r.submission_id, status: "final" } });
+      toast.success("Marked as final");
+      onPatch({ advisor_status: "final" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not mark as final");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function reopenEdit() {
     if (
       !window.confirm(
         "Reopen the advisory questionnaire for editing? You'll need to resubmit when finished.",
       )
     )
       return;
-    setBusy(true);
+    setPending("edit");
     try {
-      await setStatus({ data: { submissionId, status: "inprogress" } });
-      onDone();
-      navigate({ to: "/advisor/$submissionId", params: { submissionId } });
+      await setStatus({ data: { submissionId: r.submission_id, status: "inprogress" } });
+      onPatch({ advisor_status: "inprogress" });
+      navigate({ to: "/advisor/$submissionId", params: { submissionId: r.submission_id } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not reopen");
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   }
-  return (
-    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
-      <Pencil className="h-3.5 w-3.5 mr-1.5" />
-      {busy ? "Reopening…" : "Edit/Update Answers"}
-    </Button>
-  );
-}
 
-function MarkFinalButton({
-  submissionId,
-  onDone,
-}: {
-  submissionId: string;
-  onDone: () => void;
-}) {
-  const setStatus = useServerFn(setAdvisorStatus);
-  const [busy, setBusy] = useState(false);
-  async function handle() {
-    setBusy(true);
+  async function unlock() {
+    setPending("unlock");
+    const { error } = await supabase.rpc("advisor_unlock_submission", {
+      p_submission_id: r.submission_id,
+    });
+    setPending(null);
+    if (error) {
+      toast.error(error.message ?? "Could not unlock");
+      return;
+    }
+    toast.success("Unlocked — client can edit again");
+    onPatch({ client_status: "inprogress" });
+  }
+
+  async function resetClientAnswers() {
+    setPending("reset_client");
+    const { error } = await supabase.rpc("advisor_reset_client_responses", {
+      p_submission_id: r.submission_id,
+    });
+    setPending(null);
+    if (error) {
+      toast.error(error.message ?? "Could not reset");
+      return;
+    }
+    toast.success("Client questionnaire reset");
+    onPatch({ client_status: "notstarted" });
+  }
+
+  async function resetAdvisorAnswers() {
+    setPending("reset_advisor");
+    const { error } = await supabase.rpc("advisor_reset_advisor_responses", {
+      p_submission_id: r.submission_id,
+    });
+    setPending(null);
+    if (error) {
+      toast.error(error.message ?? "Could not reset");
+      return;
+    }
+    toast.success("Advisor answers reset");
+    onPatch({ advisor_status: "notstarted" });
+  }
+
+  async function resetPassword() {
+    if (
+      !window.confirm(
+        "Reset this client's password? They'll be signed out and will need the new temporary password to sign in.",
+      )
+    )
+      return;
+    setPending("pw");
     try {
-      await setStatus({ data: { submissionId, status: "final" } });
-      toast.success("Marked as final");
-      onDone();
+      const res = await resetPw({ data: { submissionId: r.submission_id } });
+      setPwResult({ email: res.email, tempPassword: res.tempPassword });
+      setPwOpen(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not mark as final");
+      toast.error(err instanceof Error ? err.message : "Could not reset password");
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   }
-  return (
-    <Button size="sm" onClick={() => void handle()} disabled={busy}>
-      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-      {busy ? "Marking…" : "Mark as Final"}
-    </Button>
-  );
-}
 
-function ViewResultsButton({
-  submissionId,
-  clientStatus,
-}: {
-  submissionId: string;
-  clientStatus: string;
-}) {
-  const ready = clientStatus === "submitted" || clientStatus === "complete";
-  if (!ready) {
-    return (
-      <Button size="sm" variant="outline" disabled title="Awaiting client submission">
-        <Eye className="h-3.5 w-3.5 mr-1.5" />
-        View results
+  async function downloadPdf() {
+    setPending("pdf");
+    try {
+      await generateSubmissionPdf(r.submission_id);
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not generate PDF");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function deleteRow() {
+    setPending("delete");
+    try {
+      await del({ data: { submissionId: r.submission_id } });
+      toast.success("Submission deleted");
+      onDelete();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete submission");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  const pwLoginUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
+
+  let primary: React.ReactNode;
+  if (kind === "awaiting_client") {
+    primary = (
+      <Button size="sm" variant="outline" disabled className="opacity-70">
+        <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+        Awaiting client
+      </Button>
+    );
+  } else if (kind === "do_advisory") {
+    primary = (
+      <Button size="sm" asChild>
+        <Link to="/advisor/$submissionId" params={{ submissionId: r.submission_id }}>
+          <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+          {adv === "inprogress" ? "Resume advisory" : "Complete advisory"}
+        </Link>
+      </Button>
+    );
+  } else if (kind === "mark_final") {
+    primary = (
+      <Button size="sm" onClick={() => void markFinal()} disabled={pending === "final"}>
+        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+        {pending === "final" ? "Marking…" : "Mark as Final"}
+      </Button>
+    );
+  } else {
+    primary = (
+      <Button size="sm" asChild>
+        <Link to="/admin/results/$submissionId" params={{ submissionId: r.submission_id }}>
+          <Eye className="h-3.5 w-3.5 mr-1.5" />
+          View results
+        </Link>
       </Button>
     );
   }
+
   return (
-    <Button size="sm" variant="outline" asChild>
-      <Link to="/admin/results/$submissionId" params={{ submissionId }}>
-        <Eye className="h-3.5 w-3.5 mr-1.5" />
-        View results
-      </Link>
-    </Button>
+    <li className="flex flex-col gap-3 px-4 py-3.5 md:grid md:grid-cols-[2.1fr_1.9fr_1.6fr_auto] md:items-center md:gap-4">
+      {/* Company */}
+      <div className="min-w-0">
+        <p className="font-medium truncate">{r.company_name}</p>
+        <p className="mt-0.5 flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
+          <span className="truncate">{r.submission_id}</span>
+          {r.owner_user_id ? (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-sans uppercase tracking-wide text-primary">
+              Account
+            </span>
+          ) : null}
+        </p>
+      </div>
+
+      {/* Progress track */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Pill label="Client" value={CLIENT_STATUS_LABEL[r.client_status] ?? r.client_status} tone={clientTone(r.client_status)} />
+        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+        <Pill label="Advisory" value={ADVISORY_STATUS_LABEL[adv]} tone={advisoryTone(adv)} />
+      </div>
+
+      {/* Next step */}
+      <p className="text-xs text-muted-foreground">{next}</p>
+
+      {/* Action */}
+      <div className="flex items-center gap-2 md:justify-end">
+        {primary}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              className="px-2"
+              disabled={pending !== null}
+              aria-label="More actions"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              More actions
+            </DropdownMenuLabel>
+
+            {(adv === "submitted" || adv === "final") && (
+              <DropdownMenuItem asChild>
+                <Link
+                  to="/advisor/$submissionId"
+                  params={{ submissionId: r.submission_id }}
+                  search={{ mode: "review" as const }}
+                >
+                  <Eye className="h-4 w-4" />
+                  Review advisory
+                </Link>
+              </DropdownMenuItem>
+            )}
+
+            {ready && kind !== "view_results" && (
+              <DropdownMenuItem asChild>
+                <Link to="/admin/results/$submissionId" params={{ submissionId: r.submission_id }}>
+                  <Eye className="h-4 w-4" />
+                  View results
+                </Link>
+              </DropdownMenuItem>
+            )}
+
+            {(adv === "submitted" || adv === "final") && (
+              <DropdownMenuItem onSelect={() => void reopenEdit()}>
+                <Pencil className="h-4 w-4" />
+                Edit / update answers
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuItem onSelect={() => void downloadPdf()}>
+              <FileDown className="h-4 w-4" />
+              Download PDF
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Client controls
+            </DropdownMenuLabel>
+
+            {r.client_status === "submitted" && (
+              <DropdownMenuItem onSelect={() => void unlock()}>
+                <Unlock className="h-4 w-4" />
+                Unlock client
+              </DropdownMenuItem>
+            )}
+
+            {r.owner_user_id && (
+              <DropdownMenuItem onSelect={() => void resetPassword()}>
+                <KeyRound className="h-4 w-4" />
+                Reset password
+              </DropdownMenuItem>
+            )}
+
+            {adv !== "notstarted" && (
+              <DropdownMenuItem
+                onSelect={() => setConfirm("reset_advisor")}
+                className="text-destructive focus:text-destructive"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset advisor answers
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuItem
+              onSelect={() => setConfirm("reset_client")}
+              className="text-destructive focus:text-destructive"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset client answers
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => setConfirm("delete")}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete submission
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <ConfirmDialog
+        open={confirm === "reset_client"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+        title="Reset client answers?"
+        description="This will permanently clear all objective answers for this client. This action cannot be undone."
+        confirmLabel="Reset client answers"
+        destructive
+        onConfirm={() => void resetClientAnswers()}
+      />
+      <ConfirmDialog
+        open={confirm === "reset_advisor"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+        title="Reset advisor answers?"
+        description="This will permanently clear all advisory responses and set the advisor status back to Not Started. This action cannot be undone."
+        confirmLabel="Reset advisor answers"
+        destructive
+        onConfirm={() => void resetAdvisorAnswers()}
+      />
+      <ConfirmDialog
+        open={confirm === "delete"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+        title="Delete this submission?"
+        description={
+          <>
+            This permanently deletes {r.company_name ? <strong>{r.company_name}</strong> : "this"}
+            &rsquo;s submission and all of its answers (objective and advisory).
+            {r.owner_user_id
+              ? " The client's login stays active, so they could start a new assessment."
+              : ""}{" "}
+            This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete submission"
+        destructive
+        onConfirm={() => void deleteRow()}
+      />
+      <TempPasswordDialog
+        open={pwOpen}
+        onOpenChange={setPwOpen}
+        email={pwResult?.email ?? null}
+        password={pwResult?.tempPassword ?? null}
+        loginUrl={pwLoginUrl}
+        title="Client password reset"
+      />
+    </li>
   );
 }
 
-type FilterKey =
-  | "all"
-  | "awaiting_advisory"
-  | "client_in_progress"
-  | "not_started"
-  | "adv_in_progress"
-  | "adv_submitted"
-  | "adv_submitted_not_final"
-  | "adv_final";
+// -------------------------------------------------------------------------
+// Summary tile
+// -------------------------------------------------------------------------
 
-type SortKey = "updated_desc" | "advisory_asc" | "advisory_desc" | "company_asc";
+function SummaryTile({
+  num,
+  label,
+  active,
+  accent,
+  onClick,
+}: {
+  num: number;
+  label: string;
+  active: boolean;
+  accent?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl border p-4 text-left transition-colors ${
+        accent ? "border-primary/40 bg-primary/5" : "border-border bg-card"
+      } ${active ? "ring-2 ring-primary/50" : "hover:bg-muted/40"}`}
+    >
+      <div className={`text-2xl font-bold leading-none tracking-tight ${accent ? "text-primary" : ""}`}>
+        {num}
+      </div>
+      <div className="mt-1.5 text-xs text-muted-foreground">{label}</div>
+    </button>
+  );
+}
+
+// -------------------------------------------------------------------------
+// Page
+// -------------------------------------------------------------------------
 
 function AdminSubmissionsPage() {
   const navigate = useNavigate();
@@ -349,7 +673,6 @@ function AdminSubmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [sort, setSort] = useState<SortKey>("updated_desc");
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -376,85 +699,51 @@ function AdminSubmissionsPage() {
   }, [getInviteCode]);
 
   function updateRow(submissionId: string, patch: Partial<Row>) {
-    setRows((prev) =>
-      prev.map((x) => (x.submission_id === submissionId ? { ...x, ...patch } : x)),
-    );
+    setRows((prev) => prev.map((x) => (x.submission_id === submissionId ? { ...x, ...patch } : x)));
+  }
+
+  function removeRow(submissionId: string) {
+    setRows((prev) => prev.filter((x) => x.submission_id !== submissionId));
   }
 
   const q = search.trim().toLowerCase();
-  const filteredRows = useMemo(() => {
-    const filtered = rows.filter((r) => {
-      if (q && !r.company_name.toLowerCase().includes(q) && !r.submission_id.toLowerCase().includes(q)) {
-        return false;
-      }
-      const adv = normalizeAdvisoryStatus(r.advisor_status);
-      switch (filter) {
-        case "awaiting_advisory":
-          return (
-            (r.client_status === "submitted" || r.client_status === "complete") &&
-            adv !== "submitted" && adv !== "final"
-          );
-        case "client_in_progress":
-          return r.client_status === "inprogress";
-        case "not_started":
-          return r.client_status === "notstarted";
-        case "adv_in_progress":
-          return adv === "inprogress" || adv === "notstarted";
-        case "adv_submitted":
-          return adv === "submitted";
-        case "adv_submitted_not_final":
-          return adv === "submitted";
-        case "adv_final":
-          return adv === "final";
-        default:
-          return true;
-      }
-    });
-    const sorted = [...filtered];
-    sorted.sort((a, b) => {
-      switch (sort) {
-        case "advisory_asc":
-        case "advisory_desc": {
-          const av = ADVISORY_SORT_ORDER[normalizeAdvisoryStatus(a.advisor_status)] ?? 0;
-          const bv = ADVISORY_SORT_ORDER[normalizeAdvisoryStatus(b.advisor_status)] ?? 0;
-          if (av !== bv) return sort === "advisory_asc" ? av - bv : bv - av;
-          return (b.updated_at || "").localeCompare(a.updated_at || "");
-        }
-        case "company_asc":
-          return a.company_name.localeCompare(b.company_name);
-        default:
-          return (b.updated_at || "").localeCompare(a.updated_at || "");
-      }
-    });
-    return sorted;
-  }, [rows, q, filter, sort]);
+  const searched = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          !q ||
+          r.company_name.toLowerCase().includes(q) ||
+          r.submission_id.toLowerCase().includes(q),
+      ),
+    [rows, q],
+  );
 
-  const filterOptions: { key: FilterKey; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "awaiting_advisory", label: "Awaiting my advisory" },
-    { key: "client_in_progress", label: "Client in progress" },
-    { key: "not_started", label: "Not started" },
-    { key: "adv_in_progress", label: "Advisory: In Progress" },
-    { key: "adv_submitted", label: "Advisory: Submitted" },
-    { key: "adv_submitted_not_final", label: "Submitted, not Final" },
-    { key: "adv_final", label: "Advisory: Final" },
-  ];
+  const visible = useMemo(() => {
+    const list = searched.filter((r) => matchesFilter(r, filter));
+    return [...list].sort((a, b) => {
+      const pa = sortPriority(a);
+      const pb = sortPriority(b);
+      if (pa !== pb) return pa - pb;
+      return (b.updated_at || "").localeCompare(a.updated_at || "");
+    });
+  }, [searched, filter]);
 
-  const sortOptions: { key: SortKey; label: string }[] = [
-    { key: "updated_desc", label: "Recently updated" },
-    { key: "advisory_asc", label: "Advisory status ↑" },
-    { key: "advisory_desc", label: "Advisory status ↓" },
-    { key: "company_asc", label: "Company A–Z" },
+  const count = (f: FilterKey) => rows.filter((r) => matchesFilter(r, f)).length;
+
+  const chips: { key: FilterKey; label: string; n: number }[] = [
+    { key: "all", label: "All", n: rows.length },
+    { key: "awaiting_advisory", label: "Needs my advisory", n: count("awaiting_advisory") },
+    { key: "client_in_progress", label: "Client in progress", n: count("client_in_progress") },
+    { key: "submitted", label: "Submitted", n: count("submitted") },
+    { key: "adv_final", label: "Final", n: count("adv_final") },
   ];
 
   return (
     <main className="min-h-screen">
       <header className="border-b border-border/60">
-        <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Admin
-            </p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
             <h1 className="text-lg font-semibold tracking-tight">Submissions</h1>
           </div>
           <div className="flex gap-2">
@@ -477,7 +766,6 @@ function AdminSubmissionsPage() {
                 Questionnaire
               </Link>
             </Button>
-
             <Button asChild variant="ghost" size="sm">
               <Link to="/login">Home</Link>
             </Button>
@@ -486,403 +774,102 @@ function AdminSubmissionsPage() {
               Sign out
             </Button>
           </div>
-
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
-        <CreateAdvisorCard />
+      <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
+        {/* Summary strip */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <SummaryTile
+            num={count("awaiting_advisory")}
+            label="Awaiting your advisory"
+            accent
+            active={filter === "awaiting_advisory"}
+            onClick={() =>
+              setFilter((f) => (f === "awaiting_advisory" ? "all" : "awaiting_advisory"))
+            }
+          />
+          <SummaryTile
+            num={count("client_in_progress")}
+            label="Client in progress"
+            active={filter === "client_in_progress"}
+            onClick={() =>
+              setFilter((f) => (f === "client_in_progress" ? "all" : "client_in_progress"))
+            }
+          />
+          <SummaryTile
+            num={count("not_started")}
+            label="Not started"
+            active={filter === "not_started"}
+            onClick={() => setFilter((f) => (f === "not_started" ? "all" : "not_started"))}
+          />
+          <SummaryTile
+            num={count("adv_final")}
+            label="Final"
+            active={filter === "adv_final"}
+            onClick={() => setFilter((f) => (f === "adv_final" ? "all" : "adv_final"))}
+          />
+        </div>
 
-
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
+        {/* Toolbar */}
+        <div className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
           <Input
             placeholder="Search by company name or submission ID…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <div className="flex flex-wrap gap-2">
-            {filterOptions.map((f) => (
+          <div className="flex flex-wrap items-center gap-2">
+            {chips.map((c) => (
               <Button
-                key={f.key}
+                key={c.key}
                 type="button"
                 size="sm"
-                variant={filter === f.key ? "default" : "outline"}
-                onClick={() => setFilter(f.key)}
+                variant={filter === c.key ? "default" : "outline"}
+                onClick={() => setFilter(c.key)}
               >
-                {f.label}
+                {c.label}
+                <span className="ml-1.5 opacity-60">{c.n}</span>
               </Button>
             ))}
             <span className="ml-auto self-center text-[11px] text-muted-foreground">
-              {filteredRows.length} of {rows.length}
+              {visible.length} of {rows.length}
             </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/60">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground inline-flex items-center gap-1">
-              <ArrowUpDown className="h-3 w-3" /> Sort
-            </span>
-            {sortOptions.map((s) => (
-              <Button
-                key={s.key}
-                type="button"
-                size="sm"
-                variant={sort === s.key ? "secondary" : "ghost"}
-                onClick={() => setSort(s.key)}
-              >
-                {s.label}
-              </Button>
-            ))}
           </div>
         </div>
 
+        {/* List */}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : filteredRows.length === 0 ? (
+        ) : visible.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {rows.length === 0 ? "No submissions yet." : "No submissions match your search."}
           </p>
         ) : (
-          <ul className="space-y-3">
-            {filteredRows.map((r) => {
-              const adv = normalizeAdvisoryStatus(r.advisor_status);
-              const isSubmitted = adv === "submitted";
-              const isFinal = adv === "final";
-              return (
-                <li
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div className="hidden border-b border-border bg-muted/40 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[2.1fr_1.9fr_1.6fr_auto] md:gap-4">
+              <div>Company</div>
+              <div>Progress</div>
+              <div>Next step</div>
+              <div className="text-right">Action</div>
+            </div>
+            <ul className="divide-y divide-border">
+              {visible.map((r) => (
+                <SubmissionRow
                   key={r.submission_id}
-                  className="rounded-xl border border-border bg-card p-5 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{r.company_name}</p>
-                      <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                        {r.submission_id}
-                        {r.owner_user_id ? (
-                          <span className="ml-2 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-sans uppercase tracking-wide text-primary">
-                            Client account
-                          </span>
-                        ) : null}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] shrink-0 flex-wrap justify-end">
-                      <StatusPill label="Client" status={r.client_status} />
-                      <AdvisoryStatusPill status={r.advisor_status} />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <StartAdvisoryButton
-                      submissionId={r.submission_id}
-                      clientStatus={r.client_status}
-                      advisorStatus={r.advisor_status}
-                    />
-                    {(isSubmitted || isFinal) && (
-                      <>
-                        <ReviewAdvisoryButton submissionId={r.submission_id} />
-                        <EditAdvisoryButton
-                          submissionId={r.submission_id}
-                          onDone={() => updateRow(r.submission_id, { advisor_status: "inprogress" })}
-                        />
-                        {isSubmitted && (
-                          <MarkFinalButton
-                            submissionId={r.submission_id}
-                            onDone={() => updateRow(r.submission_id, { advisor_status: "final" })}
-                          />
-                        )}
-                      </>
-                    )}
-                    {adv !== "notstarted" && (
-                      <ResetAdvisorButton
-                        submissionId={r.submission_id}
-                        onDone={() => updateRow(r.submission_id, { advisor_status: "notstarted" })}
-                      />
-                    )}
-                    <ViewResultsButton
-                      submissionId={r.submission_id}
-                      clientStatus={r.client_status}
-                    />
-                    {r.client_status === "submitted" && (
-                      <UnlockButton
-                        submissionId={r.submission_id}
-                        onDone={(next) => updateRow(r.submission_id, { client_status: next })}
-                      />
-                    )}
-                    <ResetButton
-                      submissionId={r.submission_id}
-                      onDone={() => updateRow(r.submission_id, { client_status: "notstarted" })}
-                    />
-
-                    {r.owner_user_id && (
-                      <ResetClientPasswordButton submissionId={r.submission_id} />
-                    )}
-                    <DownloadPdfButton submissionId={r.submission_id} />
-                  </div>
-                </li>
-              );
-            })}
-
-          </ul>
+                  r={r}
+                  onPatch={(patch) => updateRow(r.submission_id, patch)}
+                  onDelete={() => removeRow(r.submission_id)}
+                />
+              ))}
+            </ul>
+          </div>
         )}
+
+        <p className="text-center text-xs text-muted-foreground">
+          Everything under “⋯” is still one click away — Review, Edit answers, Unlock, Reset, Reset
+          password, Download PDF — just no longer competing for attention.
+        </p>
       </div>
     </main>
-  );
-}
-
-
-function CreateAdvisorCard() {
-  const create = useServerFn(createAdvisor);
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [result, setResult] = useState<{ email: string; tempPassword: string } | null>(null);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = email.trim();
-    if (!trimmed) return;
-    setBusy(true);
-    try {
-      const res = await create({ data: { email: trimmed } });
-      setResult({ email: res.email, tempPassword: res.tempPassword });
-      setOpen(true);
-      toast.success(`Advisor account ready: ${trimmed}`);
-      setEmail("");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not create advisor");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const loginUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
-
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="rounded-xl border border-dashed border-primary/40 bg-card p-5 shadow-sm space-y-3"
-    >
-      <div>
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          Create advisor account (no email)
-        </p>
-        <p className="text-[11px] text-muted-foreground mt-1">
-          Creates a confirmed advisor with an auto-generated temporary password shown once. They will be prompted to set a new password on first sign-in at <code>/auth</code>.
-        </p>
-      </div>
-      <div className="grid md:grid-cols-[1fr_auto] gap-3 md:items-end">
-        <div>
-          <Label htmlFor="adv-email" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Email
-          </Label>
-          <Input
-            id="adv-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="advisor@example.com"
-            className="mt-1.5"
-          />
-        </div>
-        <Button type="submit" disabled={busy || !email.trim()}>
-          {busy ? "Creating…" : "Create advisor"}
-        </Button>
-      </div>
-      <TempPasswordDialog
-        open={open}
-        onOpenChange={setOpen}
-        email={result?.email ?? null}
-        password={result?.tempPassword ?? null}
-        loginUrl={loginUrl}
-        title="Advisor account created"
-      />
-    </form>
-  );
-}
-
-
-
-function UnlockButton({
-  submissionId,
-  onDone,
-}: {
-  submissionId: string;
-  onDone: (nextStatus: string) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  async function handle() {
-    setBusy(true);
-    const { error } = await supabase.rpc("advisor_unlock_submission", {
-      p_submission_id: submissionId,
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message ?? "Could not unlock");
-      return;
-    }
-    toast.success("Unlocked — client can edit again");
-    onDone("inprogress");
-  }
-  return (
-    <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
-      <Unlock className="h-3.5 w-3.5 mr-1.5" />
-      {busy ? "Unlocking…" : "Unlock"}
-    </Button>
-  );
-}
-
-function ResetButton({
-  submissionId,
-  onDone,
-}: {
-  submissionId: string;
-  onDone: () => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
-  async function handle() {
-    setBusy(true);
-    const { error } = await supabase.rpc("advisor_reset_client_responses", {
-      p_submission_id: submissionId,
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message ?? "Could not reset");
-      return;
-    }
-    toast.success("Client questionnaire reset");
-    onDone();
-  }
-  return (
-    <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)} disabled={busy}>
-        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-        {busy ? "Resetting…" : "Reset client answers"}
-      </Button>
-      <ConfirmDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Reset client answers?"
-        description="This will permanently clear all objective answers for this client. This action cannot be undone."
-        confirmLabel="Reset client answers"
-        destructive
-        onConfirm={() => void handle()}
-      />
-    </>
-  );
-}
-
-function ResetAdvisorButton({
-  submissionId,
-  onDone,
-}: {
-  submissionId: string;
-  onDone: () => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
-  async function handle() {
-    setBusy(true);
-    const { error } = await supabase.rpc("advisor_reset_advisor_responses", {
-      p_submission_id: submissionId,
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message ?? "Could not reset");
-      return;
-    }
-    toast.success("Advisor answers reset");
-    onDone();
-  }
-  return (
-    <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)} disabled={busy}>
-        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-        {busy ? "Resetting…" : "Reset advisor answers"}
-      </Button>
-      <ConfirmDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Reset advisor answers?"
-        description="This will permanently clear all advisory responses and set the advisor status back to Not Started. This action cannot be undone."
-        confirmLabel="Reset advisor answers"
-        destructive
-        onConfirm={() => void handle()}
-      />
-    </>
-  );
-}
-
-
-function ResetClientPasswordButton({ submissionId }: { submissionId: string }) {
-  const reset = useServerFn(resetClientPassword);
-  const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [result, setResult] = useState<{ email: string | null; tempPassword: string } | null>(null);
-
-  async function handle() {
-    if (
-      !window.confirm(
-        "Reset this client's password? They'll be signed out and will need the new temporary password to sign in.",
-      )
-    )
-      return;
-    setBusy(true);
-    try {
-      const res = await reset({ data: { submissionId } });
-      setResult({ email: res.email, tempPassword: res.tempPassword });
-      setOpen(true);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not reset password");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const loginUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
-
-  return (
-    <>
-      <Button size="sm" variant="outline" onClick={() => void handle()} disabled={busy}>
-        <KeyRound className="h-3.5 w-3.5 mr-1.5" />
-        {busy ? "Resetting…" : "Reset password"}
-      </Button>
-      <TempPasswordDialog
-        open={open}
-        onOpenChange={setOpen}
-        email={result?.email ?? null}
-        password={result?.tempPassword ?? null}
-        loginUrl={loginUrl}
-        title="Client password reset"
-      />
-    </>
-  );
-}
-
-
-
-
-
-
-
-
-function StatusPill({ label, status }: { label: string; status: string }) {
-  const tone =
-    status === "complete"
-      ? "bg-primary/10 text-primary border-primary/30"
-      : status === "inprogress"
-        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
-        : "bg-muted text-muted-foreground border-border";
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${tone}`}
-    >
-      <span className="opacity-60">{label}</span>
-      <span className="font-medium capitalize">
-        {status
-          .replace("inprogress", "in progress")
-          .replace("notstarted", "not started")}
-      </span>
-    </span>
   );
 }

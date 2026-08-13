@@ -132,3 +132,50 @@ export const setAdvisorStatus = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Permanently delete a submission and all of its answers. The attached client
+// login (owner_user_id), if any, is intentionally left intact so the client can
+// start a fresh assessment. Advisor-gated; runs via the service role.
+export const deleteSubmission = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { submissionId: string }) => {
+    const submissionId = String(input?.submissionId ?? "").trim();
+    if (!submissionId) throw new Error("submissionId required");
+    return { submissionId };
+  })
+  .handler(async ({ data, context }) => {
+    await ensureAdvisor(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Confirm the submission exists (clearer than a silent no-op).
+    const { data: sub, error: subErr } = await supabaseAdmin
+      .from("submissions")
+      .select("submission_id")
+      .eq("submission_id", data.submissionId)
+      .maybeSingle();
+    if (subErr) throw new Error(subErr.message);
+    if (!sub) throw new Error("Submission not found");
+
+    // Delete child rows first — the foreign keys restrict deleting the parent
+    // while responses / section_scores still point at it.
+    const delResp = await supabaseAdmin
+      .from("responses")
+      .delete()
+      .eq("submission_id", data.submissionId);
+    if (delResp.error) throw new Error(delResp.error.message);
+
+    const delScores = await supabaseAdmin
+      .from("section_scores")
+      .delete()
+      .eq("submission_id", data.submissionId);
+    if (delScores.error) throw new Error(delScores.error.message);
+
+    // The client's auth account is deliberately preserved.
+    const delSub = await supabaseAdmin
+      .from("submissions")
+      .delete()
+      .eq("submission_id", data.submissionId);
+    if (delSub.error) throw new Error(delSub.error.message);
+
+    return { ok: true };
+  });
