@@ -51,7 +51,7 @@ function DownloadPdfButton({ submissionId }: { submissionId: string }) {
   );
 }
 
-const CLIENT_LOGIN_URL = "https://valscore.lovable.app";
+const CLIENT_LOGIN_URL = "https://kriterion.adurden.workers.dev";
 
 function CopyClientLoginLinkButton() {
   const [copied, setCopied] = useState(false);
