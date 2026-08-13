@@ -864,11 +864,6 @@ function AdminSubmissionsPage() {
             </ul>
           </div>
         )}
-
-        <p className="text-center text-xs text-muted-foreground">
-          Everything under “⋯” is still one click away — Review, Edit answers, Unlock, Reset, Reset
-          password, Download PDF — just no longer competing for attention.
-        </p>
       </div>
     </main>
   );
