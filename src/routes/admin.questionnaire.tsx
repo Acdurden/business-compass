@@ -155,14 +155,14 @@ function QuestionnaireEditorPage() {
   const save = useServerFn(saveQuestionnaire);
 
   const [st, dispatch] = useReducer(reducer, {
-    ...emptyModel,
+    model: emptyModel,
     baseline: emptyModel,
     movedS: [],
     movedQ: [],
     movedA: [],
     past: [],
     future: [],
-  } as unknown as State);
+  } as State);
   const stRef = useRef(st);
   stRef.current = st;
 
