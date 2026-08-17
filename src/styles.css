@@ -141,4 +141,15 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+
+  /*
+   * Tailwind 4 dropped the preflight rule that gave native <button> elements a
+   * pointer cursor. The shadcn Button sets its own; every hand-rolled <button>
+   * in the app lost it silently on upgrade. Restore it once here rather than
+   * patching each call site.
+   */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }

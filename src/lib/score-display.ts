@@ -238,23 +238,30 @@ export type Driver = {
   advisoryMax: number;
 };
 
+type SectionPair = {
+  objectiveId: string;
+  advisoryId: string;
+  name: string;
+};
+
 /**
- * Build the paired driver list from the section scores the engine produced.
+ * Work out which objective section corresponds to which advisory section.
  *
  * Sections with no scoreable points (the Business Snapshot profile section) and
  * sections that cannot be paired are omitted rather than shown as a half-empty
- * comparison.
+ * comparison. Shared by the driver comparison and the opportunity list so the
+ * two can never disagree about what a driver is.
  */
-export function buildDrivers(
+function resolvePairs(
   sections: SectionMeta[],
   sectionScores: SectionScore[],
-): Driver[] {
+): SectionPair[] {
   const scoreBySection = new Map(sectionScores.map((s) => [s.section_id, s]));
   const metaBySection = new Map(sections.map((s) => [s.section_id, s]));
 
   const usedObjective = new Set<string>();
   const usedAdvisory = new Set<string>();
-  const drivers: Driver[] = [];
+  const pairs: SectionPair[] = [];
 
   const push = (objectiveId: string, advisoryId: string, name: string) => {
     const o = scoreBySection.get(objectiveId);
@@ -263,18 +270,7 @@ export function buildDrivers(
     if (o.max_score <= 0 || a.max_score <= 0) return;
     usedObjective.add(objectiveId);
     usedAdvisory.add(advisoryId);
-    const selfScore = asPercent(o.actual_score, o.max_score);
-    const advisorScore = asPercent(a.actual_score, a.max_score);
-    drivers.push({
-      key: `${objectiveId}-${advisoryId}`,
-      name,
-      selfScore,
-      advisorScore,
-      delta: advisorScore - selfScore,
-      upsidePoints: Math.max(0, a.max_score - a.actual_score),
-      advisoryActual: a.actual_score,
-      advisoryMax: a.max_score,
-    });
+    pairs.push({ objectiveId, advisoryId, name });
   };
 
   // Known pairs first, in the order they are listed — that is the display order.
@@ -321,7 +317,140 @@ export function buildDrivers(
     }
   });
 
-  return drivers;
+  return pairs;
+}
+
+/** Build the paired driver list from the section scores the engine produced. */
+export function buildDrivers(
+  sections: SectionMeta[],
+  sectionScores: SectionScore[],
+): Driver[] {
+  const scoreBySection = new Map(sectionScores.map((s) => [s.section_id, s]));
+
+  return resolvePairs(sections, sectionScores).flatMap(
+    ({ objectiveId, advisoryId, name }) => {
+      const o = scoreBySection.get(objectiveId);
+      const a = scoreBySection.get(advisoryId);
+      if (!o || !a) return [];
+      const selfScore = asPercent(o.actual_score, o.max_score);
+      const advisorScore = asPercent(a.actual_score, a.max_score);
+      return [
+        {
+          key: `${objectiveId}-${advisoryId}`,
+          name,
+          selfScore,
+          advisorScore,
+          delta: advisorScore - selfScore,
+          upsidePoints: Math.max(0, a.max_score - a.actual_score),
+          advisoryActual: a.actual_score,
+          advisoryMax: a.max_score,
+        },
+      ];
+    },
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Opportunities — where the points actually are                       */
+/* ------------------------------------------------------------------ */
+
+export type PlanKind = "objective" | "full";
+
+export type Opportunity = {
+  key: string;
+  name: string;
+  /** Points still open on the client's own answers, in raw objective points. */
+  objectiveGap: number;
+  /** Points still open on the advisor's review, in raw advisory points. */
+  advisoryGap: number;
+  /** What the client should be told is available, on the 0–100 display scale. */
+  totalGap: number;
+  /** How much of this driver is already captured, 0–100. */
+  capturedPct: number;
+  /** The advisor's read on this driver, 0–100. Null on the objective plan. */
+  advisoryPct: number | null;
+};
+
+/**
+ * The points a client can still win, driver by driver.
+ *
+ * This is deliberately NOT the advisory gap on its own. A ValScore is the
+ * objective 60 plus the advisory 40, so a driver's real upside is the sum of
+ * both halves — quoting only the advisory half understates the opportunity by
+ * more than half and makes the plan look barely worth doing.
+ *
+ * The plan changes what "available" honestly means:
+ *   - full:      objective gap + advisory gap, already native ValScore points.
+ *   - objective: the objective gap alone, grossed onto the same 0–100 scale the
+ *                client's score is shown on. There is no advisor review, so
+ *                those 40 points are UNASSESSED, not available — counting them
+ *                would be selling a gap nobody has measured. Callers must not
+ *                describe these as ValScore points.
+ *
+ * Sorted by what is available, ties broken by whoever has captured least.
+ */
+export function buildOpportunities(
+  sections: SectionMeta[],
+  sectionScores: SectionScore[],
+  plan: PlanKind,
+): Opportunity[] {
+  const scoreBySection = new Map(sectionScores.map((s) => [s.section_id, s]));
+  const nameById = new Map(sections.map((s) => [s.section_id, s.section_name]));
+  const byOpportunity = (a: Opportunity, b: Opportunity) =>
+    b.totalGap - a.totalGap || a.capturedPct - b.capturedPct;
+
+  if (plan === "objective") {
+    const objectiveMax = sectionScores
+      .filter((s) => s.questionnaire_type === "objective")
+      .reduce((sum, s) => sum + s.max_score, 0);
+    // Gross onto 0–100 so the score and the opportunity add up to 100.
+    const scale = objectiveMax > 0 ? CLIENT_SCALE_MAX / objectiveMax : 0;
+
+    return sectionScores
+      .filter((s) => s.questionnaire_type === "objective" && s.max_score > 0)
+      .map((s) => {
+        const objectiveGap = Math.max(0, s.max_score - s.actual_score);
+        return {
+          key: s.section_id,
+          name: nameById.get(s.section_id) ?? s.section_id,
+          objectiveGap,
+          advisoryGap: 0,
+          totalGap: objectiveGap * scale,
+          capturedPct: asPercent(s.actual_score, s.max_score),
+          advisoryPct: null,
+        };
+      })
+      .sort(byOpportunity);
+  }
+
+  return resolvePairs(sections, sectionScores)
+    .flatMap(({ objectiveId, advisoryId, name }) => {
+      const o = scoreBySection.get(objectiveId);
+      const a = scoreBySection.get(advisoryId);
+      if (!o || !a) return [];
+      const objectiveGap = Math.max(0, o.max_score - o.actual_score);
+      const advisoryGap = Math.max(0, a.max_score - a.actual_score);
+      return [
+        {
+          key: `${objectiveId}-${advisoryId}`,
+          name,
+          objectiveGap,
+          advisoryGap,
+          totalGap: objectiveGap + advisoryGap,
+          capturedPct: asPercent(
+            o.actual_score + a.actual_score,
+            o.max_score + a.max_score,
+          ),
+          advisoryPct: asPercent(a.actual_score, a.max_score),
+        },
+      ];
+    })
+    .sort(byOpportunity);
+}
+
+/** Everything still on the table, on the same scale the score is shown on. */
+export function totalOpportunity(opportunities: Opportunity[]): number {
+  return Math.round(opportunities.reduce((sum, o) => sum + o.totalGap, 0));
 }
 
 /** Drivers with the most advisory points still available, biggest first. */

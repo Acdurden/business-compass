@@ -19,6 +19,7 @@ import {
   bandFor,
   bandSegments,
   buildDrivers,
+  buildOpportunities,
   displayDelta,
   displayScore,
   formatCurrency,
@@ -26,8 +27,9 @@ import {
   grossObjective,
   listNames,
   partitionByShift,
-  topUpsideDrivers,
+  totalOpportunity,
   type Driver,
+  type Opportunity,
   type SectionMeta,
 } from "@/lib/score-display";
 
@@ -393,7 +395,23 @@ function SummaryBody({
     [sections, result.sectionScores],
   );
   const { up, down, held } = partitionByShift(drivers);
-  const totalUpside = drivers.reduce((sum, d) => sum + d.upsidePoints, 0);
+  /**
+   * What is genuinely still available, counting BOTH halves of the ValScore.
+   * `advisoryUpside` is the advisor's half only — the "where the upside is"
+   * card is a report on the advisor's review, so it keeps that narrower figure
+   * but says so rather than presenting it as the whole opportunity.
+   */
+  const opportunities = useMemo(
+    () =>
+      buildOpportunities(
+        sections,
+        result.sectionScores,
+        isObjective ? "objective" : "full",
+      ),
+    [sections, result.sectionScores, isObjective],
+  );
+  const totalOpen = totalOpportunity(opportunities);
+  const advisoryUpside = drivers.reduce((sum, d) => sum + d.upsidePoints, 0);
 
   return (
     <>
@@ -619,23 +637,31 @@ function SummaryBody({
               className="text-[13px] uppercase tracking-[0.1em]"
               style={{ color: BRAND.muted }}
             >
-              Total upside still available
+              Available from your advisor&apos;s review
             </span>
             <span className="text-[16px]" style={{ color: BRAND.tealDark }}>
-              +{totalUpside} points
+              +{advisoryUpside} points
             </span>
           </div>
+          <p
+            className="m-0 mt-2.5 text-[12px] leading-[1.55]"
+            style={{ color: BRAND.muted }}
+          >
+            That is +{advisoryUpside} of the {totalOpen} points still open on
+            your ValScore. The rest sits in your own answers — the full picture
+            is in Where to focus, below.
+          </p>
         </Card>
       ) : null}
 
       {/* WHERE YOUR UPSIDE IS — objective plan, from the client's own answers */}
       {isObjective ? (
-        <ObjectiveUpsideCard sections={sections} result={result} />
+        <ObjectiveUpsideCard opportunities={opportunities} total={totalOpen} />
       ) : null}
 
       {/* WHERE TO FOCUS */}
-      {!isObjective && drivers.length > 0 ? (
-        <FocusCard drivers={drivers} />
+      {!isObjective && opportunities.length > 0 ? (
+        <FocusCard opportunities={opportunities} />
       ) : null}
 
       {/* VALUATION — only when the client's income figure is actually on file */}
@@ -736,25 +762,21 @@ function SummaryBody({
  * captured, and what is still on the table.
  */
 function ObjectiveUpsideCard({
-  sections,
-  result,
+  opportunities,
+  total,
 }: {
-  sections: SectionMeta[];
-  result: ValuationResult;
+  opportunities: Opportunity[];
+  total: number;
 }) {
-  const nameById = new Map(sections.map((x) => [x.section_id, x.section_name]));
-  const rows = result.sectionScores
-    .filter((x) => x.questionnaire_type === "objective" && x.max_score > 0)
-    .map((x) => ({
-      key: x.section_id,
-      name: nameById.get(x.section_id) ?? x.section_id,
-      pct: Math.round((x.actual_score / x.max_score) * 100),
-      gap: x.max_score - x.actual_score,
-    }))
-    .sort((a, b) => b.gap - a.gap || a.pct - b.pct);
+  const rows = opportunities.map((o) => ({
+    key: o.key,
+    name: o.name,
+    pct: Math.round(o.capturedPct),
+    gap: Math.round(o.totalGap),
+  }));
 
   if (rows.length === 0) return null;
-  const totalGap = rows.reduce((sum, r) => sum + r.gap, 0);
+  const totalGap = total;
 
   return (
     <Card title="Where your upside is">
@@ -763,7 +785,8 @@ function ObjectiveUpsideCard({
         style={{ color: BRAND.muted }}
       >
         How much of each area you have captured, ranked by what is still
-        available.
+        available. These are points of your score, on the same 0–100 scale as
+        the score itself.
       </p>
       <div
         className="mb-3 flex gap-4 text-[11px]"
@@ -1160,7 +1183,13 @@ function Verdict({
             ? `Your advisor restated your score upward, by ${Math.round(delta)} points.`
             : `Your advisor restated your score downward, by ${Math.abs(Math.round(delta))} points.`}
       </b>
-      {isFlat ? " — but not driver by driver. " : " "}
+      {/* Only claim the drivers disagreed when at least one actually moved —
+          otherwise this clause contradicts the sentence that follows it. */}
+      {isFlat
+        ? up.length > 0 || down.length > 0
+          ? " — but not driver by driver. "
+          : ". "
+        : " "}
       {up.length > 0 ? (
         <>
           They found more strength than you gave yourself credit for in{" "}
@@ -1185,12 +1214,17 @@ function Verdict({
 }
 
 /**
- * Provisional focus list, derived from where the most advisory points are still
- * available. This is a stand-in: once the advisor workspace persists the
- * problem→cure recommendations, this card should render those instead.
+ * Provisional focus list, derived from where the most points are still
+ * available across BOTH halves of the ValScore. This is a stand-in: once the
+ * advisor workspace persists the problem→cure recommendations, this card should
+ * render those instead.
+ *
+ * Deliberately no second "out of 100" here. The page already uses that phrase
+ * for the ValScore — the whole business — and repeating it inches later for a
+ * single driver's capture rate reads as the same measure when it is not.
  */
-function FocusCard({ drivers }: { drivers: Driver[] }) {
-  const top = topUpsideDrivers(drivers, 5).filter((d) => d.upsidePoints > 0);
+function FocusCard({ opportunities }: { opportunities: Opportunity[] }) {
+  const top = opportunities.filter((o) => o.totalGap > 0).slice(0, 5);
   if (top.length === 0) return null;
   return (
     <Card title="Where to focus">
@@ -1202,35 +1236,51 @@ function FocusCard({ drivers }: { drivers: Driver[] }) {
         Your advisor will turn these into a specific action plan.
       </p>
       <div className="flex flex-col gap-3">
-        {top.map((d, i) => (
-          <div
-            key={d.key}
-            className="flex items-start gap-3 rounded-[11px] border p-[14px_16px]"
-            style={{ borderColor: "#e4e9ef" }}
-          >
-            <span
-              className="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[12px] font-extrabold"
-              style={{ background: "#dcefec", color: BRAND.tealDark }}
+        {top.map((o, i) => {
+          const points = Math.round(o.totalGap);
+          return (
+            <div
+              key={o.key}
+              className="flex items-start gap-3 rounded-[11px] border p-[14px_16px]"
+              style={{ borderColor: "#e4e9ef" }}
             >
-              {i + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-bold">{d.name}</div>
-              <div
-                className="mt-0.5 text-[12.5px] leading-[1.5]"
-                style={{ color: BRAND.muted }}
+              <span
+                className="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[12px] font-extrabold"
+                style={{ background: "#dcefec", color: BRAND.tealDark }}
               >
-                Your advisor scored this {displayScore(d.advisorScore)} out of
-                100 —{" "}
-                <b style={{ color: BRAND.tealDark }}>
-                  {d.upsidePoints} point
-                  {d.upsidePoints === 1 ? "" : "s"}
-                </b>{" "}
-                of ValScore are still available here.
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-bold">{o.name}</div>
+                <div
+                  className="mt-0.5 text-[12.5px] leading-[1.5]"
+                  style={{ color: BRAND.muted }}
+                >
+                  {o.advisoryPct == null ? null : (
+                    <>
+                      Your advisor rated this {displayScore(o.advisoryPct)}%
+                      —{" "}
+                    </>
+                  )}
+                  <b style={{ color: BRAND.tealDark }}>
+                    {points} point{points === 1 ? "" : "s"}
+                  </b>{" "}
+                  {o.advisoryPct == null ? "of your score" : "of ValScore"} are
+                  still available here.
+                </div>
+                {o.advisoryPct == null ? null : (
+                  <div
+                    className="mt-1 text-[11px] leading-[1.5]"
+                    style={{ color: "#8a97a4" }}
+                  >
+                    {o.objectiveGap} from your own answers · {o.advisoryGap}{" "}
+                    from your advisor&apos;s review
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );
@@ -1326,7 +1376,7 @@ function TargetPlanner({
             key={v}
             type="button"
             onClick={() => setRaw(v.toLocaleString("en-US"))}
-            className="rounded-full border bg-white px-[13px] py-[7px] text-[12.5px] font-semibold"
+            className="rounded-full border bg-white px-[13px] py-[7px] text-[12.5px] font-semibold transition-colors hover:border-[#1f8a86] hover:bg-[#f4fbfa] hover:text-[#166f6b]"
             style={{ borderColor: "#d7dee6", color: "#4a5a68" }}
           >
             {formatCurrency(v)}
