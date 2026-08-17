@@ -4,7 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, CheckCircle2, Clock, BarChart3, ListChecks } from "lucide-react";
+import {
+  LogOut,
+  CheckCircle2,
+  Clock,
+  BarChart3,
+  ListChecks,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/client/")({
@@ -41,6 +47,7 @@ function ClientHome() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [sub, setSub] = useState<MySubmission | null>(null);
+  const [advisorStatus, setAdvisorStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,8 +61,22 @@ function ClientHome() {
     }
     const row = (data ?? [])[0] as MySubmission | undefined;
     setSub(row ?? null);
+    // The RPC doesn't carry advisor_status; read it directly (RLS scopes this
+    // to the signed-in client's own row) so we know whether their summary is
+    // ready to unlock.
+    if (row) {
+      const { data: statusRow } = await supabase
+        .from("submissions")
+        .select("advisor_status")
+        .eq("submission_id", row.submission_id)
+        .maybeSingle();
+      setAdvisorStatus((statusRow?.advisor_status as string | null) ?? null);
+    }
     setLoading(false);
   }
+
+  const summaryReady =
+    advisorStatus === "submitted" || advisorStatus === "final";
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -131,21 +152,27 @@ function ClientHome() {
                 <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div>
                   <p className="text-sm font-medium">10–15 minutes</p>
-                  <p className="text-xs text-muted-foreground">Save as you go</p>
+                  <p className="text-xs text-muted-foreground">
+                    Save as you go
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
                 <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div>
                   <p className="text-sm font-medium">Key business areas</p>
-                  <p className="text-xs text-muted-foreground">Finance, ops, market &amp; more</p>
+                  <p className="text-xs text-muted-foreground">
+                    Finance, ops, market &amp; more
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
                 <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div>
                   <p className="text-sm font-medium">Advisor review</p>
-                  <p className="text-xs text-muted-foreground">Personalised follow-up</p>
+                  <p className="text-xs text-muted-foreground">
+                    Personalised follow-up
+                  </p>
                 </div>
               </div>
             </div>
@@ -197,25 +224,44 @@ function ClientHome() {
           <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
             <CheckCircle2 className="h-8 w-8 text-primary" />
             <h2 className="mt-4 text-2xl font-semibold tracking-tight">
-              Submitted
+              {summaryReady ? "Your results are ready" : "Submitted"}
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Thank you — your assessment for{" "}
-              <span className="font-medium text-foreground">
-                {sub.company_name}
-              </span>{" "}
-              has been submitted. Your advisor will follow up with your
-              results.
+              {summaryReady ? (
+                <>
+                  Your advisor has completed their review of{" "}
+                  <span className="font-medium text-foreground">
+                    {sub.company_name}
+                  </span>
+                  . Your ValScore summary is ready to view.
+                </>
+              ) : (
+                <>
+                  Thank you — your assessment for{" "}
+                  <span className="font-medium text-foreground">
+                    {sub.company_name}
+                  </span>{" "}
+                  has been submitted. Your advisor will follow up with your
+                  results.
+                </>
+              )}
             </p>
+            {summaryReady ? (
+              <Button
+                size="lg"
+                className="mt-6"
+                onClick={() => navigate({ to: "/client/summary" })}
+              >
+                View your ValScore summary
+              </Button>
+            ) : null}
           </div>
         ) : (
           <div>
             <h2 className="text-3xl font-semibold tracking-tight">
               Continue your assessment
             </h2>
-            <p className="mt-3 text-muted-foreground">
-              {sub.company_name}
-            </p>
+            <p className="mt-3 text-muted-foreground">{sub.company_name}</p>
             <Button
               size="lg"
               className="mt-8"

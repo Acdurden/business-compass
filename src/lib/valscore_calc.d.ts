@@ -57,3 +57,11 @@ export function computeSectionScores(responses: unknown[], questions: unknown[])
 export function totalByType(sectionScores: SectionScore[], type: string): number;
 export function interpolatedMultiple(score: number, floors: number[], anchors: number[]): number;
 export function marketPosition(score: number, bands: Array<{ min: number; max: number; label: string }>): string;
+export function requiredScore(reqMultiple: number, floors: number[], anchors: number[]): number | null;
+export function targetAnalysis(
+  targetValuation: number,
+  amount: number,
+  currentScore: number,
+  floors: number[],
+  anchors: number[],
+): TargetAnalysis | null;

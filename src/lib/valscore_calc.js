@@ -222,4 +222,7 @@ function computeValuation(responses, questions, inputs, config) {
 export {
   CONFIG, DEFAULT_CONFIG, buildConfig, computeSectionScores, totalByType,
   interpolatedMultiple, marketPosition, computeValuation,
+  // Exported so the client-facing target planner can recompute interactively
+  // against a target the client types, rather than duplicating the maths.
+  requiredScore, targetAnalysis,
 };
