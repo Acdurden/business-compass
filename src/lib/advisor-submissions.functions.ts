@@ -7,6 +7,8 @@ export type AdvisorSubmissionRow = {
   company_name: string;
   client_status: string;
   advisor_status: string;
+  /** objective-only vs full-service; fixed at sign-up by the invite link used. */
+  plan: string;
   updated_at: string;
   owner_user_id: string | null;
   advisor_id: string | null;
@@ -26,11 +28,12 @@ export const listAllSubmissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdvisorSubmissionRow[]> => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("submissions")
       .select(
-        "submission_id,client_token,company_name,client_status,advisor_status,updated_at,owner_user_id,advisor_id",
+        "submission_id,client_token,company_name,client_status,advisor_status,plan,updated_at,owner_user_id,advisor_id",
       )
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -47,10 +50,16 @@ export type AdvisorSubmissionLoad = {
 
 export const getAdvisorSubmission = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { submissionId: string; questionnaireType: "objective" | "advisory" }) => data)
+  .inputValidator(
+    (data: {
+      submissionId: string;
+      questionnaireType: "objective" | "advisory";
+    }) => data,
+  )
   .handler(async ({ data, context }): Promise<AdvisorSubmissionLoad> => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
     const sub = await supabaseAdmin
       .from("submissions")
       .select("company_name,client_token,client_status,advisor_status")
@@ -69,7 +78,10 @@ export const getAdvisorSubmission = createServerFn({ method: "GET" })
       client_token: sub.data.client_token as string,
       client_status: sub.data.client_status as string,
       advisor_status: sub.data.advisor_status as string,
-      responses: (resp.data ?? []) as { question_id: string; answer_option_id: string }[],
+      responses: (resp.data ?? []) as {
+        question_id: string;
+        answer_option_id: string;
+      }[],
     };
   });
 
@@ -89,7 +101,8 @@ export const saveAdvisorResponse = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
     const responseId = `${data.submissionId}_${data.questionId}`;
     const { error } = await supabaseAdmin.from("responses").upsert(
       {
@@ -122,10 +135,14 @@ export const setAdvisorStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin
       .from("submissions")
-      .update({ advisor_status: data.status, updated_at: new Date().toISOString() })
+      .update({
+        advisor_status: data.status,
+        updated_at: new Date().toISOString(),
+      })
       .eq("submission_id", data.submissionId);
     if (data.onlyIfNotStarted) q = q.eq("advisor_status", "notstarted");
     const { error } = await q;
@@ -145,7 +162,8 @@ export const deleteSubmission = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
 
     // Confirm the submission exists (clearer than a silent no-op).
     const { data: sub, error: subErr } = await supabaseAdmin

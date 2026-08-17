@@ -6,15 +6,17 @@ function generateTempPassword(): string {
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
   let out = "";
-  for (let i = 0; i < bytes.length; i++) out += alphabet[bytes[i]! % alphabet.length];
+  for (let i = 0; i < bytes.length; i++)
+    out += alphabet[bytes[i]! % alphabet.length];
   return out + Math.floor(Math.random() * 10);
 }
-
 
 export const inviteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { email: string; redirectTo: string }) => {
-    const email = String(input?.email ?? "").trim().toLowerCase();
+    const email = String(input?.email ?? "")
+      .trim()
+      .toLowerCase();
     const redirectTo = String(input?.redirectTo ?? "").trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error("Invalid email");
@@ -34,13 +36,17 @@ export const inviteClient = createServerFn({ method: "POST" })
       throw new Error("Forbidden: advisor role required");
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
 
     // Try to invite. If the user already exists, fall back to a magic-link style
     // recovery so the client can (re)set a password.
-    const invite = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
-      redirectTo: data.redirectTo,
-    });
+    const invite = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      data.email,
+      {
+        redirectTo: data.redirectTo,
+      },
+    );
 
     let userId = invite.data?.user?.id ?? null;
 
@@ -65,7 +71,10 @@ export const inviteClient = createServerFn({ method: "POST" })
     // Stamp the client role (idempotent).
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
-      .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
+      .upsert(
+        { user_id: userId, role: "client" },
+        { onConflict: "user_id,role" },
+      );
     if (roleErr) throw new Error(roleErr.message);
 
     return { ok: true, userId, email: data.email };
@@ -74,7 +83,9 @@ export const inviteClient = createServerFn({ method: "POST" })
 export const createTestClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { email: string }) => {
-    const email = String(input?.email ?? "").trim().toLowerCase();
+    const email = String(input?.email ?? "")
+      .trim()
+      .toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error("Invalid email");
     }
@@ -89,7 +100,8 @@ export const createTestClient = createServerFn({ method: "POST" })
       throw new Error("Forbidden: advisor role required");
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
 
     const password = generateTempPassword();
 
@@ -121,17 +133,21 @@ export const createTestClient = createServerFn({ method: "POST" })
 
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
-      .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
+      .upsert(
+        { user_id: userId, role: "client" },
+        { onConflict: "user_id,role" },
+      );
     if (roleErr) throw new Error(roleErr.message);
 
     return { ok: true, userId, email: data.email, tempPassword: password };
   });
 
-
 export const createAdvisor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { email: string }) => {
-    const email = String(input?.email ?? "").trim().toLowerCase();
+    const email = String(input?.email ?? "")
+      .trim()
+      .toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error("Invalid email");
     }
@@ -147,7 +163,8 @@ export const createAdvisor = createServerFn({ method: "POST" })
       throw new Error("Forbidden: advisor role required");
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
 
     const password = generateTempPassword();
 
@@ -185,19 +202,21 @@ export const createAdvisor = createServerFn({ method: "POST" })
       .eq("role", "client")
       .maybeSingle();
     if (existingClient) {
-      throw new Error("This account is already a client; cannot also be an advisor");
+      throw new Error(
+        "This account is already a client; cannot also be an advisor",
+      );
     }
 
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
-      .upsert({ user_id: userId, role: "advisor" }, { onConflict: "user_id,role" });
+      .upsert(
+        { user_id: userId, role: "advisor" },
+        { onConflict: "user_id,role" },
+      );
     if (roleErr) throw new Error(roleErr.message);
 
     return { ok: true, userId, email: data.email, tempPassword: password };
-
   });
-
-
 
 // ---------------------------------------------------------------------------
 // Standalone client self-sign-up (reusable invite link).
@@ -206,27 +225,31 @@ export const createAdvisor = createServerFn({ method: "POST" })
 // No auth middleware: the code is the gate. Runs server-side via service role.
 // ---------------------------------------------------------------------------
 export const registerClientViaInvite = createServerFn({ method: "POST" })
-  .inputValidator((input: { code: string; email: string; password: string }) => {
-    const code = String(input?.code ?? "").trim();
-    const email = String(input?.email ?? "").trim().toLowerCase();
-    const password = String(input?.password ?? "");
-    if (!code) throw new Error("Missing invite code");
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new Error("Please enter a valid email address");
-    }
-    if (password.length < 8) {
-      throw new Error("Password must be at least 8 characters");
-    }
-    return { code, email, password };
-  })
+  .inputValidator(
+    (input: { code: string; email: string; password: string }) => {
+      const code = String(input?.code ?? "").trim();
+      const email = String(input?.email ?? "")
+        .trim()
+        .toLowerCase();
+      const password = String(input?.password ?? "");
+      if (!code) throw new Error("Missing invite code");
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error("Please enter a valid email address");
+      }
+      if (password.length < 8) {
+        throw new Error("Password must be at least 8 characters");
+      }
+      return { code, email, password };
+    },
+  )
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
 
-    // 1. The invite code must exist and be active. invite_codes is not in the
-    // generated Database types (service-role-only table), so access is cast.
-    const { data: codeRow, error: codeErr } = await (supabaseAdmin as any)
+    // 1. The invite code must exist and be active.
+    const { data: codeRow, error: codeErr } = await supabaseAdmin
       .from("invite_codes")
-      .select("code, active")
+      .select("code, active, plan")
       .eq("code", data.code)
       .eq("active", true)
       .maybeSingle();
@@ -237,11 +260,23 @@ export const registerClientViaInvite = createServerFn({ method: "POST" })
       );
     }
 
+    // The link decides the plan. Anything unrecognised falls back to full service.
+    const plan: "objective" | "full" =
+      codeRow.plan === "objective" ? "objective" : "full";
+
     // 2. Create the client account, email pre-confirmed so they can sign in now.
+    //
+    // The plan goes in app_metadata, NOT user_metadata: a signed-in user can
+    // update their own user_metadata through the Supabase client, which would
+    // let a client promote themselves from objective-only to full service for
+    // free. app_metadata is writable only with the service role, and
+    // start_my_client_submission reads it from the JWT when stamping the
+    // submission.
     const created = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
       email_confirm: true,
+      app_metadata: { plan },
     });
 
     if (created.error || !created.data?.user?.id) {
@@ -251,9 +286,15 @@ export const registerClientViaInvite = createServerFn({ method: "POST" })
         (u) => (u.email ?? "").toLowerCase() === data.email,
       );
       if (found) {
-        return { ok: false as const, reason: "exists" as const, email: data.email };
+        return {
+          ok: false as const,
+          reason: "exists" as const,
+          email: data.email,
+        };
       }
-      throw new Error(created.error?.message ?? "Could not create your account");
+      throw new Error(
+        created.error?.message ?? "Could not create your account",
+      );
     }
 
     const userId = created.data.user.id;
@@ -261,17 +302,27 @@ export const registerClientViaInvite = createServerFn({ method: "POST" })
     // 3. Grant the client role (idempotent).
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
-      .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
+      .upsert(
+        { user_id: userId, role: "client" },
+        { onConflict: "user_id,role" },
+      );
     if (roleErr) throw new Error(roleErr.message);
 
-    return { ok: true as const, userId, email: data.email };
+    return { ok: true as const, userId, email: data.email, plan };
   });
 
-// Returns the current active invite code so the admin UI can build the
-// shareable sign-up link. Advisor-only.
-export const getActiveInviteCode = createServerFn({ method: "GET" })
+export type InviteLink = {
+  code: string;
+  label: string;
+  plan: "objective" | "full";
+};
+
+// Returns the active invite codes so the admin UI can build the shareable
+// sign-up links -- one per plan, because the link a client signs up through is
+// what puts them on that plan. Advisor-only.
+export const getActiveInviteCodes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<{ links: InviteLink[] }> => {
     const { data: isAdvisor } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
       _role: "advisor",
@@ -280,14 +331,22 @@ export const getActiveInviteCode = createServerFn({ method: "GET" })
       throw new Error("Forbidden: advisor role required");
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await (supabaseAdmin as any)
+    const { supabaseAdmin } =
+      await import("@/integrations/supabase/client.server");
+    const { data: rows } = await supabaseAdmin
       .from("invite_codes")
-      .select("code")
+      .select("code, label, plan")
       .eq("active", true)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: true });
 
-    return { code: (row?.code as string | undefined) ?? null };
+    const links: InviteLink[] = (
+      (rows ?? []) as Array<Record<string, unknown>>
+    ).map((r) => ({
+      code: String(r.code ?? ""),
+      label: String(r.label ?? ""),
+      plan: r.plan === "objective" ? "objective" : "full",
+    }));
+    // Full service first -- it is the default offer.
+    links.sort((a, b) => (a.plan === b.plan ? 0 : a.plan === "full" ? -1 : 1));
+    return { links };
   });

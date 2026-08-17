@@ -33,7 +33,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { getActiveInviteCode } from "@/lib/client-invites.functions";
+import {
+  getActiveInviteCodes,
+  type InviteLink,
+} from "@/lib/client-invites.functions";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +67,7 @@ type Row = {
   company_name: string;
   client_status: string;
   advisor_status: string;
+  plan: string;
   updated_at: string;
   owner_user_id: string | null;
   advisor_id: string | null;
@@ -72,7 +76,8 @@ type Row = {
 function normalizeAdvisoryStatus(
   status: string | null | undefined,
 ): "notstarted" | "inprogress" | "submitted" | "final" {
-  if (status === "submitted" || status === "final" || status === "inprogress") return status;
+  if (status === "submitted" || status === "final" || status === "inprogress")
+    return status;
   return "notstarted";
 }
 
@@ -95,7 +100,8 @@ const CLIENT_STATUS_LABEL: Record<string, string> = {
 // step and which single action is primary.
 // -------------------------------------------------------------------------
 
-type PrimaryKind = "awaiting_client" | "do_advisory" | "mark_final" | "view_results";
+type PrimaryKind =
+  "awaiting_client" | "do_advisory" | "mark_final" | "view_results";
 
 function clientReady(clientStatus: string): boolean {
   return clientStatus === "submitted" || clientStatus === "complete";
@@ -105,19 +111,38 @@ function derive(r: Row): { kind: PrimaryKind; next: string } {
   const adv = normalizeAdvisoryStatus(r.advisor_status);
   if (!clientReady(r.client_status)) {
     return r.client_status === "inprogress"
-      ? { kind: "awaiting_client", next: "Client is completing their assessment." }
-      : { kind: "awaiting_client", next: "Waiting on the client to start their assessment." };
+      ? {
+          kind: "awaiting_client",
+          next: "Client is completing their assessment.",
+        }
+      : {
+          kind: "awaiting_client",
+          next: "Waiting on the client to start their assessment.",
+        };
   }
-  if (adv === "notstarted") return { kind: "do_advisory", next: "Ready for your advisory interview." };
-  if (adv === "inprogress") return { kind: "do_advisory", next: "Advisory in progress — resume when ready." };
-  if (adv === "submitted") return { kind: "mark_final", next: "Advisory submitted — review & finalize." };
+  if (adv === "notstarted")
+    return { kind: "do_advisory", next: "Ready for your advisory interview." };
+  if (adv === "inprogress")
+    return {
+      kind: "do_advisory",
+      next: "Advisory in progress — resume when ready.",
+    };
+  if (adv === "submitted")
+    return {
+      kind: "mark_final",
+      next: "Advisory submitted — review & finalize.",
+    };
   return { kind: "view_results", next: "Complete — results ready to share." };
 }
 
 // Action-first ordering: rows that need the advisor float to the top.
 function sortPriority(r: Row): number {
   const adv = normalizeAdvisoryStatus(r.advisor_status);
-  if (clientReady(r.client_status) && (adv === "notstarted" || adv === "inprogress")) return 0;
+  if (
+    clientReady(r.client_status) &&
+    (adv === "notstarted" || adv === "inprogress")
+  )
+    return 0;
   if (adv === "submitted") return 1;
   if (r.client_status === "inprogress") return 2;
   if (r.client_status === "notstarted") return 3;
@@ -137,7 +162,9 @@ function matchesFilter(r: Row, filter: FilterKey): boolean {
   const adv = normalizeAdvisoryStatus(r.advisor_status);
   switch (filter) {
     case "awaiting_advisory":
-      return clientReady(r.client_status) && adv !== "submitted" && adv !== "final";
+      return (
+        clientReady(r.client_status) && adv !== "submitted" && adv !== "final"
+      );
     case "client_in_progress":
       return r.client_status === "inprogress";
     case "submitted":
@@ -171,14 +198,34 @@ function toneClass(tone: Tone): string {
 }
 
 function clientTone(status: string): Tone {
-  return status === "complete" ? "green" : status === "submitted" ? "blue" : status === "inprogress" ? "amber" : "gray";
+  return status === "complete"
+    ? "green"
+    : status === "submitted"
+      ? "blue"
+      : status === "inprogress"
+        ? "amber"
+        : "gray";
 }
 
 function advisoryTone(adv: string): Tone {
-  return adv === "final" ? "green" : adv === "submitted" ? "blue" : adv === "inprogress" ? "amber" : "gray";
+  return adv === "final"
+    ? "green"
+    : adv === "submitted"
+      ? "blue"
+      : adv === "inprogress"
+        ? "amber"
+        : "gray";
 }
 
-function Pill({ label, value, tone }: { label: string; value: string; tone: Tone }) {
+function Pill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: Tone;
+}) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] ${toneClass(
@@ -191,21 +238,21 @@ function Pill({ label, value, tone }: { label: string; value: string; tone: Tone
   );
 }
 
-function InviteClientButton({ code }: { code: string | null }) {
-  const [open, setOpen] = useState(false);
+function InviteLinkRow({ link }: { link: InviteLink }) {
   const [copied, setCopied] = useState(false);
   const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://kriterionbvi.com";
-  const link = code ? `${origin}/invite?code=${code}` : "";
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://kriterionbvi.com";
+  const url = `${origin}/invite?code=${link.code}`;
 
   async function handleCopy() {
-    if (!link) return;
     try {
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(link);
+        await navigator.clipboard.writeText(url);
       } else {
         const textarea = document.createElement("textarea");
-        textarea.value = link;
+        textarea.value = url;
         textarea.style.position = "fixed";
         textarea.style.left = "-9999px";
         document.body.appendChild(textarea);
@@ -223,6 +270,38 @@ function InviteClientButton({ code }: { code: string | null }) {
   }
 
   return (
+    <div className="rounded-lg border border-border p-3">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">
+          {link.plan === "full" ? "Full service" : "Objective only"}
+        </span>
+        <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {link.plan === "full"
+            ? "Includes advisor review"
+            : "Self-assessment only"}
+        </span>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <code className="flex-1 truncate rounded-md border border-border bg-muted px-3 py-2 text-xs">
+          {url}
+        </code>
+        <Button size="sm" variant="outline" onClick={() => void handleCopy()}>
+          {copied ? (
+            <Check className="h-3.5 w-3.5 mr-1.5" />
+          ) : (
+            <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          {copied ? "Copied!" : "Copy"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function InviteClientButton({ links }: { links: InviteLink[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
     <>
       <Button size="sm" onClick={() => setOpen(true)}>
         <Mail className="h-3.5 w-3.5 mr-1.5" />
@@ -233,23 +312,17 @@ function InviteClientButton({ code }: { code: string | null }) {
           <DialogHeader>
             <DialogTitle>Invite a client</DialogTitle>
             <DialogDescription>
-              Share this link with anyone you'd like to onboard. They set up their own
-              account and start their assessment &mdash; no password for you to relay.
+              Share a link and the client sets up their own account &mdash; no
+              password for you to relay.{" "}
+              <b>The link you send decides their plan</b>, so pick the right
+              one.
             </DialogDescription>
           </DialogHeader>
-          {link ? (
-            <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-md border border-border bg-muted px-3 py-2 text-xs">
-                {link}
-              </code>
-              <Button size="sm" variant="outline" onClick={() => void handleCopy()}>
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 mr-1.5" />
-                ) : (
-                  <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
-                )}
-                {copied ? "Copied!" : "Copy"}
-              </Button>
+          {links.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {links.map((l) => (
+                <InviteLinkRow key={l.code} link={l} />
+              ))}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -257,8 +330,8 @@ function InviteClientButton({ code }: { code: string | null }) {
             </p>
           )}
           <p className="text-[11px] text-muted-foreground">
-            This is your reusable sign-up link. It can be regenerated later if you ever
-            want to retire the old one.
+            These are reusable sign-up links. A client&apos;s plan is fixed at
+            sign-up and shown on their row.
           </p>
         </DialogContent>
       </Dialog>
@@ -285,11 +358,14 @@ function SubmissionRow({
   const del = useServerFn(deleteSubmission);
 
   const [pending, setPending] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<null | "reset_client" | "reset_advisor" | "delete">(null);
+  const [confirm, setConfirm] = useState<
+    null | "reset_client" | "reset_advisor" | "delete"
+  >(null);
   const [pwOpen, setPwOpen] = useState(false);
-  const [pwResult, setPwResult] = useState<{ email: string | null; tempPassword: string } | null>(
-    null,
-  );
+  const [pwResult, setPwResult] = useState<{
+    email: string | null;
+    tempPassword: string;
+  } | null>(null);
 
   const adv = normalizeAdvisoryStatus(r.advisor_status);
   const ready = clientReady(r.client_status);
@@ -298,11 +374,15 @@ function SubmissionRow({
   async function markFinal() {
     setPending("final");
     try {
-      await setStatus({ data: { submissionId: r.submission_id, status: "final" } });
+      await setStatus({
+        data: { submissionId: r.submission_id, status: "final" },
+      });
       toast.success("Marked as final");
       onPatch({ advisor_status: "final" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not mark as final");
+      toast.error(
+        err instanceof Error ? err.message : "Could not mark as final",
+      );
     } finally {
       setPending(null);
     }
@@ -317,9 +397,14 @@ function SubmissionRow({
       return;
     setPending("edit");
     try {
-      await setStatus({ data: { submissionId: r.submission_id, status: "inprogress" } });
+      await setStatus({
+        data: { submissionId: r.submission_id, status: "inprogress" },
+      });
       onPatch({ advisor_status: "inprogress" });
-      navigate({ to: "/advisor/$submissionId", params: { submissionId: r.submission_id } });
+      navigate({
+        to: "/advisor/$submissionId",
+        params: { submissionId: r.submission_id },
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not reopen");
     } finally {
@@ -382,7 +467,9 @@ function SubmissionRow({
       setPwResult({ email: res.email, tempPassword: res.tempPassword });
       setPwOpen(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not reset password");
+      toast.error(
+        err instanceof Error ? err.message : "Could not reset password",
+      );
     } finally {
       setPending(null);
     }
@@ -407,14 +494,18 @@ function SubmissionRow({
       toast.success("Submission deleted");
       onDelete();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not delete submission");
+      toast.error(
+        err instanceof Error ? err.message : "Could not delete submission",
+      );
     } finally {
       setPending(null);
     }
   }
 
   const pwLoginUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
+    typeof window !== "undefined"
+      ? `${window.location.origin}/client/auth`
+      : "/client/auth";
 
   let primary: React.ReactNode;
   if (kind === "awaiting_client") {
@@ -427,7 +518,10 @@ function SubmissionRow({
   } else if (kind === "do_advisory") {
     primary = (
       <Button size="sm" asChild>
-        <Link to="/advisor/$submissionId" params={{ submissionId: r.submission_id }}>
+        <Link
+          to="/advisor/$submissionId"
+          params={{ submissionId: r.submission_id }}
+        >
           <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
           {adv === "inprogress" ? "Resume advisory" : "Complete advisory"}
         </Link>
@@ -435,7 +529,11 @@ function SubmissionRow({
     );
   } else if (kind === "mark_final") {
     primary = (
-      <Button size="sm" onClick={() => void markFinal()} disabled={pending === "final"}>
+      <Button
+        size="sm"
+        onClick={() => void markFinal()}
+        disabled={pending === "final"}
+      >
         <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
         {pending === "final" ? "Marking…" : "Mark as Final"}
       </Button>
@@ -443,7 +541,10 @@ function SubmissionRow({
   } else {
     primary = (
       <Button size="sm" asChild>
-        <Link to="/admin/results/$submissionId" params={{ submissionId: r.submission_id }}>
+        <Link
+          to="/admin/results/$submissionId"
+          params={{ submissionId: r.submission_id }}
+        >
           <Eye className="h-3.5 w-3.5 mr-1.5" />
           View results
         </Link>
@@ -455,7 +556,24 @@ function SubmissionRow({
     <li className="flex flex-col gap-3 px-4 py-3.5 md:grid md:grid-cols-[2.1fr_1.9fr_1.6fr_auto] md:items-center md:gap-4">
       {/* Company */}
       <div className="min-w-0">
-        <p className="font-medium truncate">{r.company_name}</p>
+        <p className="font-medium truncate flex items-center gap-2">
+          <span className="truncate">{r.company_name}</span>
+          <span
+            className={
+              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
+              (r.plan === "objective"
+                ? "border-border bg-muted text-muted-foreground"
+                : "border-primary/25 bg-primary/10 text-primary")
+            }
+            title={
+              r.plan === "objective"
+                ? "Objective only - self-assessment, no advisor review included"
+                : "Full service - includes an advisor review"
+            }
+          >
+            {r.plan === "objective" ? "Objective" : "Full service"}
+          </span>
+        </p>
         <p className="mt-0.5 flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
           <span className="truncate">{r.submission_id}</span>
           {r.owner_user_id ? (
@@ -468,9 +586,17 @@ function SubmissionRow({
 
       {/* Progress track */}
       <div className="flex flex-wrap items-center gap-2">
-        <Pill label="Client" value={CLIENT_STATUS_LABEL[r.client_status] ?? r.client_status} tone={clientTone(r.client_status)} />
+        <Pill
+          label="Client"
+          value={CLIENT_STATUS_LABEL[r.client_status] ?? r.client_status}
+          tone={clientTone(r.client_status)}
+        />
         <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-        <Pill label="Advisory" value={ADVISORY_STATUS_LABEL[adv]} tone={advisoryTone(adv)} />
+        <Pill
+          label="Advisory"
+          value={ADVISORY_STATUS_LABEL[adv]}
+          tone={advisoryTone(adv)}
+        />
       </div>
 
       {/* Next step */}
@@ -511,7 +637,10 @@ function SubmissionRow({
 
             {ready && kind !== "view_results" && (
               <DropdownMenuItem asChild>
-                <Link to="/admin/results/$submissionId" params={{ submissionId: r.submission_id }}>
+                <Link
+                  to="/admin/results/$submissionId"
+                  params={{ submissionId: r.submission_id }}
+                >
                   <Eye className="h-4 w-4" />
                   View results
                 </Link>
@@ -603,7 +732,8 @@ function SubmissionRow({
         title="Delete this submission?"
         description={
           <>
-            This permanently deletes {r.company_name ? <strong>{r.company_name}</strong> : "this"}
+            This permanently deletes{" "}
+            {r.company_name ? <strong>{r.company_name}</strong> : "this"}
             &rsquo;s submission and all of its answers (objective and advisory).
             {r.owner_user_id
               ? " The client's login stays active, so they could start a new assessment."
@@ -652,7 +782,9 @@ function SummaryTile({
         accent ? "border-primary/40 bg-primary/5" : "border-border bg-card"
       } ${active ? "ring-2 ring-primary/50" : "hover:bg-muted/40"}`}
     >
-      <div className={`text-2xl font-bold leading-none tracking-tight ${accent ? "text-primary" : ""}`}>
+      <div
+        className={`text-2xl font-bold leading-none tracking-tight ${accent ? "text-primary" : ""}`}
+      >
         {num}
       </div>
       <div className="mt-1.5 text-xs text-muted-foreground">{label}</div>
@@ -667,8 +799,8 @@ function SummaryTile({
 function AdminSubmissionsPage() {
   const navigate = useNavigate();
   const listAll = useServerFn(listAllSubmissions);
-  const getInviteCode = useServerFn(getActiveInviteCode);
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const getInviteCodes = useServerFn(getActiveInviteCodes);
+  const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -687,19 +819,25 @@ function AdminSubmissionsPage() {
         setLoading(false);
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : "Failed to load submissions");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to load submissions",
+        );
         setLoading(false);
       });
   }, [listAll]);
 
   useEffect(() => {
-    getInviteCode()
-      .then((res) => setInviteCode(res.code))
-      .catch(() => setInviteCode(null));
-  }, [getInviteCode]);
+    getInviteCodes()
+      .then((res) => setInviteLinks(res.links ?? []))
+      .catch(() => setInviteLinks([]));
+  }, [getInviteCodes]);
 
   function updateRow(submissionId: string, patch: Partial<Row>) {
-    setRows((prev) => prev.map((x) => (x.submission_id === submissionId ? { ...x, ...patch } : x)));
+    setRows((prev) =>
+      prev.map((x) =>
+        x.submission_id === submissionId ? { ...x, ...patch } : x,
+      ),
+    );
   }
 
   function removeRow(submissionId: string) {
@@ -728,12 +866,21 @@ function AdminSubmissionsPage() {
     });
   }, [searched, filter]);
 
-  const count = (f: FilterKey) => rows.filter((r) => matchesFilter(r, f)).length;
+  const count = (f: FilterKey) =>
+    rows.filter((r) => matchesFilter(r, f)).length;
 
   const chips: { key: FilterKey; label: string; n: number }[] = [
     { key: "all", label: "All", n: rows.length },
-    { key: "awaiting_advisory", label: "Needs my advisory", n: count("awaiting_advisory") },
-    { key: "client_in_progress", label: "Client in progress", n: count("client_in_progress") },
+    {
+      key: "awaiting_advisory",
+      label: "Needs my advisory",
+      n: count("awaiting_advisory"),
+    },
+    {
+      key: "client_in_progress",
+      label: "Client in progress",
+      n: count("client_in_progress"),
+    },
     { key: "submitted", label: "Submitted", n: count("submitted") },
     { key: "adv_final", label: "Final", n: count("adv_final") },
   ];
@@ -743,11 +890,15 @@ function AdminSubmissionsPage() {
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
-            <h1 className="text-lg font-semibold tracking-tight">Submissions</h1>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              Admin
+            </p>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Submissions
+            </h1>
           </div>
           <div className="flex gap-2">
-            <InviteClientButton code={inviteCode} />
+            <InviteClientButton links={inviteLinks} />
             <Button asChild variant="ghost" size="sm">
               <Link to="/admin/clients">
                 <Users className="h-3.5 w-3.5 mr-1.5" />
@@ -786,7 +937,9 @@ function AdminSubmissionsPage() {
             accent
             active={filter === "awaiting_advisory"}
             onClick={() =>
-              setFilter((f) => (f === "awaiting_advisory" ? "all" : "awaiting_advisory"))
+              setFilter((f) =>
+                f === "awaiting_advisory" ? "all" : "awaiting_advisory",
+              )
             }
           />
           <SummaryTile
@@ -794,20 +947,26 @@ function AdminSubmissionsPage() {
             label="Client in progress"
             active={filter === "client_in_progress"}
             onClick={() =>
-              setFilter((f) => (f === "client_in_progress" ? "all" : "client_in_progress"))
+              setFilter((f) =>
+                f === "client_in_progress" ? "all" : "client_in_progress",
+              )
             }
           />
           <SummaryTile
             num={count("not_started")}
             label="Not started"
             active={filter === "not_started"}
-            onClick={() => setFilter((f) => (f === "not_started" ? "all" : "not_started"))}
+            onClick={() =>
+              setFilter((f) => (f === "not_started" ? "all" : "not_started"))
+            }
           />
           <SummaryTile
             num={count("adv_final")}
             label="Final"
             active={filter === "adv_final"}
-            onClick={() => setFilter((f) => (f === "adv_final" ? "all" : "adv_final"))}
+            onClick={() =>
+              setFilter((f) => (f === "adv_final" ? "all" : "adv_final"))
+            }
           />
         </div>
 
@@ -842,7 +1001,9 @@ function AdminSubmissionsPage() {
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : visible.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {rows.length === 0 ? "No submissions yet." : "No submissions match your search."}
+            {rows.length === 0
+              ? "No submissions yet."
+              : "No submissions match your search."}
           </p>
         ) : (
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">

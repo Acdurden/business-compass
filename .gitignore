@@ -30,3 +30,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch folder used when handing files into the repo - not part of the project
+_to_delete/
+_incoming.tgz
+_repo_snapshot.tgz
