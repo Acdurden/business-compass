@@ -105,24 +105,25 @@ function ResultsPage() {
         setLoading(false);
         return;
       }
-      const [sectionsRes, questionsRes, responsesRes, scoreBandsRes, multiplesRes] = await Promise.all([
-        supabase
-          .from("sections")
-          .select("section_id,section_name,sort_order,questionnaire_type")
-          .eq("active", true)
-          .order("sort_order"),
-        supabase
-          .from("questions")
-          .select("question_id,section_id,questionnaire_type,question_text,sort_order,max_score")
-          .eq("active", true)
-          .order("sort_order"),
-        supabase
-          .from("responses")
-          .select("question_id,section_id,questionnaire_type,selected_answer_text,points_awarded")
-          .eq("submission_id", submissionId),
-        supabase.from("score_bands").select("band_type,min_score,max_score,label"),
-        supabase.from("valuation_multiples").select("band_index,nfi_multiple,ebitda_multiple"),
-      ]);
+      const [sectionsRes, questionsRes, responsesRes, scoreBandsRes, multiplesRes] =
+        await Promise.all([
+          supabase
+            .from("sections")
+            .select("section_id,section_name,sort_order,questionnaire_type")
+            .eq("active", true)
+            .order("sort_order"),
+          supabase
+            .from("questions")
+            .select("question_id,section_id,questionnaire_type,question_text,sort_order,max_score")
+            .eq("active", true)
+            .order("sort_order"),
+          supabase
+            .from("responses")
+            .select("question_id,section_id,questionnaire_type,selected_answer_text,points_awarded")
+            .eq("submission_id", submissionId),
+          supabase.from("score_bands").select("band_type,min_score,max_score,label"),
+          supabase.from("valuation_multiples").select("band_index,nfi_multiple,ebitda_multiple"),
+        ]);
       if (cancelled) return;
 
       const inputType =
@@ -202,8 +203,7 @@ function ResultsPage() {
     .filter((s) => s.questionnaire_type === "advisory")
     .reduce((acc, s) => acc + s.max_score, 0);
 
-  const inputType =
-    (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
+  const inputType = (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
   const amount = Number(sub.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
 
   return (
@@ -243,8 +243,8 @@ function ResultsPage() {
       <div className="mx-auto max-w-4xl px-6 py-8 space-y-8">
         {!advisoryComplete && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
-            Advisory questionnaire isn't marked complete yet — adjusted ValScore figures
-            below reflect the answers saved so far.
+            Advisory questionnaire isn't marked complete yet — adjusted ValScore figures below
+            reflect the answers saved so far.
           </div>
         )}
 
@@ -303,7 +303,6 @@ function ResultsPage() {
             responses={responsesList.filter((r) => r.questionnaire_type === "advisory")}
           />
         )}
-
       </div>
     </main>
   );
@@ -457,7 +456,9 @@ function ValuationRow({
       <td className="py-2.5 pr-3">{leg.marketPosition || "—"}</td>
       <td className="py-2.5 text-right">
         <div className="font-semibold">{fmtCurrency(leg.estimatedValuation)}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{fmtRange(leg.estimatedValuation)}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          {fmtRange(leg.estimatedValuation)}
+        </div>
       </td>
     </tr>
   );

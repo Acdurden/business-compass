@@ -63,13 +63,16 @@ function AuthPage() {
 
   // If already signed in, bounce away.
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        navigate({ to: advisorDestination(redirect) });
-      }
-    }).catch((err) => {
-      setAuthError(`Could not read existing session: ${describeAuthError(err)}`);
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (data.session) {
+          navigate({ to: advisorDestination(redirect) });
+        }
+      })
+      .catch((err) => {
+        setAuthError(`Could not read existing session: ${describeAuthError(err)}`);
+      });
   }, [navigate, redirect]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -159,7 +162,10 @@ function AuthPage() {
           className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
         >
           <div>
-            <Label htmlFor="email" className="text-xs uppercase tracking-wide text-muted-foreground">
+            <Label
+              htmlFor="email"
+              className="text-xs uppercase tracking-wide text-muted-foreground"
+            >
               Email
             </Label>
             <Input
@@ -174,7 +180,10 @@ function AuthPage() {
             />
           </div>
           <div>
-            <Label htmlFor="password" className="text-xs uppercase tracking-wide text-muted-foreground">
+            <Label
+              htmlFor="password"
+              className="text-xs uppercase tracking-wide text-muted-foreground"
+            >
               Password
             </Label>
             <Input
@@ -189,11 +198,7 @@ function AuthPage() {
             />
           </div>
           <Button type="submit" size="lg" className="w-full" disabled={busy}>
-            {busy
-              ? (status ?? "Please wait…")
-              : mode === "signin"
-                ? "Sign in"
-                : "Create account"}
+            {busy ? (status ?? "Please wait…") : mode === "signin" ? "Sign in" : "Create account"}
           </Button>
 
           {status ? (

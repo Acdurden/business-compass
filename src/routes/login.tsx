@@ -62,7 +62,11 @@ function HomePage() {
       toast.success("Signed in");
       navigate({ to: "/client" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Sign-in failed. Please check your email and password.");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Sign-in failed. Please check your email and password.",
+      );
     } finally {
       setBusy(false);
     }
@@ -96,7 +100,10 @@ function HomePage() {
             className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
           >
             <div>
-              <Label htmlFor="email" className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="email"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 Email
               </Label>
               <Input
@@ -111,7 +118,10 @@ function HomePage() {
               />
             </div>
             <div>
-              <Label htmlFor="password" className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="password"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 Password
               </Label>
               <Input

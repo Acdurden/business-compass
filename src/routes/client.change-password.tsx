@@ -65,9 +65,7 @@ function ClientChangePasswordPage() {
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             First-time setup
           </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight">
-            Choose a new password
-          </h1>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight">Choose a new password</h1>
           <p className="mt-2 text-xs text-muted-foreground">
             For your security, please set your own password before continuing.
           </p>

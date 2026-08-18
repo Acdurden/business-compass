@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** What the auth middleware puts on `context`, as far as these helpers need it. */
+type AuthedContext = { supabase: SupabaseClient<Database>; userId: string };
 
 export type AdvisorSubmissionRow = {
   submission_id: string;
@@ -14,7 +19,7 @@ export type AdvisorSubmissionRow = {
   advisor_id: string | null;
 };
 
-async function ensureAdvisor(context: { supabase: any; userId: string }) {
+async function ensureAdvisor(context: AuthedContext) {
   const { data: isAdvisor } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
     _role: "advisor",
@@ -28,8 +33,7 @@ export const listAllSubmissions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdvisorSubmissionRow[]> => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } =
-      await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("submissions")
       .select(
@@ -51,15 +55,11 @@ export type AdvisorSubmissionLoad = {
 export const getAdvisorSubmission = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (data: {
-      submissionId: string;
-      questionnaireType: "objective" | "advisory";
-    }) => data,
+    (data: { submissionId: string; questionnaireType: "objective" | "advisory" }) => data,
   )
   .handler(async ({ data, context }): Promise<AdvisorSubmissionLoad> => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } =
-      await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const sub = await supabaseAdmin
       .from("submissions")
       .select("company_name,client_token,client_status,advisor_status")
@@ -101,8 +101,7 @@ export const saveAdvisorResponse = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } =
-      await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const responseId = `${data.submissionId}_${data.questionId}`;
     const { error } = await supabaseAdmin.from("responses").upsert(
       {
@@ -135,8 +134,7 @@ export const setAdvisorStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } =
-      await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin
       .from("submissions")
       .update({
@@ -162,8 +160,7 @@ export const deleteSubmission = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await ensureAdvisor(context);
-    const { supabaseAdmin } =
-      await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Confirm the submission exists (clearer than a silent no-op).
     const { data: sub, error: subErr } = await supabaseAdmin

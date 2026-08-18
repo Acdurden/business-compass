@@ -23,7 +23,11 @@ function ClientAuthPage() {
   // Detect invite/recovery tokens in URL hash and set the session.
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.includes("access_token") || hash.includes("type=invite") || hash.includes("type=recovery")) {
+    if (
+      hash.includes("access_token") ||
+      hash.includes("type=invite") ||
+      hash.includes("type=recovery")
+    ) {
       setMode("setpassword");
       // Supabase JS automatically parses the hash and persists the session.
       void supabase.auth.getSession().then(({ data }) => {
@@ -129,9 +133,7 @@ function ClientAuthPage() {
             className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
           >
             {!hasRecoverySession && (
-              <p className="text-xs text-muted-foreground">
-                Validating your invite link…
-              </p>
+              <p className="text-xs text-muted-foreground">Validating your invite link…</p>
             )}
             {email && (
               <p className="text-xs text-muted-foreground">
@@ -139,7 +141,10 @@ function ClientAuthPage() {
               </p>
             )}
             <div>
-              <Label htmlFor="new-password" className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="new-password"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 New password
               </Label>
               <Input
@@ -153,7 +158,12 @@ function ClientAuthPage() {
                 className="mt-1.5"
               />
             </div>
-            <Button type="submit" size="lg" className="w-full" disabled={busy || !hasRecoverySession}>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={busy || !hasRecoverySession}
+            >
               {busy ? "Saving…" : "Set password & continue"}
             </Button>
             <button
@@ -176,7 +186,10 @@ function ClientAuthPage() {
               Enter your email and we'll send you a link to reset your password.
             </p>
             <div>
-              <Label htmlFor="forgot-email" className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="forgot-email"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 Email
               </Label>
               <Input
@@ -207,7 +220,10 @@ function ClientAuthPage() {
             className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
           >
             <div>
-              <Label htmlFor="email" className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="email"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 Email
               </Label>
               <Input
@@ -222,7 +238,10 @@ function ClientAuthPage() {
               />
             </div>
             <div>
-              <Label htmlFor="password" className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="password"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 Password
               </Label>
               <Input

@@ -137,39 +137,33 @@ function ClientHome() {
       // directly. RLS scopes this to the signed-in client's own row.
       const { data: statusRow } = await supabase
         .from("submissions")
-        .select(
-          "advisor_status,plan,valuation_input_type,valuation_input_amount,target_valuation",
-        )
+        .select("advisor_status,plan,valuation_input_type,valuation_input_amount,target_valuation")
         .eq("submission_id", row.submission_id)
         .maybeSingle();
       const extraData = (statusRow ?? null) as SubmissionExtras | null;
       setExtras(extraData);
-      const rowPlan: Plan =
-        extraData?.plan === "objective" ? "objective" : "full";
+      const rowPlan: Plan = extraData?.plan === "objective" ? "objective" : "full";
       setPlan(rowPlan);
 
       // Progress, for the in-progress state.
-      const [
-        { count: answeredCount },
-        { count: questionCount },
-        { count: advisoryCount },
-      ] = await Promise.all([
-        supabase
-          .from("responses")
-          .select("question_id", { count: "exact", head: true })
-          .eq("submission_id", row.submission_id)
-          .eq("questionnaire_type", "objective"),
-        supabase
-          .from("questions")
-          .select("question_id", { count: "exact", head: true })
-          .eq("active", true)
-          .eq("questionnaire_type", "objective"),
-        supabase
-          .from("responses")
-          .select("question_id", { count: "exact", head: true })
-          .eq("submission_id", row.submission_id)
-          .eq("questionnaire_type", "advisory"),
-      ]);
+      const [{ count: answeredCount }, { count: questionCount }, { count: advisoryCount }] =
+        await Promise.all([
+          supabase
+            .from("responses")
+            .select("question_id", { count: "exact", head: true })
+            .eq("submission_id", row.submission_id)
+            .eq("questionnaire_type", "objective"),
+          supabase
+            .from("questions")
+            .select("question_id", { count: "exact", head: true })
+            .eq("active", true)
+            .eq("questionnaire_type", "objective"),
+          supabase
+            .from("responses")
+            .select("question_id", { count: "exact", head: true })
+            .eq("submission_id", row.submission_id)
+            .eq("questionnaire_type", "advisory"),
+        ]);
       setAnswered(answeredCount ?? null);
       setTotalQuestions(questionCount ?? null);
       const advisoryAnswers = advisoryCount ?? 0;
@@ -178,12 +172,7 @@ function ClientHome() {
       // Only load the scoring machinery when there is actually a result to
       // show. A half-finished assessment must not produce a partial score.
       if (
-        deriveStage(
-          row,
-          extraData?.advisor_status ?? null,
-          rowPlan,
-          advisoryAnswers,
-        ) === "complete"
+        deriveStage(row, extraData?.advisor_status ?? null, rowPlan, advisoryAnswers) === "complete"
       ) {
         const loaded = await loadScoreData(row.submission_id, extraData);
         setScoreData(loaded);
@@ -226,12 +215,7 @@ function ClientHome() {
     navigate({ to: "/client/questionnaire" });
   }
 
-  const stage = deriveStage(
-    sub,
-    extras?.advisor_status ?? null,
-    plan,
-    advisoryAnswered,
-  );
+  const stage = deriveStage(sub, extras?.advisor_status ?? null, plan, advisoryAnswered);
 
   return (
     <Shell
@@ -288,35 +272,27 @@ async function loadScoreData(
   submissionId: string,
   extras: SubmissionExtras | null,
 ): Promise<ScoreData | null> {
-  const [sectionsRes, questionsRes, responsesRes, bandsRes, multiplesRes] =
-    await Promise.all([
-      supabase
-        .from("sections")
-        .select("section_id,section_name,sort_order,questionnaire_type")
-        .eq("active", true)
-        .order("sort_order"),
-      supabase
-        .from("questions")
-        .select("question_id,section_id,questionnaire_type,max_score")
-        .eq("active", true),
-      supabase
-        .from("responses")
-        .select("question_id,section_id,questionnaire_type,points_awarded")
-        .eq("submission_id", submissionId),
-      supabase
-        .from("score_bands")
-        .select("band_type,min_score,max_score,label"),
-      supabase
-        .from("valuation_multiples")
-        .select("band_index,nfi_multiple,ebitda_multiple"),
-    ]);
+  const [sectionsRes, questionsRes, responsesRes, bandsRes, multiplesRes] = await Promise.all([
+    supabase
+      .from("sections")
+      .select("section_id,section_name,sort_order,questionnaire_type")
+      .eq("active", true)
+      .order("sort_order"),
+    supabase
+      .from("questions")
+      .select("question_id,section_id,questionnaire_type,max_score")
+      .eq("active", true),
+    supabase
+      .from("responses")
+      .select("question_id,section_id,questionnaire_type,points_awarded")
+      .eq("submission_id", submissionId),
+    supabase.from("score_bands").select("band_type,min_score,max_score,label"),
+    supabase.from("valuation_multiples").select("band_index,nfi_multiple,ebitda_multiple"),
+  ]);
 
   if (!questionsRes.data || questionsRes.data.length === 0) return null;
 
-  const config = buildConfig(
-    (bandsRes.data ?? []) as never,
-    (multiplesRes.data ?? []) as never,
-  );
+  const config = buildConfig((bandsRes.data ?? []) as never, (multiplesRes.data ?? []) as never);
   const result = computeValuation(
     (responsesRes.data ?? []) as never,
     (questionsRes.data ?? []) as never,
@@ -384,8 +360,7 @@ function navItems(
           {
             label: "Upgrade: Advisor review",
             upgrade: true,
-            onClick: () =>
-              toast.info("We'll be in touch about adding an advisor review."),
+            onClick: () => toast.info("We'll be in touch about adding an advisor review."),
           } satisfies NavItem,
         ]
       : []),
@@ -440,18 +415,12 @@ function Shell({
               <button
                 key={item.label}
                 type="button"
-                onClick={() =>
-                  item.onClick ? item.onClick() : item.to && onNavigate(item.to)
-                }
+                onClick={() => (item.onClick ? item.onClick() : item.to && onNavigate(item.to))}
                 className="flex items-center gap-2.5 border-l-[3px] px-[18px] py-2.5 text-left text-[13px] transition-colors hover:bg-[#16293a] hover:text-white"
                 style={{
                   borderLeftColor: item.active ? BRAND.teal : "transparent",
                   background: item.active ? "#16293a" : "transparent",
-                  color: item.active
-                    ? "#ffffff"
-                    : item.upgrade
-                      ? "#7fd3ce"
-                      : "#a8bccd",
+                  color: item.active ? "#ffffff" : item.upgrade ? "#7fd3ce" : "#a8bccd",
                   fontWeight: item.active ? 600 : 400,
                 }}
               >
@@ -477,9 +446,7 @@ function Shell({
           className="flex items-center justify-between px-5 py-3 md:hidden"
           style={{ background: BRAND.navy }}
         >
-          <span className="text-[15px] font-bold tracking-wide text-white">
-            KRITERION
-          </span>
+          <span className="text-[15px] font-bold tracking-wide text-white">KRITERION</span>
           <Button
             variant="ghost"
             size="sm"
@@ -544,10 +511,7 @@ function PageHead({
 }) {
   return (
     <div className="mb-[18px]">
-      <p
-        className="text-[11px] uppercase tracking-[0.18em]"
-        style={{ color: BRAND.muted }}
-      >
+      <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: BRAND.muted }}>
         {eyebrow}
       </p>
       <h1 className="mt-1 flex flex-wrap items-center gap-2.5 text-[23px] font-semibold tracking-tight">
@@ -587,10 +551,7 @@ function Fact({ title, sub }: { title: string; sub: string }) {
       style={{ borderColor: "#e4e9ef", background: "#f6f8fa" }}
     >
       <p className="text-[13px] font-bold">{title}</p>
-      <p
-        className="mt-0.5 text-[11.5px] leading-[1.45]"
-        style={{ color: BRAND.muted }}
-      >
+      <p className="mt-0.5 text-[11.5px] leading-[1.45]" style={{ color: BRAND.muted }}>
         {sub}
       </p>
     </div>
@@ -633,10 +594,7 @@ function Stepper({
           >
             {s.label}
           </div>
-          <div
-            className="mt-0.5 text-center text-[10.5px]"
-            style={{ color: "#9aa8b5" }}
-          >
+          <div className="mt-0.5 text-center text-[10.5px]" style={{ color: "#9aa8b5" }}>
             {s.note}
           </div>
         </div>
@@ -682,17 +640,13 @@ function NotStarted({
           className="mt-2.5 max-w-[620px] text-[14px] leading-[1.65]"
           style={{ color: BRAND.muted }}
         >
-          This assessment scores your business across the areas buyers actually
-          price — financial quality, client concentration, founder dependency,
-          operations, positioning and growth. You&apos;ll get a value-readiness
-          score and an estimated valuation range at the end.
+          This assessment scores your business across the areas buyers actually price — financial
+          quality, client concentration, founder dependency, operations, positioning and growth.
+          You&apos;ll get a value-readiness score and an estimated valuation range at the end.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <Fact
-            title="10–15 minutes"
-            sub="Saves as you go — leave and come back anytime"
-          />
+          <Fact title="10–15 minutes" sub="Saves as you go — leave and come back anytime" />
           <Fact title="24 questions" sub="Across 8 scored value drivers" />
           {plan === "full" ? (
             <Fact
@@ -731,12 +685,7 @@ function NotStarted({
               placeholder="Acme Co."
               className="mt-2"
             />
-            <Button
-              type="submit"
-              size="lg"
-              className="mt-5"
-              disabled={busy || !companyName.trim()}
-            >
+            <Button type="submit" size="lg" className="mt-5" disabled={busy || !companyName.trim()}>
               {busy ? "Starting…" : "Begin your assessment"}
             </Button>
           </form>
@@ -793,10 +742,7 @@ function InProgress({
                 style={{ color: BRAND.navy }}
               >
                 {answered}
-                <span
-                  className="text-[17px] font-normal"
-                  style={{ color: BRAND.muted }}
-                >
+                <span className="text-[17px] font-normal" style={{ color: BRAND.muted }}>
                   {" "}
                   of {total}
                 </span>
@@ -810,21 +756,15 @@ function InProgress({
             </div>
           ) : null}
           <div className="min-w-[220px] flex-1">
-            <div
-              className="h-2.5 overflow-hidden rounded-md"
-              style={{ background: "#eef2f6" }}
-            >
+            <div className="h-2.5 overflow-hidden rounded-md" style={{ background: "#eef2f6" }}>
               <div
                 className="h-full rounded-md transition-all"
                 style={{ width: `${pct ?? 0}%`, background: BRAND.teal }}
               />
             </div>
-            <p
-              className="mt-2.5 text-[12.5px] leading-[1.5]"
-              style={{ color: BRAND.muted }}
-            >
-              Every answer is saved automatically — you can close this and pick
-              up exactly where you left off.
+            <p className="mt-2.5 text-[12.5px] leading-[1.5]" style={{ color: BRAND.muted }}>
+              Every answer is saved automatically — you can close this and pick up exactly where you
+              left off.
             </p>
           </div>
           <Button size="lg" className="shrink-0" onClick={onContinue}>
@@ -834,16 +774,11 @@ function InProgress({
       </Card>
 
       <Card title="What you'll get">
-        <p className="text-sm font-medium">
-          Your score unlocks when you finish
-        </p>
-        <p
-          className="mt-1 text-[13px] leading-[1.6]"
-          style={{ color: BRAND.muted }}
-        >
-          We don&apos;t show a partial score — a half-finished assessment would
-          give you a misleading number. Complete all the questions and your
-          score, valuation range and biggest opportunities all appear here.
+        <p className="text-sm font-medium">Your score unlocks when you finish</p>
+        <p className="mt-1 text-[13px] leading-[1.6]" style={{ color: BRAND.muted }}>
+          We don&apos;t show a partial score — a half-finished assessment would give you a
+          misleading number. Complete all the questions and your score, valuation range and biggest
+          opportunities all appear here.
         </p>
       </Card>
     </>
@@ -888,10 +823,7 @@ function TimelineItem({
       </span>
       <div>
         <p className="text-sm font-semibold">{title}</p>
-        <p
-          className="mt-0.5 text-[13px] leading-[1.55]"
-          style={{ color: BRAND.muted }}
-        >
+        <p className="mt-0.5 text-[13px] leading-[1.55]" style={{ color: BRAND.muted }}>
           {body}
         </p>
       </div>
@@ -933,12 +865,9 @@ function AwaitingReview({ companyName }: { companyName: string }) {
 
       <Card>
         <p className="text-sm font-medium">Nothing needed from you right now</p>
-        <p
-          className="mt-1 text-[13px] leading-[1.6]"
-          style={{ color: BRAND.muted }}
-        >
-          We&apos;ll let you know the moment your results are ready. Most
-          reviews complete within a few business days.
+        <p className="mt-1 text-[13px] leading-[1.6]" style={{ color: BRAND.muted }}>
+          We&apos;ll let you know the moment your results are ready. Most reviews complete within a
+          few business days.
         </p>
       </Card>
     </>
@@ -976,10 +905,7 @@ function Tile({
           : { borderColor: "#e4e9ef", background: "#fff" }
       }
     >
-      <div
-        className="text-[10.5px] uppercase tracking-[0.08em]"
-        style={{ color: BRAND.muted }}
-      >
+      <div className="text-[10.5px] uppercase tracking-[0.08em]" style={{ color: BRAND.muted }}>
         {label}
       </div>
       <div
@@ -1020,10 +946,7 @@ function OpportunityRow({ o }: { o: Opportunity }) {
       <div className="flex items-start justify-between gap-3 md:block">
         <div className="text-[13px] font-semibold">
           {o.name}
-          <span
-            className="mt-0.5 block text-[10.5px] font-normal"
-            style={{ color: BRAND.muted }}
-          >
+          <span className="mt-0.5 block text-[10.5px] font-normal" style={{ color: BRAND.muted }}>
             {pct}% captured
             {o.advisoryPct == null
               ? ""
@@ -1047,16 +970,10 @@ function OpportunityRow({ o }: { o: Opportunity }) {
         <span style={{ width: `${100 - pct}%`, background: BRAND.upside }} />
       </div>
       <div className="hidden text-right md:block">
-        <div
-          className="text-[15px] font-extrabold leading-none"
-          style={{ color: BRAND.tealDark }}
-        >
+        <div className="text-[15px] font-extrabold leading-none" style={{ color: BRAND.tealDark }}>
           +{points}
         </div>
-        <div
-          className="mt-0.5 text-[9px] font-bold uppercase"
-          style={{ color: BRAND.muted }}
-        >
+        <div className="mt-0.5 text-[9px] font-bold uppercase" style={{ color: BRAND.muted }}>
           pts
         </div>
       </div>
@@ -1105,15 +1022,8 @@ function Complete({
       ? grossObjective(data.result.objectiveScore, objectiveMax)
       : data.result.valScore
     : null;
-  const band =
-    data && headline != null
-      ? bandFor(headline, data.config.adjustedBands)
-      : null;
-  const leg = data
-    ? isObjective
-      ? data.result.objective
-      : data.result.adjusted
-    : null;
+  const band = data && headline != null ? bandFor(headline, data.config.adjustedBands) : null;
+  const leg = data ? (isObjective ? data.result.objective : data.result.adjusted) : null;
 
   const rawAmount = Number(extras?.valuation_input_amount ?? 0);
   const hasAmount = Number.isFinite(rawAmount) && rawAmount > 0;
@@ -1195,17 +1105,13 @@ function Complete({
           label="Value goal"
           value={target > 0 ? formatCurrency(target) : "Not set"}
           valueClass="text-[20px]"
-          note={
-            target > 0 ? "Your target valuation" : "Set one on your summary"
-          }
+          note={target > 0 ? "Your target valuation" : "Set one on your summary"}
         />
         <Tile
           label="Assessment"
           value="Complete"
           valueClass="text-[20px]"
-          note={
-            isObjective ? "All 8 drivers scored" : "Reviewed by your advisor"
-          }
+          note={isObjective ? "All 8 drivers scored" : "Reviewed by your advisor"}
         />
       </div>
 
@@ -1214,8 +1120,7 @@ function Complete({
           <Card title="Your biggest opportunities">
             {opportunities.length === 0 ? (
               <p className="text-[13px]" style={{ color: BRAND.muted }}>
-                Nothing outstanding — you have captured everything this
-                assessment measures.
+                Nothing outstanding — you have captured everything this assessment measures.
               </p>
             ) : (
               <>
@@ -1234,10 +1139,7 @@ function Complete({
                       ? "Total available across all 8 drivers"
                       : "Total ValScore still available"}
                   </span>
-                  <span
-                    className="text-[16px]"
-                    style={{ color: BRAND.tealDark }}
-                  >
+                  <span className="text-[16px]" style={{ color: BRAND.tealDark }}>
                     +{totalOpen}
                   </span>
                 </div>
@@ -1257,22 +1159,15 @@ function Complete({
         <div>
           <Card title="Your results">
             <p className="text-[14px] font-bold">
-              {isObjective
-                ? "Your objective results are ready"
-                : "Your ValScore summary is ready"}
+              {isObjective ? "Your objective results are ready" : "Your ValScore summary is ready"}
             </p>
-            <p
-              className="mt-1 text-[12.5px] leading-[1.55]"
-              style={{ color: BRAND.muted }}
-            >
+            <p className="mt-1 text-[12.5px] leading-[1.55]" style={{ color: BRAND.muted }}>
               {isObjective
                 ? "Your score, valuation range and target planner are complete and yours to keep."
                 : "Your advisor has reviewed your assessment and restated your score. Your summary includes their read on every driver and where your upside sits."}
             </p>
             <Button className="mt-3.5" onClick={onViewSummary}>
-              {isObjective
-                ? "View your full summary"
-                : "View your ValScore summary"}
+              {isObjective ? "View your full summary" : "View your ValScore summary"}
             </Button>
           </Card>
 
@@ -1296,13 +1191,9 @@ function Complete({
               <p className="mt-2 text-[15px] font-extrabold">
                 Unlock your advisor-adjusted valuation
               </p>
-              <p
-                className="mt-1 text-[12.5px] leading-[1.5]"
-                style={{ color: BRAND.muted }}
-              >
-                An advisor interviews you on the things a self-assessment
-                can&apos;t capture, then restates your score and builds a
-                prioritised action plan.
+              <p className="mt-1 text-[12.5px] leading-[1.5]" style={{ color: BRAND.muted }}>
+                An advisor interviews you on the things a self-assessment can&apos;t capture, then
+                restates your score and builds a prioritised action plan.
               </p>
               <ul className="mt-3 list-disc space-y-1 pl-5 text-[12.5px]">
                 <li>Your ValScore — validated, not self-reported</li>
@@ -1312,11 +1203,7 @@ function Complete({
               <Button
                 className="mt-4"
                 style={{ background: BRAND.teal }}
-                onClick={() =>
-                  toast.info(
-                    "We'll be in touch about adding an advisor review.",
-                  )
-                }
+                onClick={() => toast.info("We'll be in touch about adding an advisor review.")}
               >
                 Add an advisor review
               </Button>
@@ -1330,13 +1217,9 @@ function Complete({
             }}
           >
             <p className="text-[14px] font-bold">Set your value goal</p>
-            <p
-              className="mt-1 text-[12.5px] leading-[1.5]"
-              style={{ color: BRAND.muted }}
-            >
-              Tell us what you&apos;d like the business to be worth, and
-              we&apos;ll map the score — and any income growth — it would take
-              to get there.
+            <p className="mt-1 text-[12.5px] leading-[1.5]" style={{ color: BRAND.muted }}>
+              Tell us what you&apos;d like the business to be worth, and we&apos;ll map the score —
+              and any income growth — it would take to get there.
             </p>
             <Button className="mt-3" onClick={onViewSummary}>
               {target > 0 ? "Change your target" : "Set a target"}
@@ -1377,9 +1260,7 @@ function Complete({
               <div className="flex-1">
                 Full Valuation Report
                 <div className="text-[11px]" style={{ color: BRAND.muted }}>
-                  {isObjective
-                    ? "Included with an advisor review"
-                    : "Coming soon"}
+                  {isObjective ? "Included with an advisor review" : "Coming soon"}
                 </div>
               </div>
               <span

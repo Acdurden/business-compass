@@ -89,8 +89,8 @@ function InvitePage() {
               Welcome to Kriterion
             </h1>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              Create your account to begin your confidential business valuation
-              assessment. You'll use this email and password to sign back in anytime.
+              Create your account to begin your confidential business valuation assessment. You'll
+              use this email and password to sign back in anytime.
             </p>
           </div>
 
@@ -98,8 +98,7 @@ function InvitePage() {
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm text-center">
               <p className="text-sm text-foreground font-medium">This link is incomplete.</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Please use the full invite link your advisor sent you, or ask them to
-                resend it.
+                Please use the full invite link your advisor sent you, or ask them to resend it.
               </p>
             </div>
           ) : (
@@ -108,7 +107,10 @@ function InvitePage() {
               className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4"
             >
               <div>
-                <Label htmlFor="email" className="text-xs uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="email"
+                  className="text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Email
                 </Label>
                 <Input
@@ -123,7 +125,10 @@ function InvitePage() {
                 />
               </div>
               <div>
-                <Label htmlFor="password" className="text-xs uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="password"
+                  className="text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Create password
                 </Label>
                 <Input
@@ -139,7 +144,10 @@ function InvitePage() {
                 <p className="mt-1 text-[11px] text-muted-foreground">At least 8 characters.</p>
               </div>
               <div>
-                <Label htmlFor="confirm" className="text-xs uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="confirm"
+                  className="text-xs uppercase tracking-wide text-muted-foreground"
+                >
                   Confirm password
                 </Label>
                 <Input

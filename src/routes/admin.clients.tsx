@@ -66,9 +66,7 @@ function ClientsPage() {
       <header className="border-b border-border/60">
         <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Admin
-            </p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
             <h1 className="text-lg font-semibold tracking-tight">Clients</h1>
           </div>
           <div className="flex gap-2">
@@ -94,10 +92,7 @@ function ClientsPage() {
         ) : (
           <ul className="rounded-xl border border-border bg-card shadow-sm divide-y divide-border">
             {rows.map((r) => (
-              <li
-                key={r.user_id}
-                className="p-4 flex items-center justify-between gap-3"
-              >
+              <li key={r.user_id} className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium truncate">{r.email ?? "(no email)"}</p>
                   {r.company_names.length > 0 && (
@@ -110,16 +105,11 @@ function ClientsPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <ResetClientPasswordButton
-                    userId={r.user_id}
-                    email={r.email}
-                  />
+                  <ResetClientPasswordButton userId={r.user_id} email={r.email} />
                   <DeleteClientButton
                     userId={r.user_id}
                     email={r.email}
-                    onDeleted={() =>
-                      setRows((prev) => prev.filter((x) => x.user_id !== r.user_id))
-                    }
+                    onDeleted={() => setRows((prev) => prev.filter((x) => x.user_id !== r.user_id))}
                   />
                 </div>
               </li>
@@ -131,13 +121,7 @@ function ClientsPage() {
   );
 }
 
-function ResetClientPasswordButton({
-  userId,
-  email,
-}: {
-  userId: string;
-  email: string | null;
-}) {
+function ResetClientPasswordButton({ userId, email }: { userId: string; email: string | null }) {
   const reset = useServerFn(resetClientPasswordByUserId);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -163,9 +147,7 @@ function ResetClientPasswordButton({
   }
 
   const loginUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/client/auth`
-      : "/client/auth";
+    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
 
   return (
     <>

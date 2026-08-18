@@ -296,7 +296,6 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
     y += 60;
   }
 
-
   // Footer on each page
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -309,12 +308,9 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
       margin,
       doc.internal.pageSize.getHeight() - 24,
     );
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      pageW - margin,
-      doc.internal.pageSize.getHeight() - 24,
-      { align: "right" },
-    );
+    doc.text(`Page ${i} of ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 24, {
+      align: "right",
+    });
   }
 
   const safeName = sub.company_name.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");

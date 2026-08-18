@@ -34,10 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import {
-  getActiveInviteCodes,
-  type InviteLink,
-} from "@/lib/client-invites.functions";
+import { getActiveInviteCodes, type InviteLink } from "@/lib/client-invites.functions";
 import {
   Dialog,
   DialogContent,
@@ -77,8 +74,7 @@ type Row = {
 function normalizeAdvisoryStatus(
   status: string | null | undefined,
 ): "notstarted" | "inprogress" | "submitted" | "final" {
-  if (status === "submitted" || status === "final" || status === "inprogress")
-    return status;
+  if (status === "submitted" || status === "final" || status === "inprogress") return status;
   return "notstarted";
 }
 
@@ -101,8 +97,7 @@ const CLIENT_STATUS_LABEL: Record<string, string> = {
 // step and which single action is primary.
 // -------------------------------------------------------------------------
 
-type PrimaryKind =
-  "awaiting_client" | "do_advisory" | "mark_final" | "view_results";
+type PrimaryKind = "awaiting_client" | "do_advisory" | "mark_final" | "view_results";
 
 function clientReady(clientStatus: string): boolean {
   return clientStatus === "submitted" || clientStatus === "complete";
@@ -139,11 +134,7 @@ function derive(r: Row): { kind: PrimaryKind; next: string } {
 // Action-first ordering: rows that need the advisor float to the top.
 function sortPriority(r: Row): number {
   const adv = normalizeAdvisoryStatus(r.advisor_status);
-  if (
-    clientReady(r.client_status) &&
-    (adv === "notstarted" || adv === "inprogress")
-  )
-    return 0;
+  if (clientReady(r.client_status) && (adv === "notstarted" || adv === "inprogress")) return 0;
   if (adv === "submitted") return 1;
   if (r.client_status === "inprogress") return 2;
   if (r.client_status === "notstarted") return 3;
@@ -152,20 +143,13 @@ function sortPriority(r: Row): number {
 }
 
 type FilterKey =
-  | "all"
-  | "awaiting_advisory"
-  | "client_in_progress"
-  | "submitted"
-  | "not_started"
-  | "adv_final";
+  "all" | "awaiting_advisory" | "client_in_progress" | "submitted" | "not_started" | "adv_final";
 
 function matchesFilter(r: Row, filter: FilterKey): boolean {
   const adv = normalizeAdvisoryStatus(r.advisor_status);
   switch (filter) {
     case "awaiting_advisory":
-      return (
-        clientReady(r.client_status) && adv !== "submitted" && adv !== "final"
-      );
+      return clientReady(r.client_status) && adv !== "submitted" && adv !== "final";
     case "client_in_progress":
       return r.client_status === "inprogress";
     case "submitted":
@@ -218,15 +202,7 @@ function advisoryTone(adv: string): Tone {
         : "gray";
 }
 
-function Pill({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: Tone;
-}) {
+function Pill({ label, value, tone }: { label: string; value: string; tone: Tone }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] ${toneClass(
@@ -242,9 +218,7 @@ function Pill({
 function InviteLinkRow({ link }: { link: InviteLink }) {
   const [copied, setCopied] = useState(false);
   const origin =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : "https://kriterionbvi.com";
+    typeof window !== "undefined" ? window.location.origin : "https://kriterionbvi.com";
   const url = `${origin}/invite?code=${link.code}`;
 
   async function handleCopy() {
@@ -277,9 +251,7 @@ function InviteLinkRow({ link }: { link: InviteLink }) {
           {link.plan === "full" ? "Full service" : "Objective only"}
         </span>
         <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {link.plan === "full"
-            ? "Includes advisor review"
-            : "Self-assessment only"}
+          {link.plan === "full" ? "Includes advisor review" : "Self-assessment only"}
         </span>
       </div>
       <div className="mt-2 flex items-center gap-2">
@@ -313,10 +285,8 @@ function InviteClientButton({ links }: { links: InviteLink[] }) {
           <DialogHeader>
             <DialogTitle>Invite a client</DialogTitle>
             <DialogDescription>
-              Share a link and the client sets up their own account &mdash; no
-              password for you to relay.{" "}
-              <b>The link you send decides their plan</b>, so pick the right
-              one.
+              Share a link and the client sets up their own account &mdash; no password for you to
+              relay. <b>The link you send decides their plan</b>, so pick the right one.
             </DialogDescription>
           </DialogHeader>
           {links.length > 0 ? (
@@ -331,8 +301,8 @@ function InviteClientButton({ links }: { links: InviteLink[] }) {
             </p>
           )}
           <p className="text-[11px] text-muted-foreground">
-            These are reusable sign-up links. A client&apos;s plan is fixed at
-            sign-up and shown on their row.
+            These are reusable sign-up links. A client&apos;s plan is fixed at sign-up and shown on
+            their row.
           </p>
         </DialogContent>
       </Dialog>
@@ -359,9 +329,7 @@ function SubmissionRow({
   const del = useServerFn(deleteSubmission);
 
   const [pending, setPending] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<
-    null | "reset_client" | "reset_advisor" | "delete"
-  >(null);
+  const [confirm, setConfirm] = useState<null | "reset_client" | "reset_advisor" | "delete">(null);
   const [pwOpen, setPwOpen] = useState(false);
   const [pwResult, setPwResult] = useState<{
     email: string | null;
@@ -381,9 +349,7 @@ function SubmissionRow({
       toast.success("Marked as final");
       onPatch({ advisor_status: "final" });
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Could not mark as final",
-      );
+      toast.error(err instanceof Error ? err.message : "Could not mark as final");
     } finally {
       setPending(null);
     }
@@ -468,9 +434,7 @@ function SubmissionRow({
       setPwResult({ email: res.email, tempPassword: res.tempPassword });
       setPwOpen(true);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Could not reset password",
-      );
+      toast.error(err instanceof Error ? err.message : "Could not reset password");
     } finally {
       setPending(null);
     }
@@ -495,18 +459,14 @@ function SubmissionRow({
       toast.success("Submission deleted");
       onDelete();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Could not delete submission",
-      );
+      toast.error(err instanceof Error ? err.message : "Could not delete submission");
     } finally {
       setPending(null);
     }
   }
 
   const pwLoginUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/client/auth`
-      : "/client/auth";
+    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
 
   let primary: React.ReactNode;
   if (kind === "awaiting_client") {
@@ -519,10 +479,7 @@ function SubmissionRow({
   } else if (kind === "do_advisory") {
     primary = (
       <Button size="sm" asChild>
-        <Link
-          to="/advisor/$submissionId"
-          params={{ submissionId: r.submission_id }}
-        >
+        <Link to="/advisor/$submissionId" params={{ submissionId: r.submission_id }}>
           <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
           {adv === "inprogress" ? "Resume advisory" : "Complete advisory"}
         </Link>
@@ -530,11 +487,7 @@ function SubmissionRow({
     );
   } else if (kind === "mark_final") {
     primary = (
-      <Button
-        size="sm"
-        onClick={() => void markFinal()}
-        disabled={pending === "final"}
-      >
+      <Button size="sm" onClick={() => void markFinal()} disabled={pending === "final"}>
         <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
         {pending === "final" ? "Marking…" : "Mark as Final"}
       </Button>
@@ -542,10 +495,7 @@ function SubmissionRow({
   } else {
     primary = (
       <Button size="sm" asChild>
-        <Link
-          to="/admin/results/$submissionId"
-          params={{ submissionId: r.submission_id }}
-        >
+        <Link to="/admin/results/$submissionId" params={{ submissionId: r.submission_id }}>
           <Eye className="h-3.5 w-3.5 mr-1.5" />
           View results
         </Link>
@@ -593,11 +543,7 @@ function SubmissionRow({
           tone={clientTone(r.client_status)}
         />
         <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-        <Pill
-          label="Advisory"
-          value={ADVISORY_STATUS_LABEL[adv]}
-          tone={advisoryTone(adv)}
-        />
+        <Pill label="Advisory" value={ADVISORY_STATUS_LABEL[adv]} tone={advisoryTone(adv)} />
       </div>
 
       {/* Next step */}
@@ -637,10 +583,7 @@ function SubmissionRow({
             )}
 
             <DropdownMenuItem asChild>
-              <Link
-                to="/advisor/plan/$submissionId"
-                params={{ submissionId: r.submission_id }}
-              >
+              <Link to="/advisor/plan/$submissionId" params={{ submissionId: r.submission_id }}>
                 <ListChecks className="h-4 w-4" />
                 Action plan
               </Link>
@@ -648,10 +591,7 @@ function SubmissionRow({
 
             {ready && kind !== "view_results" && (
               <DropdownMenuItem asChild>
-                <Link
-                  to="/admin/results/$submissionId"
-                  params={{ submissionId: r.submission_id }}
-                >
+                <Link to="/admin/results/$submissionId" params={{ submissionId: r.submission_id }}>
                   <Eye className="h-4 w-4" />
                   View results
                 </Link>
@@ -743,8 +683,7 @@ function SubmissionRow({
         title="Delete this submission?"
         description={
           <>
-            This permanently deletes{" "}
-            {r.company_name ? <strong>{r.company_name}</strong> : "this"}
+            This permanently deletes {r.company_name ? <strong>{r.company_name}</strong> : "this"}
             &rsquo;s submission and all of its answers (objective and advisory).
             {r.owner_user_id
               ? " The client's login stays active, so they could start a new assessment."
@@ -830,9 +769,7 @@ function AdminSubmissionsPage() {
         setLoading(false);
       })
       .catch((err) => {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to load submissions",
-        );
+        toast.error(err instanceof Error ? err.message : "Failed to load submissions");
         setLoading(false);
       });
   }, [listAll]);
@@ -844,11 +781,7 @@ function AdminSubmissionsPage() {
   }, [getInviteCodes]);
 
   function updateRow(submissionId: string, patch: Partial<Row>) {
-    setRows((prev) =>
-      prev.map((x) =>
-        x.submission_id === submissionId ? { ...x, ...patch } : x,
-      ),
-    );
+    setRows((prev) => prev.map((x) => (x.submission_id === submissionId ? { ...x, ...patch } : x)));
   }
 
   function removeRow(submissionId: string) {
@@ -877,8 +810,7 @@ function AdminSubmissionsPage() {
     });
   }, [searched, filter]);
 
-  const count = (f: FilterKey) =>
-    rows.filter((r) => matchesFilter(r, f)).length;
+  const count = (f: FilterKey) => rows.filter((r) => matchesFilter(r, f)).length;
 
   const chips: { key: FilterKey; label: string; n: number }[] = [
     { key: "all", label: "All", n: rows.length },
@@ -901,12 +833,8 @@ function AdminSubmissionsPage() {
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Admin
-            </p>
-            <h1 className="text-lg font-semibold tracking-tight">
-              Submissions
-            </h1>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
+            <h1 className="text-lg font-semibold tracking-tight">Submissions</h1>
           </div>
           <div className="flex gap-2">
             <InviteClientButton links={inviteLinks} />
@@ -948,9 +876,7 @@ function AdminSubmissionsPage() {
             accent
             active={filter === "awaiting_advisory"}
             onClick={() =>
-              setFilter((f) =>
-                f === "awaiting_advisory" ? "all" : "awaiting_advisory",
-              )
+              setFilter((f) => (f === "awaiting_advisory" ? "all" : "awaiting_advisory"))
             }
           />
           <SummaryTile
@@ -958,26 +884,20 @@ function AdminSubmissionsPage() {
             label="Client in progress"
             active={filter === "client_in_progress"}
             onClick={() =>
-              setFilter((f) =>
-                f === "client_in_progress" ? "all" : "client_in_progress",
-              )
+              setFilter((f) => (f === "client_in_progress" ? "all" : "client_in_progress"))
             }
           />
           <SummaryTile
             num={count("not_started")}
             label="Not started"
             active={filter === "not_started"}
-            onClick={() =>
-              setFilter((f) => (f === "not_started" ? "all" : "not_started"))
-            }
+            onClick={() => setFilter((f) => (f === "not_started" ? "all" : "not_started"))}
           />
           <SummaryTile
             num={count("adv_final")}
             label="Final"
             active={filter === "adv_final"}
-            onClick={() =>
-              setFilter((f) => (f === "adv_final" ? "all" : "adv_final"))
-            }
+            onClick={() => setFilter((f) => (f === "adv_final" ? "all" : "adv_final"))}
           />
         </div>
 
@@ -1012,9 +932,7 @@ function AdminSubmissionsPage() {
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : visible.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {rows.length === 0
-              ? "No submissions yet."
-              : "No submissions match your search."}
+            {rows.length === 0 ? "No submissions yet." : "No submissions match your search."}
           </p>
         ) : (
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">

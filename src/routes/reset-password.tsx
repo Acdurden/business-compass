@@ -93,7 +93,10 @@ function ResetPasswordPage() {
         {isRecovery ? (
           <>
             <div>
-              <Label htmlFor="password" className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="password"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 New password
               </Label>
               <Input
@@ -108,7 +111,10 @@ function ResetPasswordPage() {
               />
             </div>
             <div>
-              <Label htmlFor="confirm" className="text-xs uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="confirm"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
                 Confirm new password
               </Label>
               <Input
@@ -125,7 +131,10 @@ function ResetPasswordPage() {
           </>
         ) : (
           <div>
-            <Label htmlFor="email" className="text-xs uppercase tracking-wide text-muted-foreground">
+            <Label
+              htmlFor="email"
+              className="text-xs uppercase tracking-wide text-muted-foreground"
+            >
               Email
             </Label>
             <Input

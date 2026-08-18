@@ -100,18 +100,42 @@ function ComingSoon() {
           />
           <circle className="ks-node ks-pulse" cx="1180" cy="90" r="4" />
           <circle className="ks-node" cx="1290" cy="160" r="5" />
-          <circle className="ks-node ks-pulse" cx="1250" cy="280" r="4" style={{ animationDelay: "1.2s" }} />
+          <circle
+            className="ks-node ks-pulse"
+            cx="1250"
+            cy="280"
+            r="4"
+            style={{ animationDelay: "1.2s" }}
+          />
           <circle className="ks-node" cx="1130" cy="300" r="3.5" />
-          <circle className="ks-node ks-pulse" cx="1400" cy="120" r="3.5" style={{ animationDelay: ".6s" }} />
+          <circle
+            className="ks-node ks-pulse"
+            cx="1400"
+            cy="120"
+            r="3.5"
+            style={{ animationDelay: ".6s" }}
+          />
           <circle className="ks-node" cx="1030" cy="220" r="3" />
           <path
             className="ks-edge"
             d="M120,640 L60,760 M60,760 L180,830 M180,830 L260,720 M260,720 L120,640 M260,720 L370,780 M120,640 L40,560 M180,830 L300,860"
           />
           <circle className="ks-node" cx="120" cy="640" r="5" />
-          <circle className="ks-node ks-pulse" cx="60" cy="760" r="4" style={{ animationDelay: ".9s" }} />
+          <circle
+            className="ks-node ks-pulse"
+            cx="60"
+            cy="760"
+            r="4"
+            style={{ animationDelay: ".9s" }}
+          />
           <circle className="ks-node" cx="180" cy="830" r="3.5" />
-          <circle className="ks-node ks-pulse" cx="260" cy="720" r="4" style={{ animationDelay: "1.8s" }} />
+          <circle
+            className="ks-node ks-pulse"
+            cx="260"
+            cy="720"
+            r="4"
+            style={{ animationDelay: "1.8s" }}
+          />
           <circle className="ks-node" cx="370" cy="780" r="3" />
           <circle className="ks-node" cx="40" cy="560" r="3" />
         </g>

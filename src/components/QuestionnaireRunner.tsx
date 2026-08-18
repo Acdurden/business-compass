@@ -71,14 +71,7 @@ function fmtCurrencyInput(raw: string): string {
 }
 
 export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
-  const {
-    questionnaireType,
-    statusField,
-    eyebrow,
-    finishLabel,
-    exitTo,
-    notFoundTo,
-  } = props;
+  const { questionnaireType, statusField, eyebrow, finishLabel, exitTo, notFoundTo } = props;
   const navigate = useNavigate();
   const loadAdvisor = useServerFn(getAdvisorSubmission);
   const saveAdvisor = useServerFn(saveAdvisorResponse);
@@ -187,10 +180,11 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       if (qs.length) {
         const { data: opts } = await supabase
           .from("answer_options")
-          .select(
-            "id,question_id,answer_text,points,option_order,unique_id_responses",
+          .select("id,question_id,answer_text,points,option_order,unique_id_responses")
+          .in(
+            "question_id",
+            qs.map((q) => q.question_id),
           )
-          .in("question_id", qs.map((q) => q.question_id))
           .eq("active", true)
           .order("option_order");
         if (!cancelled) setOptions((opts ?? []) as AnswerOption[]);
@@ -206,7 +200,11 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         } else {
           try {
             await setAdvStatus({
-              data: { submissionId: props.submissionId, status: "inprogress", onlyIfNotStarted: true },
+              data: {
+                submissionId: props.submissionId,
+                status: "inprogress",
+                onlyIfNotStarted: true,
+              },
             });
           } catch {
             /* non-fatal */
@@ -229,13 +227,10 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     for (const q of questions) {
       const s = byId.get(q.section_id);
       if (!s) continue;
-      if (!grouped.has(s.section_id))
-        grouped.set(s.section_id, { section: s, questions: [] });
+      if (!grouped.has(s.section_id)) grouped.set(s.section_id, { section: s, questions: [] });
       grouped.get(s.section_id)!.questions.push(q);
     }
-    return Array.from(grouped.values()).sort(
-      (a, b) => a.section.sort_order - b.section.sort_order,
-    );
+    return Array.from(grouped.values()).sort((a, b) => a.section.sort_order - b.section.sort_order);
   }, [sections, questions]);
 
   const optionsByQuestion = useMemo(() => {
@@ -260,9 +255,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
 
   // Steps: each real section in order, then (if required) a final financial step.
   // A step is { kind: "section", data } or { kind: "financial" }.
-  type Step =
-    | { kind: "section"; section: Section; questions: Question[] }
-    | { kind: "financial" };
+  type Step = { kind: "section"; section: Section; questions: Question[] } | { kind: "financial" };
   const steps = useMemo<Step[]>(() => {
     const list: Step[] = sectionsWithQuestions.map(({ section, questions }) => ({
       kind: "section" as const,
@@ -286,7 +279,6 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     return step.questions.every((q) => !!responses[q.question_id]);
   }
   const currentStepComplete = stepComplete(currentStep);
-  
 
   async function handleSelect(question: Question, option: AnswerOption) {
     if (props.readOnly) return;
@@ -341,9 +333,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
       // Scroll to the first unanswered question in this section (financial
       // step has no per-question refs; its own error styling covers it).
       if (currentStep && currentStep.kind === "section") {
-        const firstMissing = currentStep.questions.find(
-          (q) => !responses[q.question_id],
-        );
+        const firstMissing = currentStep.questions.find((q) => !responses[q.question_id]);
         if (firstMissing) {
           questionRefs.current[firstMissing.question_id]?.scrollIntoView({
             behavior: "smooth",
@@ -384,8 +374,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           const firstMissingId = missingQuestionIds[0];
           targetStep = steps.findIndex(
             (st) =>
-              st.kind === "section" &&
-              st.questions.some((q) => q.question_id === firstMissingId),
+              st.kind === "section" && st.questions.some((q) => q.question_id === firstMissingId),
           );
         } else if (finBlank) {
           targetStep = steps.findIndex((st) => st.kind === "financial");
@@ -461,7 +450,6 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     }
   }
 
-
   function renderSection(section: Section, qs: Question[], displayIndex: number) {
     return (
       <section key={section.section_id}>
@@ -469,9 +457,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           <span className="text-xs font-mono text-muted-foreground tabular-nums">
             {String(displayIndex + 1).padStart(2, "0")}
           </span>
-          <h2 className="text-xl font-semibold tracking-tight">
-            {section.section_name}
-          </h2>
+          <h2 className="text-xl font-semibold tracking-tight">{section.section_name}</h2>
         </div>
         <ol className="space-y-5">
           {qs.map((q) => {
@@ -486,17 +472,13 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                 }}
                 className={cn(
                   "rounded-xl border bg-card p-5 shadow-sm transition-colors",
-                  isMissing
-                    ? "border-destructive bg-destructive/5"
-                    : "border-border",
+                  isMissing ? "border-destructive bg-destructive/5" : "border-border",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-medium leading-snug">{q.question_text}</p>
                   {saving === q.question_id && (
-                    <span className="text-[11px] text-muted-foreground shrink-0 mt-1">
-                      saving…
-                    </span>
+                    <span className="text-[11px] text-muted-foreground shrink-0 mt-1">saving…</span>
                   )}
                 </div>
                 <div className="mt-4 grid gap-2">
@@ -517,14 +499,10 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                         <span
                           className={cn(
                             "h-4 w-4 shrink-0 rounded-full border-2 grid place-items-center transition-colors",
-                            isSelected
-                              ? "border-primary"
-                              : "border-muted-foreground/40",
+                            isSelected ? "border-primary" : "border-muted-foreground/40",
                           )}
                         >
-                          {isSelected && (
-                            <span className="h-2 w-2 rounded-full bg-primary" />
-                          )}
+                          {isSelected && <span className="h-2 w-2 rounded-full bg-primary" />}
                         </span>
                         <span className="flex-1">{o.answer_text}</span>
                       </button>
@@ -546,9 +524,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           <span className="text-xs font-mono text-muted-foreground tabular-nums">
             {String(displayIndex + 1).padStart(2, "0")}
           </span>
-          <h2 className="text-xl font-semibold tracking-tight">
-            Financial information
-          </h2>
+          <h2 className="text-xl font-semibold tracking-tight">Financial information</h2>
         </div>
         <div
           ref={finSectionRef}
@@ -560,9 +536,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           )}
         >
           <div>
-            <p className="font-medium leading-snug mb-3">
-              Which figure are you providing?
-            </p>
+            <p className="font-medium leading-snug mb-3">Which figure are you providing?</p>
             <div className="grid gap-2">
               {(
                 [
@@ -589,9 +563,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                         isSelected ? "border-primary" : "border-muted-foreground/40",
                       )}
                     >
-                      {isSelected && (
-                        <span className="h-2 w-2 rounded-full bg-primary" />
-                      )}
+                      {isSelected && <span className="h-2 w-2 rounded-full bg-primary" />}
                     </span>
                     <span className="flex-1">{o.label}</span>
                   </button>
@@ -688,11 +660,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         ) : stepped ? (
           <div className="space-y-14">
             {currentStep && currentStep.kind === "section"
-              ? renderSection(
-                  currentStep.section,
-                  currentStep.questions,
-                  safeStepIndex,
-                )
+              ? renderSection(currentStep.section, currentStep.questions, safeStepIndex)
               : renderFinancial(safeStepIndex)}
           </div>
         ) : (
@@ -734,14 +702,11 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                   }
                   const missingInStep =
                     currentStep?.kind === "section"
-                      ? currentStep.questions.filter(
-                          (q) => !responses[q.question_id],
-                        ).length
+                      ? currentStep.questions.filter((q) => !responses[q.question_id]).length
                       : 0;
                   return (
                     <span className="text-destructive">
-                      Please answer all questions in this section ({missingInStep}{" "}
-                      remaining).
+                      Please answer all questions in this section ({missingInStep} remaining).
                     </span>
                   );
                 }
@@ -786,9 +751,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                 if (attemptedSubmit && (missingCount > 0 || finBlank)) {
                   const parts: string[] = [];
                   if (missingCount > 0) {
-                    parts.push(
-                      `${missingCount} question${missingCount === 1 ? "" : "s"}`,
-                    );
+                    parts.push(`${missingCount} question${missingCount === 1 ? "" : "s"}`);
                   }
                   if (finBlank) parts.push("financial information");
                   return (
@@ -812,14 +775,9 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
               <Button variant="ghost" asChild>
                 <Link to={exitTo}>Exit</Link>
               </Button>
-              <Button
-                size="lg"
-                disabled={finishing}
-                onClick={handleFinish}
-              >
+              <Button size="lg" disabled={finishing} onClick={handleFinish}>
                 {finishing ? "Finishing…" : finishLabel}
               </Button>
-
             </div>
           </div>
         </div>

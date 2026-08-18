@@ -16,19 +16,19 @@
 // Multiple anchors come from valuation_multiples (net fee income OR ebitda basis).
 const DEFAULT_CONFIG = {
   objectiveFloors: [0, 30, 42, 51, 60],
-  adjustedFloors:  [0, 50, 70, 85, 100],
-  multipleAnchorsNFI:    [0, 0.5, 1.0, 1.5, 2.0],   // net fee income basis
-  multipleAnchorsEBITDA: [0, 2.0, 2.5, 3.0, 3.8],   // ebitda basis
+  adjustedFloors: [0, 50, 70, 85, 100],
+  multipleAnchorsNFI: [0, 0.5, 1.0, 1.5, 2.0], // net fee income basis
+  multipleAnchorsEBITDA: [0, 2.0, 2.5, 3.0, 3.8], // ebitda basis
   objectiveBands: [
-    { min: 0,  max: 29,  label: "Bottom of market band" },
-    { min: 30, max: 41,  label: "Lower-middle band" },
-    { min: 42, max: 50,  label: "Upper-middle band" },
-    { min: 51, max: 60,  label: "Top band" },
+    { min: 0, max: 29, label: "Bottom of market band" },
+    { min: 30, max: 41, label: "Lower-middle band" },
+    { min: 42, max: 50, label: "Upper-middle band" },
+    { min: 51, max: 60, label: "Top band" },
   ],
   adjustedBands: [
-    { min: 0,  max: 49,  label: "Bottom of market band" },
-    { min: 50, max: 69,  label: "Lower-middle band" },
-    { min: 70, max: 84,  label: "Upper-middle band" },
+    { min: 0, max: 49, label: "Bottom of market band" },
+    { min: 50, max: 69, label: "Lower-middle band" },
+    { min: 70, max: 84, label: "Upper-middle band" },
     { min: 85, max: 100, label: "Top band" },
   ],
 };
@@ -95,8 +95,8 @@ function buildConfig(scoreBands, valuationMultiples) {
 // responses: [{ questionnaire_type, section_id, points_awarded }, ...]
 // questions: [{ section_id, max_score, questionnaire_type }, ...]
 function computeSectionScores(responses, questions) {
-  const actual = {};   // section_id -> sum of points
-  const max = {};      // section_id -> sum of max_score
+  const actual = {}; // section_id -> sum of points
+  const max = {}; // section_id -> sum of max_score
   for (const r of responses) {
     actual[r.section_id] = (actual[r.section_id] || 0) + (Number(r.points_awarded) || 0);
   }
@@ -125,8 +125,9 @@ function totalByType(sectionScores, type) {
 // next band's anchor. Top band is inclusive on the upper edge.
 function interpolatedMultiple(score, floors, anchors) {
   for (let i = 0; i < floors.length - 1; i++) {
-    const lo = floors[i], hi = floors[i + 1];
-    const inBand = (i < floors.length - 2) ? (score >= lo && score < hi) : (score >= lo);
+    const lo = floors[i],
+      hi = floors[i + 1];
+    const inBand = i < floors.length - 2 ? score >= lo && score < hi : score >= lo;
     if (inBand) {
       const slope = (anchors[i + 1] - anchors[i]) / (floors[i + 1] - floors[i]);
       return anchors[i] + (score - lo) * slope;
@@ -144,7 +145,8 @@ function marketPosition(score, bands) {
 // Inverts the interpolation to find the score that achieves the required multiple.
 function requiredScore(reqMultiple, floors, anchors) {
   for (let i = 0; i < floors.length - 1; i++) {
-    const aLo = anchors[i], aHi = anchors[i + 1];
+    const aLo = anchors[i],
+      aHi = anchors[i + 1];
     if (reqMultiple >= aLo && reqMultiple <= aHi && aHi > aLo) {
       const slope = (aHi - aLo) / (floors[i + 1] - floors[i]);
       return floors[i] + (reqMultiple - aLo) / slope;
@@ -160,9 +162,7 @@ function targetAnalysis(targetValuation, amount, currentScore, floors, anchors) 
   const requiredMultiple = Math.min(targetValuation / amount, maxMultiple);
   // if the target needs MORE than the max multiple, you also need more income
   const additionalIncomeRequired =
-    (targetValuation / amount) > maxMultiple
-      ? (targetValuation / maxMultiple) - amount
-      : 0;
+    targetValuation / amount > maxMultiple ? targetValuation / maxMultiple - amount : 0;
   const totalIncomeRequired = amount + additionalIncomeRequired;
   const reqScore = requiredScore(requiredMultiple, floors, anchors);
   const scoreDeficit = reqScore == null ? null : reqScore - currentScore;
@@ -184,16 +184,15 @@ function computeValuation(responses, questions, inputs, config) {
   const cfg = config || DEFAULT_CONFIG;
   const sectionScores = computeSectionScores(responses, questions);
   const objectiveScore = totalByType(sectionScores, "objective");
-  const advisoryScore  = totalByType(sectionScores, "advisory");
+  const advisoryScore = totalByType(sectionScores, "advisory");
   const valScore = objectiveScore + advisoryScore;
 
-  const anchors = inputs.valuationInputType === "ebitda"
-    ? cfg.multipleAnchorsEBITDA
-    : cfg.multipleAnchorsNFI;
+  const anchors =
+    inputs.valuationInputType === "ebitda" ? cfg.multipleAnchorsEBITDA : cfg.multipleAnchorsNFI;
   const amount = Number(inputs.valuationInputAmount) || 0;
 
   const objectiveMultiple = interpolatedMultiple(objectiveScore, cfg.objectiveFloors, anchors);
-  const adjustedMultiple  = interpolatedMultiple(valScore,       cfg.adjustedFloors,  anchors);
+  const adjustedMultiple = interpolatedMultiple(valScore, cfg.adjustedFloors, anchors);
   const maxMultiple = anchors[anchors.length - 1];
 
   return {
@@ -206,23 +205,42 @@ function computeValuation(responses, questions, inputs, config) {
       marketPosition: marketPosition(objectiveScore, cfg.objectiveBands),
       estimatedValuation: amount * objectiveMultiple,
       maxValuation: amount * maxMultiple,
-      target: targetAnalysis(Number(inputs.targetValuation), amount, objectiveScore, cfg.objectiveFloors, anchors),
+      target: targetAnalysis(
+        Number(inputs.targetValuation),
+        amount,
+        objectiveScore,
+        cfg.objectiveFloors,
+        anchors,
+      ),
     },
     adjusted: {
       multiple: adjustedMultiple,
       marketPosition: marketPosition(valScore, cfg.adjustedBands),
       estimatedValuation: amount * adjustedMultiple,
       maxValuation: amount * maxMultiple,
-      target: targetAnalysis(Number(inputs.targetValuation), amount, valScore, cfg.adjustedFloors, anchors),
+      target: targetAnalysis(
+        Number(inputs.targetValuation),
+        amount,
+        valScore,
+        cfg.adjustedFloors,
+        anchors,
+      ),
     },
     inputs,
   };
 }
 
 export {
-  CONFIG, DEFAULT_CONFIG, buildConfig, computeSectionScores, totalByType,
-  interpolatedMultiple, marketPosition, computeValuation,
+  CONFIG,
+  DEFAULT_CONFIG,
+  buildConfig,
+  computeSectionScores,
+  totalByType,
+  interpolatedMultiple,
+  marketPosition,
+  computeValuation,
   // Exported so the client-facing target planner can recompute interactively
   // against a target the client types, rather than duplicating the maths.
-  requiredScore, targetAnalysis,
+  requiredScore,
+  targetAnalysis,
 };

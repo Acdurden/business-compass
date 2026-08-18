@@ -25,9 +25,7 @@ function ClientQuestionnaire() {
 
   useEffect(() => {
     void supabase.rpc("get_my_client_submission").then(({ data }) => {
-      const row = (data ?? [])[0] as
-        | { client_token: string; client_status: string }
-        | undefined;
+      const row = (data ?? [])[0] as { client_token: string; client_status: string } | undefined;
       setToken(row?.client_token ?? null);
       setStatus(row?.client_status ?? null);
       setLoading(false);
@@ -44,7 +42,10 @@ function ClientQuestionnaire() {
   if (!token) {
     return (
       <div className="min-h-screen grid place-items-center p-6 text-center text-sm">
-        No assessment yet. <a className="underline ml-1" href="/client">Go to portal</a>
+        No assessment yet.{" "}
+        <a className="underline ml-1" href="/client">
+          Go to portal
+        </a>
       </div>
     );
   }
@@ -52,7 +53,9 @@ function ClientQuestionnaire() {
     return (
       <div className="min-h-screen grid place-items-center p-6 text-center text-sm">
         Your assessment has been submitted.{" "}
-        <a className="underline ml-1" href="/client">Back to portal</a>
+        <a className="underline ml-1" href="/client">
+          Back to portal
+        </a>
       </div>
     );
   }
@@ -73,4 +76,3 @@ function ClientQuestionnaire() {
     />
   );
 }
-

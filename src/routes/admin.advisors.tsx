@@ -74,9 +74,7 @@ function AdvisorsPage() {
       <header className="border-b border-border/60">
         <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Admin
-            </p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
             <h1 className="text-lg font-semibold tracking-tight">Advisors</h1>
           </div>
           <div className="flex gap-2">
@@ -104,10 +102,7 @@ function AdvisorsPage() {
         ) : (
           <ul className="rounded-xl border border-border bg-card shadow-sm divide-y divide-border">
             {rows.map((r) => (
-              <li
-                key={r.user_id}
-                className="p-4 flex items-center justify-between gap-3"
-              >
+              <li key={r.user_id} className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium truncate flex items-center gap-2">
                     {r.email ?? "(no email)"}
@@ -122,10 +117,7 @@ function AdvisorsPage() {
                     {r.user_id}
                   </p>
                 </div>
-                <ResetAdvisorPasswordButton
-                  userId={r.user_id}
-                  email={r.email}
-                />
+                <ResetAdvisorPasswordButton userId={r.user_id} email={r.email} />
               </li>
             ))}
           </ul>
@@ -161,8 +153,7 @@ function CreateAdvisorCard({ onCreated }: { onCreated: () => void }) {
     }
   }
 
-  const loginUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
+  const loginUrl = typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
 
   return (
     <form
@@ -174,12 +165,16 @@ function CreateAdvisorCard({ onCreated }: { onCreated: () => void }) {
           Create advisor account (no email)
         </p>
         <p className="text-[11px] text-muted-foreground mt-1">
-          Creates a confirmed advisor with an auto-generated temporary password shown once. They will be prompted to set a new password on first sign-in at <code>/auth</code>.
+          Creates a confirmed advisor with an auto-generated temporary password shown once. They
+          will be prompted to set a new password on first sign-in at <code>/auth</code>.
         </p>
       </div>
       <div className="grid md:grid-cols-[1fr_auto] gap-3 md:items-end">
         <div>
-          <Label htmlFor="adv-email" className="text-xs uppercase tracking-wide text-muted-foreground">
+          <Label
+            htmlFor="adv-email"
+            className="text-xs uppercase tracking-wide text-muted-foreground"
+          >
             Email
           </Label>
           <Input
@@ -207,13 +202,7 @@ function CreateAdvisorCard({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-function ResetAdvisorPasswordButton({
-  userId,
-  email,
-}: {
-  userId: string;
-  email: string | null;
-}) {
+function ResetAdvisorPasswordButton({ userId, email }: { userId: string; email: string | null }) {
   const reset = useServerFn(resetAdvisorPassword);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -238,8 +227,7 @@ function ResetAdvisorPasswordButton({
     }
   }
 
-  const loginUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
+  const loginUrl = typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
 
   return (
     <>

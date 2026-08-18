@@ -132,9 +132,7 @@ export async function loadLibrary(): Promise<Library> {
   if (curesRes.error) throw new Error(curesRes.error.message);
   // Partner categories are advisor/admin only. A client reading their own plan
   // gets an empty list here, which is intended — they are not shown the tag.
-  const categories = categoriesRes.error
-    ? []
-    : ((categoriesRes.data ?? []) as PartnerCategory[]);
+  const categories = categoriesRes.error ? [] : ((categoriesRes.data ?? []) as PartnerCategory[]);
 
   return indexLibrary(
     (problemsRes.data ?? []) as LibraryProblem[],
@@ -243,9 +241,7 @@ export type DriverContext = { name: string; points: number; rank: number };
  * which is the only place the pairing is decided. Parsing the key here keeps a
  * single source of truth for that pairing rather than duplicating the table.
  */
-export function advisoryDriverContext(
-  opportunities: Opportunity[],
-): Map<string, DriverContext> {
+export function advisoryDriverContext(opportunities: Opportunity[]): Map<string, DriverContext> {
   const byAdvisorySection = new Map<string, DriverContext>();
   opportunities.forEach((o, rank) => {
     const parts = o.key.split("-");
@@ -281,24 +277,18 @@ export function buildPlanItems(
   });
 
   const items: PlanItem[] = plan.problems.map((row) => {
-    const libraryProblem = row.problem_id
-      ? library.problemById.get(row.problem_id)
-      : undefined;
+    const libraryProblem = row.problem_id ? library.problemById.get(row.problem_id) : undefined;
     const driver = drivers.get(row.section_id) ?? null;
 
     const actions: PlanAction[] = (curesByProblemRow.get(row.id) ?? [])
       .map((c) => {
-        const libraryCure = c.cure_id
-          ? library.cureById.get(c.cure_id)
-          : undefined;
+        const libraryCure = c.cure_id ? library.cureById.get(c.cure_id) : undefined;
         const categoryId = libraryCure?.category_id ?? null;
         return {
           id: c.id,
           text: (libraryCure?.cure_text ?? c.custom_text ?? "").trim(),
           categoryId,
-          categoryName: categoryId
-            ? (library.categoryById.get(categoryId)?.name ?? null)
-            : null,
+          categoryName: categoryId ? (library.categoryById.get(categoryId)?.name ?? null) : null,
           isCustom: c.cure_id == null,
           sortOrder: c.sort_order,
         };
@@ -318,8 +308,7 @@ export function buildPlanItems(
     };
   });
 
-  const rankOf = (sectionId: string) =>
-    drivers.get(sectionId)?.rank ?? Number.MAX_SAFE_INTEGER;
+  const rankOf = (sectionId: string) => drivers.get(sectionId)?.rank ?? Number.MAX_SAFE_INTEGER;
 
   return items
     .filter((i) => i.text.length > 0)

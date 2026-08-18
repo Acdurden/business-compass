@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** What the auth middleware puts on `context`, as far as these helpers need it. */
+type AuthedContext = { supabase: SupabaseClient<Database>; userId: string };
 
 function generateTempPassword(): string {
   // 12 chars, url-safe, avoids ambiguous chars
@@ -14,10 +19,7 @@ function generateTempPassword(): string {
   return out + Math.floor(Math.random() * 10);
 }
 
-async function assertRole(
-  context: { supabase: any; userId: string },
-  role: "advisor" | "admin",
-) {
+async function assertRole(context: AuthedContext, role: "advisor" | "admin") {
   const { data } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
     _role: role,
@@ -81,9 +83,7 @@ export const listAdvisorAccounts = createServerFn({ method: "GET" })
     const advisorIds = new Set(
       (roles ?? []).filter((r) => r.role === "advisor").map((r) => r.user_id),
     );
-    const adminIds = new Set(
-      (roles ?? []).filter((r) => r.role === "admin").map((r) => r.user_id),
-    );
+    const adminIds = new Set((roles ?? []).filter((r) => r.role === "admin").map((r) => r.user_id));
 
     const list = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
     if (list.error) throw new Error(list.error.message);
@@ -249,10 +249,7 @@ export const deleteClientAccount = createServerFn({ method: "POST" })
     if (detach.error) throw new Error(detach.error.message);
 
     // Remove role row(s).
-    const delRole = await supabaseAdmin
-      .from("user_roles")
-      .delete()
-      .eq("user_id", data.userId);
+    const delRole = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
     if (delRole.error) throw new Error(delRole.error.message);
 
     // Delete the auth user.

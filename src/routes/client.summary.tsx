@@ -124,28 +124,23 @@ function ClientSummary() {
       }
       setSub(subData);
 
-      const [sectionsRes, questionsRes, responsesRes, bandsRes, multiplesRes] =
-        await Promise.all([
-          supabase
-            .from("sections")
-            .select("section_id,section_name,sort_order,questionnaire_type")
-            .eq("active", true)
-            .order("sort_order"),
-          supabase
-            .from("questions")
-            .select("question_id,section_id,questionnaire_type,max_score")
-            .eq("active", true),
-          supabase
-            .from("responses")
-            .select("question_id,section_id,questionnaire_type,points_awarded")
-            .eq("submission_id", subData.submission_id),
-          supabase
-            .from("score_bands")
-            .select("band_type,min_score,max_score,label"),
-          supabase
-            .from("valuation_multiples")
-            .select("band_index,nfi_multiple,ebitda_multiple"),
-        ]);
+      const [sectionsRes, questionsRes, responsesRes, bandsRes, multiplesRes] = await Promise.all([
+        supabase
+          .from("sections")
+          .select("section_id,section_name,sort_order,questionnaire_type")
+          .eq("active", true)
+          .order("sort_order"),
+        supabase
+          .from("questions")
+          .select("question_id,section_id,questionnaire_type,max_score")
+          .eq("active", true),
+        supabase
+          .from("responses")
+          .select("question_id,section_id,questionnaire_type,points_awarded")
+          .eq("submission_id", subData.submission_id),
+        supabase.from("score_bands").select("band_type,min_score,max_score,label"),
+        supabase.from("valuation_multiples").select("band_index,nfi_multiple,ebitda_multiple"),
+      ]);
       if (cancelled) return;
 
       const scoringConfig = buildConfig(
@@ -157,8 +152,7 @@ function ClientSummary() {
         (questionsRes.data ?? []) as never,
         {
           valuationInputType:
-            (subData.valuation_input_type as InputType | null) ??
-            DEFAULT_VALUATION_INPUT_TYPE,
+            (subData.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE,
           valuationInputAmount: Number(
             subData.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT,
           ),
@@ -169,8 +163,7 @@ function ClientSummary() {
 
       setAdvisoryAnswerCount(
         (responsesRes.data ?? []).filter(
-          (r: { questionnaire_type?: string | null }) =>
-            r.questionnaire_type === "advisory",
+          (r: { questionnaire_type?: string | null }) => r.questionnaire_type === "advisory",
         ).length,
       );
       setSections((sectionsRes.data ?? []) as SectionMeta[]);
@@ -222,9 +215,7 @@ function ClientSummary() {
     return (
       <Shell onSignOut={signOut} company={sub?.company_name}>
         <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
-          <h2 className="text-xl font-semibold tracking-tight">
-            Nothing to show yet
-          </h2>
+          <h2 className="text-xl font-semibold tracking-tight">Nothing to show yet</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {error ?? "We couldn't find your assessment."}
           </p>
@@ -237,8 +228,7 @@ function ClientSummary() {
   }
 
   const isObjectivePlan = sub.plan === "objective";
-  const clientDone =
-    sub.client_status === "submitted" || sub.client_status === "complete";
+  const clientDone = sub.client_status === "submitted" || sub.client_status === "complete";
 
   // Objective-only clients have no advisor review to wait for, so their summary
   // unlocks the moment they finish the assessment.
@@ -246,12 +236,9 @@ function ClientSummary() {
     return (
       <Shell onSignOut={signOut} company={sub.company_name}>
         <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
-          <h2 className="text-xl font-semibold tracking-tight">
-            Finish your assessment first
-          </h2>
+          <h2 className="text-xl font-semibold tracking-tight">Finish your assessment first</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Your score and valuation appear here as soon as you complete every
-            question.
+            Your score and valuation appear here as soon as you complete every question.
           </p>
           <Button className="mt-5" onClick={() => navigate({ to: "/client" })}>
             Back to your portal
@@ -264,20 +251,14 @@ function ClientSummary() {
   // Full service: guard against a submission flagged as reviewed while the
   // advisory answers are still blank. Without this the page would report a huge
   // downward restatement and mark every driver down, which is confidently wrong.
-  if (
-    !isObjectivePlan &&
-    (!advisoryReady(sub.advisor_status) || advisoryAnswerCount === 0)
-  ) {
+  if (!isObjectivePlan && (!advisoryReady(sub.advisor_status) || advisoryAnswerCount === 0)) {
     return (
       <Shell onSignOut={signOut} company={sub.company_name}>
         <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
-          <h2 className="text-xl font-semibold tracking-tight">
-            Your review is in progress
-          </h2>
+          <h2 className="text-xl font-semibold tracking-tight">Your review is in progress</h2>
           <p className="mt-2 leading-relaxed text-sm text-muted-foreground">
-            Your assessment is in with your advisor. Your ValScore summary
-            unlocks as soon as their review is complete — we'll let you know the
-            moment it's ready.
+            Your assessment is in with your advisor. Your ValScore summary unlocks as soon as their
+            review is complete — we'll let you know the moment it's ready.
           </p>
           <Button className="mt-5" onClick={() => navigate({ to: "/client" })}>
             Back to your portal
@@ -317,9 +298,7 @@ function Shell({
     <main className="min-h-screen" style={{ background: "#eef1f5" }}>
       <header style={{ background: BRAND.navy }}>
         <div className="mx-auto flex max-w-4xl items-center gap-4 px-6 py-3">
-          <span className="text-[15px] font-bold tracking-wide text-white">
-            KRITERION
-          </span>
+          <span className="text-[15px] font-bold tracking-wide text-white">KRITERION</span>
           <span className="ml-auto text-[13px]" style={{ color: "#c3d2df" }}>
             {company ?? ""}
           </span>
@@ -350,13 +329,7 @@ function Shell({
   );
 }
 
-function Card({
-  title,
-  children,
-}: {
-  title?: string;
-  children: React.ReactNode;
-}) {
+function Card({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
     <section
       className="mb-[18px] rounded-[14px] border bg-white p-[22px]"
@@ -392,9 +365,7 @@ function SummaryBody({
   library: Library;
   plan: Plan;
 }) {
-  const inputType =
-    (sub.valuation_input_type as InputType | null) ??
-    DEFAULT_VALUATION_INPUT_TYPE;
+  const inputType = (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
   /**
    * Only show money when the client's own income figure is on file. The shared
    * default exists so the advisor tools always render something, but on a
@@ -405,10 +376,7 @@ function SummaryBody({
   const rawAmount = Number(sub.valuation_input_amount ?? 0);
   const hasAmount = Number.isFinite(rawAmount) && rawAmount > 0;
   const amount = hasAmount ? rawAmount : DEFAULT_VALUATION_INPUT_AMOUNT;
-  const anchors =
-    inputType === "ebitda"
-      ? config.multipleAnchorsEBITDA
-      : config.multipleAnchorsNFI;
+  const anchors = inputType === "ebitda" ? config.multipleAnchorsEBITDA : config.multipleAnchorsNFI;
 
   const isObjective = sub.plan === "objective";
   const valScore = result.valScore;
@@ -443,12 +411,7 @@ function SummaryBody({
    * but says so rather than presenting it as the whole opportunity.
    */
   const opportunities = useMemo(
-    () =>
-      buildOpportunities(
-        sections,
-        result.sectionScores,
-        isObjective ? "objective" : "full",
-      ),
+    () => buildOpportunities(sections, result.sectionScores, isObjective ? "objective" : "full"),
     [sections, result.sectionScores, isObjective],
   );
   const totalOpen = totalOpportunity(opportunities);
@@ -467,21 +430,15 @@ function SummaryBody({
   return (
     <>
       <div className="mb-5">
-        <p
-          className="text-[11px] uppercase tracking-[0.18em]"
-          style={{ color: BRAND.muted }}
-        >
+        <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: BRAND.muted }}>
           Your assessment · complete
         </p>
-        <h1
-          className="mt-1 text-[24px] font-semibold tracking-tight"
-          style={{ color: BRAND.ink }}
-        >
+        <h1 className="mt-1 text-[24px] font-semibold tracking-tight" style={{ color: BRAND.ink }}>
           Your ValScore Summary
         </h1>
         <p className="mt-1.5 text-[13.5px]" style={{ color: BRAND.muted }}>
-          Your objective self-assessment, validated and restated by your advisor
-          into a single value-readiness score — with a plan to raise it.
+          Your objective self-assessment, validated and restated by your advisor into a single
+          value-readiness score — with a plan to raise it.
         </p>
       </div>
 
@@ -525,12 +482,9 @@ function SummaryBody({
               />
               {band.label}
             </div>
-            <p
-              className="m-0 mb-4 text-[13px] leading-[1.5]"
-              style={{ color: BRAND.muted }}
-            >
-              Your ValScore combines your objective self-assessment with your
-              advisor's review of the things a questionnaire can't capture.
+            <p className="m-0 mb-4 text-[13px] leading-[1.5]" style={{ color: BRAND.muted }}>
+              Your ValScore combines your objective self-assessment with your advisor's review of
+              the things a questionnaire can't capture.
             </p>
             <BandRibbon segments={segments} score={headlineScore} />
           </div>
@@ -554,19 +508,13 @@ function SummaryBody({
               >
                 {displayScore(objectiveOn100)}
               </div>
-              <div
-                className="mt-1.5 text-[11px]"
-                style={{ color: BRAND.muted }}
-              >
+              <div className="mt-1.5 text-[11px]" style={{ color: BRAND.muted }}>
                 Your self-assessment
               </div>
             </div>
             <div className="flex flex-col items-center gap-1.5">
               <DeltaChip delta={delta} isFlat={isFlat} />
-              <div
-                className="text-[26px] font-bold leading-none"
-                style={{ color: "#c2ccd6" }}
-              >
+              <div className="text-[26px] font-bold leading-none" style={{ color: "#c2ccd6" }}>
                 →
               </div>
             </div>
@@ -583,10 +531,7 @@ function SummaryBody({
               >
                 {displayScore(valScore)}
               </div>
-              <div
-                className="mt-1.5 text-[11px]"
-                style={{ color: BRAND.muted }}
-              >
+              <div className="mt-1.5 text-[11px]" style={{ color: BRAND.muted }}>
                 Restated by your advisor
               </div>
             </div>
@@ -595,8 +540,8 @@ function SummaryBody({
             className="m-0 border-t pt-4 text-center text-[12.5px] leading-[1.6]"
             style={{ color: BRAND.muted, borderColor: "#eef2f6" }}
           >
-            Your advisor reviews every driver you scored yourself on, then
-            restates your assessment into your ValScore. It can move up or down.
+            Your advisor reviews every driver you scored yourself on, then restates your assessment
+            into your ValScore. It can move up or down.
           </p>
         </Card>
       )}
@@ -604,12 +549,8 @@ function SummaryBody({
       {/* DRIVER BY DRIVER — the advisor's read (full service only) */}
       {!isObjective && drivers.length > 0 ? (
         <Card title="Where your advisor's read differed">
-          <p
-            className="m-0 mb-3 text-[12.5px] leading-[1.6]"
-            style={{ color: BRAND.muted }}
-          >
-            Your own read against your advisor's, driver by driver, on the same
-            0–100 scale.
+          <p className="m-0 mb-3 text-[12.5px] leading-[1.6]" style={{ color: BRAND.muted }}>
+            Your own read against your advisor's, driver by driver, on the same 0–100 scale.
           </p>
           <div
             className="mb-3 flex flex-wrap items-center gap-4 text-[11px]"
@@ -644,13 +585,7 @@ function SummaryBody({
               color: BRAND.ink,
             }}
           >
-            <Verdict
-              isFlat={isFlat}
-              delta={delta}
-              up={up}
-              down={down}
-              held={held}
-            />
+            <Verdict isFlat={isFlat} delta={delta} up={up} down={down} held={held} />
           </div>
         </Card>
       ) : null}
@@ -658,10 +593,7 @@ function SummaryBody({
       {/* WHERE THE UPSIDE IS — scored by the advisor (full service only) */}
       {!isObjective && drivers.length > 0 ? (
         <Card title="Your advisor's review — where the upside is">
-          <div
-            className="mb-3 flex gap-4 text-[11px]"
-            style={{ color: BRAND.muted }}
-          >
+          <div className="mb-3 flex gap-4 text-[11px]" style={{ color: BRAND.muted }}>
             <span className="inline-flex items-center gap-1.5">
               <span
                 className="h-[11px] w-[11px] rounded-[3px]"
@@ -684,31 +616,22 @@ function SummaryBody({
             className="mt-3.5 flex items-center justify-between border-t-2 pt-3.5 font-bold"
             style={{ borderColor: "#e4e9ef" }}
           >
-            <span
-              className="text-[13px] uppercase tracking-[0.1em]"
-              style={{ color: BRAND.muted }}
-            >
+            <span className="text-[13px] uppercase tracking-[0.1em]" style={{ color: BRAND.muted }}>
               Available from your advisor&apos;s review
             </span>
             <span className="text-[16px]" style={{ color: BRAND.tealDark }}>
               +{advisoryUpside} points
             </span>
           </div>
-          <p
-            className="m-0 mt-2.5 text-[12px] leading-[1.55]"
-            style={{ color: BRAND.muted }}
-          >
-            That is +{advisoryUpside} of the {totalOpen} points still open on
-            your ValScore. The rest sits in your own answers — the full picture
-            is in Where to focus, below.
+          <p className="m-0 mt-2.5 text-[12px] leading-[1.55]" style={{ color: BRAND.muted }}>
+            That is +{advisoryUpside} of the {totalOpen} points still open on your ValScore. The
+            rest sits in your own answers — the full picture is in Where to focus, below.
           </p>
         </Card>
       ) : null}
 
       {/* WHERE YOUR UPSIDE IS — objective plan, from the client's own answers */}
-      {isObjective ? (
-        <ObjectiveUpsideCard opportunities={opportunities} total={totalOpen} />
-      ) : null}
+      {isObjective ? <ObjectiveUpsideCard opportunities={opportunities} total={totalOpen} /> : null}
 
       {/* THE ADVISOR'S ACTION PLAN — replaces the provisional focus list */}
       {planItems.length > 0 ? (
@@ -729,10 +652,8 @@ function SummaryBody({
                 {formatValuationRange(leg.estimatedValuation)}
               </div>
               <div className="mt-1 text-[13px]" style={{ color: BRAND.muted }}>
-                Midpoint estimate{" "}
-                {formatCurrency(Math.round(result.adjusted.estimatedValuation))}{" "}
-                · about {result.adjusted.multiple.toFixed(2)}× your{" "}
-                {BASIS_LABEL[inputType]}
+                Midpoint estimate {formatCurrency(Math.round(result.adjusted.estimatedValuation))} ·
+                about {result.adjusted.multiple.toFixed(2)}× your {BASIS_LABEL[inputType]}
               </div>
             </div>
             <div className="flex flex-wrap gap-[22px]">
@@ -750,13 +671,9 @@ function SummaryBody({
             }}
           >
             At the top band, your current {BASIS_LABEL[inputType]} of{" "}
-            <b style={{ color: BRAND.ink }}>{formatCurrency(amount)}</b> could
-            support up to{" "}
-            <b style={{ color: BRAND.ink }}>
-              {formatCurrency(leg.maxValuation)}
-            </b>
-            . Raising your ValScore is the fastest way to move up the scale
-            toward it.
+            <b style={{ color: BRAND.ink }}>{formatCurrency(amount)}</b> could support up to{" "}
+            <b style={{ color: BRAND.ink }}>{formatCurrency(leg.maxValuation)}</b>. Raising your
+            ValScore is the fastest way to move up the scale toward it.
           </div>
         </Card>
       ) : null}
@@ -772,9 +689,7 @@ function SummaryBody({
              already 0-100, so its converter is the identity. */
           currentScore={isObjective ? result.objectiveScore : valScore}
           toDisplayScore={
-            isObjective
-              ? (n: number) => grossObjective(n, objectiveMax)
-              : (n: number) => n
+            isObjective ? (n: number) => grossObjective(n, objectiveMax) : (n: number) => n
           }
           currentValuation={leg.estimatedValuation}
           floors={isObjective ? config.objectiveFloors : config.adjustedFloors}
@@ -783,27 +698,19 @@ function SummaryBody({
         />
       ) : (
         <Card title="What your score means for value">
-          <p
-            className="m-0 text-[13px] leading-[1.6]"
-            style={{ color: BRAND.muted }}
-          >
-            We don't have your income figure on file yet, so we're not showing a
-            valuation range. Your advisor can add it — once it's in, this page
-            will show what your score means in dollars, plus a planner for
-            setting a target.
+          <p className="m-0 text-[13px] leading-[1.6]" style={{ color: BRAND.muted }}>
+            We don't have your income figure on file yet, so we're not showing a valuation range.
+            Your advisor can add it — once it's in, this page will show what your score means in
+            dollars, plus a planner for setting a target.
           </p>
         </Card>
       )}
 
       {isObjective ? <UpgradeCard /> : null}
 
-      <p
-        className="mt-2.5 text-center text-[11.5px] leading-[1.5]"
-        style={{ color: BRAND.muted }}
-      >
-        Estimates are model outputs and are not a formal valuation or an offer.
-        Ranges reflect a ±5% band around the midpoint. Scores are shown on a
-        0–100 scale.
+      <p className="mt-2.5 text-center text-[11.5px] leading-[1.5]" style={{ color: BRAND.muted }}>
+        Estimates are model outputs and are not a formal valuation or an offer. Ranges reflect a ±5%
+        band around the midpoint. Scores are shown on a 0–100 scale.
       </p>
     </>
   );
@@ -833,30 +740,17 @@ function ObjectiveUpsideCard({
 
   return (
     <Card title="Where your upside is">
-      <p
-        className="m-0 mb-3 text-[12.5px] leading-[1.6]"
-        style={{ color: BRAND.muted }}
-      >
-        How much of each area you have captured, ranked by what is still
-        available. These are points of your score, on the same 0–100 scale as
-        the score itself.
+      <p className="m-0 mb-3 text-[12.5px] leading-[1.6]" style={{ color: BRAND.muted }}>
+        How much of each area you have captured, ranked by what is still available. These are points
+        of your score, on the same 0–100 scale as the score itself.
       </p>
-      <div
-        className="mb-3 flex gap-4 text-[11px]"
-        style={{ color: BRAND.muted }}
-      >
+      <div className="mb-3 flex gap-4 text-[11px]" style={{ color: BRAND.muted }}>
         <span className="inline-flex items-center gap-1.5">
-          <span
-            className="h-[11px] w-[11px] rounded-[3px]"
-            style={{ background: BRAND.teal }}
-          />
+          <span className="h-[11px] w-[11px] rounded-[3px]" style={{ background: BRAND.teal }} />
           Captured
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span
-            className="h-[11px] w-[11px] rounded-[3px]"
-            style={{ background: BRAND.upside }}
-          />
+          <span className="h-[11px] w-[11px] rounded-[3px]" style={{ background: BRAND.upside }} />
           Upside available
         </span>
       </div>
@@ -869,10 +763,7 @@ function ObjectiveUpsideCard({
           <div className="flex items-start justify-between gap-3 md:block">
             <div className="text-[13.5px] font-semibold">
               {r.name}
-              <span
-                className="mt-px block text-[11px] font-normal"
-                style={{ color: BRAND.muted }}
-              >
+              <span className="mt-px block text-[11px] font-normal" style={{ color: BRAND.muted }}>
                 {r.pct}% captured
               </span>
             </div>
@@ -896,9 +787,7 @@ function ObjectiveUpsideCard({
             style={{ background: "#eef2f6" }}
           >
             <span style={{ width: `${r.pct}%`, background: BRAND.teal }} />
-            <span
-              style={{ width: `${100 - r.pct}%`, background: BRAND.upside }}
-            />
+            <span style={{ width: `${100 - r.pct}%`, background: BRAND.upside }} />
           </div>
           <div className="hidden min-w-[66px] text-right md:block">
             <div
@@ -920,10 +809,7 @@ function ObjectiveUpsideCard({
         className="mt-3.5 flex items-center justify-between border-t-2 pt-3.5 font-bold"
         style={{ borderColor: "#e4e9ef" }}
       >
-        <span
-          className="text-[13px] uppercase tracking-[0.1em]"
-          style={{ color: BRAND.muted }}
-        >
+        <span className="text-[13px] uppercase tracking-[0.1em]" style={{ color: BRAND.muted }}>
           Total upside still available
         </span>
         <span className="text-[16px]" style={{ color: BRAND.tealDark }}>
@@ -954,17 +840,11 @@ function UpgradeCard() {
       >
         Optional add-on
       </span>
-      <p className="mt-2 text-[15px] font-extrabold">
-        Unlock your advisor-adjusted valuation
-      </p>
-      <p
-        className="mt-1 text-[12.5px] leading-[1.55]"
-        style={{ color: BRAND.muted }}
-      >
-        Everything above is your own read of the business. An advisor interviews
-        you on what a questionnaire can&apos;t capture — how transferable your
-        earnings really are, how the business runs without you — then restates
-        your score and builds a prioritised plan.
+      <p className="mt-2 text-[15px] font-extrabold">Unlock your advisor-adjusted valuation</p>
+      <p className="mt-1 text-[12.5px] leading-[1.55]" style={{ color: BRAND.muted }}>
+        Everything above is your own read of the business. An advisor interviews you on what a
+        questionnaire can&apos;t capture — how transferable your earnings really are, how the
+        business runs without you — then restates your score and builds a prioritised plan.
       </p>
       <ul className="mt-3 list-disc space-y-1 pl-5 text-[12.5px]">
         <li>Your ValScore — validated, not self-reported</li>
@@ -985,10 +865,7 @@ function UpgradeCard() {
 function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div
-        className="text-[10.5px] uppercase tracking-[0.08em]"
-        style={{ color: BRAND.muted }}
-      >
+      <div className="text-[10.5px] uppercase tracking-[0.08em]" style={{ color: BRAND.muted }}>
         {label}
       </div>
       <div className="mt-0.5 text-[14px] font-bold">{value}</div>
@@ -1035,16 +912,10 @@ function BandRibbon({
   const total = segments.reduce((s, b) => s + b.width, 0) || 100;
   const min = segments[0]?.min ?? 0;
   const max = segments[segments.length - 1]?.max ?? 100;
-  const pct = Math.max(
-    0,
-    Math.min(100, ((score - min) / (max - min || 1)) * 100),
-  );
+  const pct = Math.max(0, Math.min(100, ((score - min) / (max - min || 1)) * 100));
   return (
     <div className="relative mt-1.5">
-      <div
-        className="absolute -top-2 -translate-x-1/2 text-center"
-        style={{ left: `${pct}%` }}
-      >
+      <div className="absolute -top-2 -translate-x-1/2 text-center" style={{ left: `${pct}%` }}>
         <div
           className="mb-0.5 whitespace-nowrap rounded-[5px] px-1.5 py-0.5 text-[10px] font-bold text-white"
           style={{ background: BRAND.navy }}
@@ -1070,18 +941,13 @@ function BandRibbon({
             className="flex items-center justify-center px-1 text-center text-[10.5px] font-bold leading-[1.1] text-white"
             style={{ flex: b.width / total, background: b.color }}
           >
-            {b.label
-              .replace(/ band$/i, "")
-              .replace(/^Bottom of market$/i, "Bottom")}
+            {b.label.replace(/ band$/i, "").replace(/^Bottom of market$/i, "Bottom")}
             <br />
             {b.min}–{b.max}
           </div>
         ))}
       </div>
-      <div
-        className="mt-1 flex justify-between text-[10px]"
-        style={{ color: BRAND.muted }}
-      >
+      <div className="mt-1 flex justify-between text-[10px]" style={{ color: BRAND.muted }}>
         <span>{min}</span>
         <span>{max}</span>
       </div>
@@ -1123,12 +989,8 @@ function DriverRow({ driver }: { driver: Driver }) {
       <div className="flex items-start justify-between gap-3 md:block">
         <div className="text-[13px] font-semibold leading-[1.3]">
           {driver.name}
-          <span
-            className="mt-0.5 block text-[10.5px] font-normal"
-            style={{ color: BRAND.muted }}
-          >
-            You {displayScore(driver.selfScore)} · Advisor{" "}
-            {displayScore(driver.advisorScore)}
+          <span className="mt-0.5 block text-[10.5px] font-normal" style={{ color: BRAND.muted }}>
+            You {displayScore(driver.selfScore)} · Advisor {displayScore(driver.advisorScore)}
           </span>
         </div>
         <div className="shrink-0 md:hidden">{delta}</div>
@@ -1193,10 +1055,7 @@ function UpsideRow({ driver }: { driver: Driver }) {
       <div className="flex items-start justify-between gap-3 md:block">
         <div className="text-[13.5px] font-semibold">
           {driver.name}
-          <span
-            className="mt-px block text-[11px] font-normal"
-            style={{ color: BRAND.muted }}
-          >
+          <span className="mt-px block text-[11px] font-normal" style={{ color: BRAND.muted }}>
             {pct}% captured
           </span>
         </div>
@@ -1238,11 +1097,7 @@ function Verdict({
       </b>
       {/* Only claim the drivers disagreed when at least one actually moved —
           otherwise this clause contradicts the sentence that follows it. */}
-      {isFlat
-        ? up.length > 0 || down.length > 0
-          ? " — but not driver by driver. "
-          : ". "
-        : " "}
+      {isFlat ? (up.length > 0 || down.length > 0 ? " — but not driver by driver. " : ". ") : " "}
       {up.length > 0 ? (
         <>
           They found more strength than you gave yourself credit for in{" "}
@@ -1257,8 +1112,7 @@ function Verdict({
       ) : null}
       {held.length > 0 ? (
         <>
-          Your read on <b style={{ color: BRAND.navy }}>{listNames(held)}</b>{" "}
-          held up exactly.{" "}
+          Your read on <b style={{ color: BRAND.navy }}>{listNames(held)}</b> held up exactly.{" "}
         </>
       ) : null}
       Where to focus next is below.
@@ -1284,10 +1138,7 @@ function ActionPlanCard({ items }: { items: PlanItem[] }) {
   const actionCount = countActions(items);
   return (
     <Card title="Your action plan">
-      <p
-        className="m-0 mb-4 text-[12.5px] leading-[1.6]"
-        style={{ color: BRAND.muted }}
-      >
+      <p className="m-0 mb-4 text-[12.5px] leading-[1.6]" style={{ color: BRAND.muted }}>
         Your advisor identified{" "}
         <b style={{ color: BRAND.ink }}>
           {items.length} {items.length === 1 ? "issue" : "issues"}
@@ -1311,21 +1162,14 @@ function ActionPlanCard({ items }: { items: PlanItem[] }) {
             className="rounded-[0_11px_11px_0] border-l-[3px] p-[13px_16px]"
             style={{ borderColor: BRAND.upside, background: "#fdfaf3" }}
           >
-            <div className="text-[13.5px] font-bold leading-snug">
-              {item.text}
-            </div>
+            <div className="text-[13.5px] font-bold leading-snug">{item.text}</div>
             {item.driverName ? (
-              <div
-                className="mt-0.5 text-[11.5px]"
-                style={{ color: BRAND.muted }}
-              >
+              <div className="mt-0.5 text-[11.5px]" style={{ color: BRAND.muted }}>
                 {item.driverName}
                 {item.driverPoints != null && item.driverPoints > 0 ? (
                   <>
                     {" · up to "}
-                    <b style={{ color: BRAND.tealDark }}>
-                      +{item.driverPoints} points
-                    </b>
+                    <b style={{ color: BRAND.tealDark }}>+{item.driverPoints} points</b>
                     {" available in this driver"}
                   </>
                 ) : null}
@@ -1366,12 +1210,9 @@ function FocusCard({ opportunities }: { opportunities: Opportunity[] }) {
   if (top.length === 0) return null;
   return (
     <Card title="Where to focus">
-      <p
-        className="m-0 mb-3.5 text-[12.5px] leading-[1.6]"
-        style={{ color: BRAND.muted }}
-      >
-        The drivers carrying the most unrealised value today, highest first.
-        Your advisor will turn these into a specific action plan.
+      <p className="m-0 mb-3.5 text-[12.5px] leading-[1.6]" style={{ color: BRAND.muted }}>
+        The drivers carrying the most unrealised value today, highest first. Your advisor will turn
+        these into a specific action plan.
       </p>
       <div className="flex flex-col gap-3">
         {top.map((o, i) => {
@@ -1390,29 +1231,20 @@ function FocusCard({ opportunities }: { opportunities: Opportunity[] }) {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-bold">{o.name}</div>
-                <div
-                  className="mt-0.5 text-[12.5px] leading-[1.5]"
-                  style={{ color: BRAND.muted }}
-                >
+                <div className="mt-0.5 text-[12.5px] leading-[1.5]" style={{ color: BRAND.muted }}>
                   {o.advisoryPct == null ? null : (
-                    <>
-                      Your advisor rated this {displayScore(o.advisoryPct)}%
-                      —{" "}
-                    </>
+                    <>Your advisor rated this {displayScore(o.advisoryPct)}% — </>
                   )}
                   <b style={{ color: BRAND.tealDark }}>
                     {points} point{points === 1 ? "" : "s"}
                   </b>{" "}
-                  {o.advisoryPct == null ? "of your score" : "of ValScore"} are
-                  still available here.
+                  {o.advisoryPct == null ? "of your score" : "of ValScore"} are still available
+                  here.
                 </div>
                 {o.advisoryPct == null ? null : (
-                  <div
-                    className="mt-1 text-[11px] leading-[1.5]"
-                    style={{ color: "#8a97a4" }}
-                  >
-                    {o.objectiveGap} from your own answers · {o.advisoryGap}{" "}
-                    from your advisor&apos;s review
+                  <div className="mt-1 text-[11px] leading-[1.5]" style={{ color: "#8a97a4" }}>
+                    {o.objectiveGap} from your own answers · {o.advisoryGap} from your
+                    advisor&apos;s review
                   </div>
                 )}
               </div>
@@ -1459,34 +1291,26 @@ function TargetPlanner({
   }, [currentValuation, amount]);
 
   const [raw, setRaw] = useState(() =>
-    (initialTarget && initialTarget > 0
-      ? initialTarget
-      : suggested[1]
-    ).toLocaleString("en-US"),
+    (initialTarget && initialTarget > 0 ? initialTarget : suggested[1]).toLocaleString("en-US"),
   );
 
   const target = parseMoney(raw);
   const analysis =
-    target > 0
-      ? targetAnalysis(target, amount, currentScore, floors, anchors)
-      : null;
+    target > 0 ? targetAnalysis(target, amount, currentScore, floors, anchors) : null;
   const maxMultiple = anchors[anchors.length - 1];
   const maxValuation = amount * maxMultiple;
   const alreadyThere = currentValuation >= target - 0.5;
   const needsIncome = (analysis?.additionalIncomeRequired ?? 0) > 0.5;
-  const reqScore =
-    analysis?.requiredScore != null ? Math.ceil(analysis.requiredScore) : null;
+  const reqScore = analysis?.requiredScore != null ? Math.ceil(analysis.requiredScore) : null;
   const shownCurrent = Math.round(toDisplayScore(currentScore));
-  const shownRequired =
-    reqScore != null ? Math.round(toDisplayScore(reqScore)) : null;
-  const gain =
-    shownRequired != null ? Math.max(0, shownRequired - shownCurrent) : null;
+  const shownRequired = reqScore != null ? Math.round(toDisplayScore(reqScore)) : null;
+  const gain = shownRequired != null ? Math.max(0, shownRequired - shownCurrent) : null;
 
   return (
     <Card title="Set a target valuation">
       <p className="m-0 mb-3 text-[13px]" style={{ color: BRAND.muted }}>
-        Set a target and we'll show the ValScore you'd need to reach it, and
-        whether it also calls for higher income.
+        Set a target and we'll show the ValScore you'd need to reach it, and whether it also calls
+        for higher income.
       </p>
       <div className="relative mb-2 max-w-md">
         <span
@@ -1534,21 +1358,19 @@ function TargetPlanner({
             "Enter a target valuation to see what it would take."
           ) : alreadyThere ? (
             <>
-              <b style={{ color: BRAND.tealDark }}>You're already there.</b>{" "}
-              Your {scoreLabel.toLowerCase()} of {shownCurrent} already supports{" "}
-              {formatCurrency(target)}.
+              <b style={{ color: BRAND.tealDark }}>You're already there.</b> Your{" "}
+              {scoreLabel.toLowerCase()} of {shownCurrent} already supports {formatCurrency(target)}
+              .
             </>
           ) : reqScore == null ? (
             <>
-              {formatCurrency(target)} is beyond what this model can price from
-              a {basisLabel.toLowerCase()} of {formatCurrency(amount)}.
+              {formatCurrency(target)} is beyond what this model can price from a{" "}
+              {basisLabel.toLowerCase()} of {formatCurrency(amount)}.
             </>
           ) : (
             <>
-              To reach{" "}
-              <b style={{ color: BRAND.tealDark }}>{formatCurrency(target)}</b>,
-              you'd need a ValScore of{" "}
-              <b style={{ color: BRAND.tealDark }}>{reqScore}</b> — that's{" "}
+              To reach <b style={{ color: BRAND.tealDark }}>{formatCurrency(target)}</b>, you'd need
+              a ValScore of <b style={{ color: BRAND.tealDark }}>{reqScore}</b> — that's{" "}
               <b style={{ color: BRAND.tealDark }}>
                 {gain} point{gain === 1 ? "" : "s"}
               </b>{" "}
@@ -1584,21 +1406,15 @@ function TargetPlanner({
                   color: "#a56a12",
                 }}
               >
-                Even at the maximum ValScore, {formatCurrency(amount)} of{" "}
-                {basisLabel} tops out at{" "}
-                <b style={{ color: "#6b4d0d" }}>
-                  {formatCurrency(maxValuation)}
-                </b>
-                . To reach {formatCurrency(target)} you'd also need to grow{" "}
-                {basisLabel} to about{" "}
+                Even at the maximum ValScore, {formatCurrency(amount)} of {basisLabel} tops out at{" "}
+                <b style={{ color: "#6b4d0d" }}>{formatCurrency(maxValuation)}</b>. To reach{" "}
+                {formatCurrency(target)} you'd also need to grow {basisLabel} to about{" "}
                 <b style={{ color: "#6b4d0d" }}>
                   {formatCurrency(Math.round(analysis.totalIncomeRequired))}
                 </b>{" "}
                 — an extra{" "}
                 <b style={{ color: "#6b4d0d" }}>
-                  {formatCurrency(
-                    Math.round(analysis.additionalIncomeRequired),
-                  )}
+                  {formatCurrency(Math.round(analysis.additionalIncomeRequired))}
                 </b>
                 .
               </div>
@@ -1611,8 +1427,7 @@ function TargetPlanner({
                   color: BRAND.positiveText,
                 }}
               >
-                <b style={{ color: "#155e3a" }}>No score increase needed</b> at
-                your current income.
+                <b style={{ color: "#155e3a" }}>No score increase needed</b> at your current income.
               </div>
             ) : null}
           </>
@@ -1622,24 +1437,13 @@ function TargetPlanner({
   );
 }
 
-function PlannerCell({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-}) {
+function PlannerCell({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <div
       className="border-t border-r p-[14px_16px] last:border-r-0"
       style={{ borderColor: "#e4e9ef" }}
     >
-      <div
-        className="text-[10.5px] uppercase tracking-[0.08em]"
-        style={{ color: BRAND.muted }}
-      >
+      <div className="text-[10.5px] uppercase tracking-[0.08em]" style={{ color: BRAND.muted }}>
         {label}
       </div>
       <div
@@ -1648,10 +1452,7 @@ function PlannerCell({
       >
         {value}
       </div>
-      <div
-        className="mt-0.5 text-[12px] font-semibold"
-        style={{ color: BRAND.muted }}
-      >
+      <div className="mt-0.5 text-[12px] font-semibold" style={{ color: BRAND.muted }}>
         {sub}
       </div>
     </div>

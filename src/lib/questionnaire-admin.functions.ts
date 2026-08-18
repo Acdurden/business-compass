@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** What the auth middleware puts on `context`, as far as these helpers need it. */
+type AuthedContext = { supabase: SupabaseClient<Database>; userId: string };
 
 // ============================================================
 // Admin questionnaire editor — server functions
@@ -10,7 +15,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // referencing the rows they were answered against.
 // ============================================================
 
-async function ensureAdmin(context: { supabase: any; userId: string }) {
+async function ensureAdmin(context: AuthedContext) {
   const { data: isAdmin } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
     _role: "admin",
@@ -149,7 +154,11 @@ export const saveQuestionnaire = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // ---- Basic validation ----
-    if (!Array.isArray(data.sections) || !Array.isArray(data.questions) || !Array.isArray(data.answers)) {
+    if (
+      !Array.isArray(data.sections) ||
+      !Array.isArray(data.questions) ||
+      !Array.isArray(data.answers)
+    ) {
       throw new Error("Malformed payload");
     }
     if (data.sections.length === 0 || data.questions.length === 0) {
@@ -163,9 +172,18 @@ export const saveQuestionnaire = createServerFn({ method: "POST" })
         seen.add(id);
       }
     };
-    requireUnique(data.sections.map((s) => s.section_id), "section");
-    requireUnique(data.questions.map((q) => q.question_id), "question");
-    requireUnique(data.answers.map((a) => a.id), "answer");
+    requireUnique(
+      data.sections.map((s) => s.section_id),
+      "section",
+    );
+    requireUnique(
+      data.questions.map((q) => q.question_id),
+      "question",
+    );
+    requireUnique(
+      data.answers.map((a) => a.id),
+      "answer",
+    );
 
     // ---- Cascade: a hidden section hides its questions ----
     const inactiveSectionIds = new Set(
@@ -236,10 +254,14 @@ export const saveQuestionnaire = createServerFn({ method: "POST" })
     }));
 
     // ---- Persist (parents first for FK safety) ----
-    const secUp = await supabaseAdmin.from("sections").upsert(sectionRows, { onConflict: "section_id" });
+    const secUp = await supabaseAdmin
+      .from("sections")
+      .upsert(sectionRows, { onConflict: "section_id" });
     if (secUp.error) throw new Error(`sections: ${secUp.error.message}`);
 
-    const qUp = await supabaseAdmin.from("questions").upsert(questionRows, { onConflict: "question_id" });
+    const qUp = await supabaseAdmin
+      .from("questions")
+      .upsert(questionRows, { onConflict: "question_id" });
     if (qUp.error) throw new Error(`questions: ${qUp.error.message}`);
 
     const aUp = await supabaseAdmin.from("answer_options").upsert(answerRows, { onConflict: "id" });

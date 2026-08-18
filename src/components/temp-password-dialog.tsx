@@ -61,8 +61,8 @@ export function TempPasswordDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Share these credentials with the user. This password is shown once —
-            copy it now. The user should change it after signing in.
+            Share these credentials with the user. This password is shown once — copy it now. The
+            user should change it after signing in.
           </DialogDescription>
         </DialogHeader>
 
@@ -80,11 +80,7 @@ export function TempPasswordDialog({
               <span className="text-muted-foreground">Password: </span>
               <code className="font-mono">{password ?? "—"}</code>
               {password && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void copy(password, "pw")}
-                >
+                <Button size="sm" variant="outline" onClick={() => void copy(password, "pw")}>
                   {copied === "pw" ? (
                     <Check className="h-3.5 w-3.5 mr-1.5" />
                   ) : (
@@ -99,10 +95,7 @@ export function TempPasswordDialog({
 
         <DialogFooter className="gap-2 sm:gap-2">
           {shareText && (
-            <Button
-              variant="outline"
-              onClick={() => void copy(shareText, "all")}
-            >
+            <Button variant="outline" onClick={() => void copy(shareText, "all")}>
               {copied === "all" ? (
                 <Check className="h-3.5 w-3.5 mr-1.5" />
               ) : (

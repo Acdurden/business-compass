@@ -157,12 +157,8 @@ function ActionPlanWorkspace() {
             .from("responses")
             .select("question_id,section_id,questionnaire_type,points_awarded")
             .eq("submission_id", submissionId),
-          supabase
-            .from("score_bands")
-            .select("band_type,min_score,max_score,label"),
-          supabase
-            .from("valuation_multiples")
-            .select("band_index,nfi_multiple,ebitda_multiple"),
+          supabase.from("score_bands").select("band_type,min_score,max_score,label"),
+          supabase.from("valuation_multiples").select("band_index,nfi_multiple,ebitda_multiple"),
           loadLibrary(),
           loadPlan(submissionId),
         ]);
@@ -177,14 +173,11 @@ function ActionPlanWorkspace() {
           (questionsRes.data ?? []) as never,
           {
             valuationInputType:
-              (subData.valuation_input_type as InputType | null) ??
-              DEFAULT_VALUATION_INPUT_TYPE,
+              (subData.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE,
             valuationInputAmount: Number(
               subData.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT,
             ),
-            targetValuation: Number(
-              subData.target_valuation ?? DEFAULT_TARGET_VALUATION,
-            ),
+            targetValuation: Number(subData.target_valuation ?? DEFAULT_TARGET_VALUATION),
           },
           scoringConfig,
         );
@@ -213,20 +206,13 @@ function ActionPlanWorkspace() {
     return buildOpportunities(sections, result.sectionScores, "full");
   }, [sections, result]);
 
-  const drivers = useMemo(
-    () => advisoryDriverContext(opportunities),
-    [opportunities],
-  );
+  const drivers = useMemo(() => advisoryDriverContext(opportunities), [opportunities]);
 
   /** Advisory sections in client-opportunity order, biggest first. */
   const workspaceSections: WorkspaceSection[] = useMemo(() => {
     if (!result) return [];
-    const scoreById = new Map(
-      result.sectionScores.map((s) => [s.section_id, s]),
-    );
-    const nameById = new Map(
-      sections.map((s) => [s.section_id, s.section_name]),
-    );
+    const scoreById = new Map(result.sectionScores.map((s) => [s.section_id, s]));
+    const nameById = new Map(sections.map((s) => [s.section_id, s.section_name]));
 
     const rows: WorkspaceSection[] = [];
     const seen = new Set<string>();
@@ -239,10 +225,7 @@ function ActionPlanWorkspace() {
       seen.add(advisoryId);
       rows.push({
         sectionId: advisoryId,
-        name:
-          drivers.get(advisoryId)?.name ??
-          nameById.get(advisoryId) ??
-          advisoryId,
+        name: drivers.get(advisoryId)?.name ?? nameById.get(advisoryId) ?? advisoryId,
         advisoryActual: a.actual_score,
         advisoryMax: a.max_score,
         objectiveActual: o?.actual_score ?? 0,
@@ -267,10 +250,7 @@ function ActionPlanWorkspace() {
     return rows;
   }, [result, sections, opportunities, drivers]);
 
-  const planItems = useMemo(
-    () => buildPlanItems(plan, library, drivers),
-    [plan, library, drivers],
-  );
+  const planItems = useMemo(() => buildPlanItems(plan, library, drivers), [plan, library, drivers]);
 
   const flaggedByProblemId = useMemo(() => {
     const m = new Map<string, PlanProblemRow>();
@@ -317,9 +297,7 @@ function ActionPlanWorkspace() {
   }
 
   function nextCureOrder(planProblemId: string): number {
-    const under = plan.cures.filter(
-      (c) => c.submission_problem_id === planProblemId,
-    );
+    const under = plan.cures.filter((c) => c.submission_problem_id === planProblemId);
     if (under.length === 0) return 1;
     return Math.max(...under.map((c) => c.sort_order)) + 1;
   }
@@ -354,9 +332,7 @@ function ActionPlanWorkspace() {
     // The database cascades the actions; mirror that here rather than reloading.
     setPlan((prev) => ({
       problems: prev.problems.filter((p) => p.id !== planProblemId),
-      cures: prev.cures.filter(
-        (c) => c.submission_problem_id !== planProblemId,
-      ),
+      cures: prev.cures.filter((c) => c.submission_problem_id !== planProblemId),
     }));
   }
 
@@ -381,10 +357,7 @@ function ActionPlanWorkspace() {
   }
 
   async function removeCure(planCureId: string) {
-    const { error: err } = await supabase
-      .from("submission_cures")
-      .delete()
-      .eq("id", planCureId);
+    const { error: err } = await supabase.from("submission_cures").delete().eq("id", planCureId);
     if (err) throw new Error(err.message);
     setPlan((prev) => ({
       ...prev,
@@ -410,14 +383,8 @@ function ActionPlanWorkspace() {
     const newB = a === b ? b : a;
 
     const results = await Promise.all([
-      supabase
-        .from("submission_problems")
-        .update({ sort_order: newA })
-        .eq("id", row.id),
-      supabase
-        .from("submission_problems")
-        .update({ sort_order: newB })
-        .eq("id", swapWith.id),
+      supabase.from("submission_problems").update({ sort_order: newA }).eq("id", row.id),
+      supabase.from("submission_problems").update({ sort_order: newB }).eq("id", swapWith.id),
     ]);
     const failed = results.find((r) => r.error);
     if (failed?.error) throw new Error(failed.error.message);
@@ -445,9 +412,7 @@ function ActionPlanWorkspace() {
   if (error || !sub || !result || !config) {
     return (
       <main className="min-h-screen grid place-items-center gap-3 p-6 text-center">
-        <p className="text-sm text-destructive">
-          {error ?? "Could not load this review"}
-        </p>
+        <p className="text-sm text-destructive">{error ?? "Could not load this review"}</p>
         <Button asChild variant="outline" size="sm">
           <Link to="/admin/submissions">Back to submissions</Link>
         </Button>
@@ -455,12 +420,8 @@ function ActionPlanWorkspace() {
     );
   }
 
-  const inputType =
-    (sub.valuation_input_type as InputType | null) ??
-    DEFAULT_VALUATION_INPUT_TYPE;
-  const hasAmount =
-    sub.valuation_input_amount != null &&
-    Number(sub.valuation_input_amount) > 0;
+  const inputType = (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
+  const hasAmount = sub.valuation_input_amount != null && Number(sub.valuation_input_amount) > 0;
   const objectiveMax = result.sectionScores
     .filter((s) => s.questionnaire_type === "objective")
     .reduce((sum, s) => sum + s.max_score, 0);
@@ -468,8 +429,7 @@ function ActionPlanWorkspace() {
     .filter((s) => s.questionnaire_type === "advisory")
     .reduce((sum, s) => sum + s.max_score, 0);
   const band = bandFor(result.valScore, config.adjustedBands);
-  const reviewOut =
-    sub.advisor_status === "submitted" || sub.advisor_status === "final";
+  const reviewOut = sub.advisor_status === "submitted" || sub.advisor_status === "final";
   const isObjectivePlan = sub.plan === "objective";
   const totalActions = countActions(planItems);
 
@@ -481,9 +441,7 @@ function ActionPlanWorkspace() {
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               Action plan
             </p>
-            <h1 className="truncate text-lg font-semibold">
-              {sub.company_name}
-            </h1>
+            <h1 className="truncate text-lg font-semibold">{sub.company_name}</h1>
             <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
               {sub.submission_id}
             </p>
@@ -515,33 +473,31 @@ function ActionPlanWorkspace() {
         <div className="min-w-0 space-y-4">
           {isObjectivePlan ? (
             <Banner tone="amber">
-              This client is on the objective-only plan, so there is no advisor
-              review in their portal. Anything you build here will not be shown
-              to them unless they move to full service.
+              This client is on the objective-only plan, so there is no advisor review in their
+              portal. Anything you build here will not be shown to them unless they move to full
+              service.
             </Banner>
           ) : reviewOut ? (
             <Banner tone="green">
-              The advisory review is {sub.advisor_status}. This plan is live on
-              the client&apos;s summary — every change you make here is visible
-              to them straight away.
+              The advisory review is {sub.advisor_status}. This plan is live on the client&apos;s
+              summary — every change you make here is visible to them straight away.
             </Banner>
           ) : (
             <Banner tone="slate">
-              The client cannot see any of this yet. The plan appears on their
-              summary once the advisory review is submitted.
+              The client cannot see any of this yet. The plan appears on their summary once the
+              advisory review is submitted.
             </Banner>
           )}
 
           <p className="text-[13px] leading-relaxed text-muted-foreground">
-            Drivers are listed the way the client sees them — most value
-            available first. Flag the problems this business actually has, then
-            choose what to do about each one. Everything saves as you click it.
+            Drivers are listed the way the client sees them — most value available first. Flag the
+            problems this business actually has, then choose what to do about each one. Everything
+            saves as you click it.
           </p>
 
           {workspaceSections.length === 0 ? (
             <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-              No advisory sections are set up, so there is nothing to plan
-              against yet.
+              No advisory sections are set up, so there is nothing to plan against yet.
             </div>
           ) : (
             workspaceSections.map((section) => (
@@ -576,32 +532,20 @@ function ActionPlanWorkspace() {
                 }
                 onToggleCure={(planProblemId, cureId) => {
                   const existing = plan.cures.find(
-                    (c) =>
-                      c.submission_problem_id === planProblemId &&
-                      c.cure_id === cureId,
+                    (c) => c.submission_problem_id === planProblemId && c.cure_id === cureId,
                   );
                   void run(
                     () =>
-                      existing
-                        ? removeCure(existing.id)
-                        : insertCure(planProblemId, cureId, null),
+                      existing ? removeCure(existing.id) : insertCure(planProblemId, cureId, null),
                     "Could not save that change",
                   );
                 }}
                 onAddCustomCure={(planProblemId, text) =>
-                  run(
-                    () => insertCure(planProblemId, null, text),
-                    "Could not add that action",
-                  )
+                  run(() => insertCure(planProblemId, null, text), "Could not add that action")
                 }
-                onRemoveCureRow={(rowId) =>
-                  run(() => removeCure(rowId), "Could not remove that")
-                }
+                onRemoveCureRow={(rowId) => run(() => removeCure(rowId), "Could not remove that")}
                 onMoveProblem={(rowId, dir) =>
-                  run(
-                    () => moveProblem(rowId, dir),
-                    "Could not change the order",
-                  )
+                  run(() => moveProblem(rowId, dir), "Could not change the order")
                 }
               />
             ))
@@ -611,21 +555,18 @@ function ActionPlanWorkspace() {
         <aside className="space-y-4 lg:sticky lg:top-6">
           <RailCard title="The plan so far">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold tabular-nums">
-                {planItems.length}
-              </span>
+              <span className="text-3xl font-bold tabular-nums">{planItems.length}</span>
               <span className="text-sm text-muted-foreground">
                 {planItems.length === 1 ? "problem" : "problems"} flagged
               </span>
             </div>
             <div className="mt-1 text-sm text-muted-foreground">
-              {totalActions} {totalActions === 1 ? "action" : "actions"}{" "}
-              prescribed
+              {totalActions} {totalActions === 1 ? "action" : "actions"} prescribed
             </div>
             {planItems.some((i) => i.actions.length === 0) ? (
               <p className="mt-3 rounded-md bg-amber-500/10 px-3 py-2 text-[12px] leading-relaxed text-amber-800 dark:text-amber-200">
-                Some flagged problems have no action yet. The client would see
-                the problem with nothing to do about it.
+                Some flagged problems have no action yet. The client would see the problem with
+                nothing to do about it.
               </p>
             ) : null}
           </RailCard>
@@ -635,9 +576,7 @@ function ActionPlanWorkspace() {
               <span className="text-3xl font-bold tabular-nums">
                 {displayScore(result.valScore)}
               </span>
-              <span className="text-sm text-muted-foreground">
-                {band.label}
-              </span>
+              <span className="text-sm text-muted-foreground">{band.label}</span>
             </div>
             <dl className="mt-3 space-y-1.5 text-[12.5px]">
               <RailRow
@@ -657,10 +596,8 @@ function ActionPlanWorkspace() {
                 {formatValuationRange(result.adjusted.estimatedValuation)}
               </div>
               <div className="mt-1 text-[12.5px] text-muted-foreground">
-                Midpoint{" "}
-                {formatCurrency(Math.round(result.adjusted.estimatedValuation))}{" "}
-                · {result.adjusted.multiple.toFixed(2)}×{" "}
-                {BASIS_LABEL[inputType]}
+                Midpoint {formatCurrency(Math.round(result.adjusted.estimatedValuation))} ·{" "}
+                {result.adjusted.multiple.toFixed(2)}× {BASIS_LABEL[inputType]}
               </div>
               <dl className="mt-3 space-y-1.5 text-[12.5px]">
                 <RailRow label="Basis" value={BASIS_LABEL[inputType]} />
@@ -673,8 +610,8 @@ function ActionPlanWorkspace() {
           ) : (
             <RailCard title="Advisor-adjusted valuation">
               <p className="text-[12.5px] leading-relaxed text-muted-foreground">
-                No income figure is on file for this client, so no valuation is
-                shown — here or to them.
+                No income figure is on file for this client, so no valuation is shown — here or to
+                them.
               </p>
             </RailCard>
           )}
@@ -700,21 +637,13 @@ function Banner({
         ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200"
         : "border-border bg-muted/40 text-muted-foreground";
   return (
-    <div
-      className={`rounded-md border px-4 py-3 text-[12.5px] leading-relaxed ${cls}`}
-    >
+    <div className={`rounded-md border px-4 py-3 text-[12.5px] leading-relaxed ${cls}`}>
       {children}
     </div>
   );
 }
 
-function RailCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function RailCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <h2 className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
@@ -773,8 +702,7 @@ function SectionPanel({
 }: SectionPanelProps) {
   const [draftProblem, setDraftProblem] = useState("");
 
-  const libraryProblems =
-    library.problemsBySection.get(section.sectionId) ?? [];
+  const libraryProblems = library.problemsBySection.get(section.sectionId) ?? [];
   const flaggedRows = plan.problems
     .filter((p) => p.section_id === section.sectionId)
     .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id));
@@ -795,9 +723,7 @@ function SectionPanel({
         ) : (
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
         )}
-        <span className="min-w-[140px] flex-1 text-[14px] font-semibold">
-          {section.name}
-        </span>
+        <span className="min-w-[140px] flex-1 text-[14px] font-semibold">{section.name}</span>
         <span className="text-[12px] text-muted-foreground">
           your review{" "}
           <b className="tabular-nums text-foreground">
@@ -813,8 +739,7 @@ function SectionPanel({
           ) : null}
           {section.points != null ? (
             <>
-              {" · "}opportunity{" "}
-              <b className="tabular-nums text-foreground">+{section.points}</b>
+              {" · "}opportunity <b className="tabular-nums text-foreground">+{section.points}</b>
             </>
           ) : null}
         </span>
@@ -840,8 +765,7 @@ function SectionPanel({
             </h3>
             {libraryProblems.length === 0 ? (
               <p className="text-[12.5px] italic text-muted-foreground">
-                Nothing in the library for this driver yet — add a problem
-                below.
+                Nothing in the library for this driver yet — add a problem below.
               </p>
             ) : (
               libraryProblems.map((p) => {
@@ -905,8 +829,8 @@ function SectionPanel({
             </h3>
             {flaggedRows.length === 0 ? (
               <p className="text-[12.5px] italic leading-relaxed text-muted-foreground">
-                Flag a problem on the left and its actions appear here. An
-                action can never be prescribed without the problem it solves.
+                Flag a problem on the left and its actions appear here. An action can never be
+                prescribed without the problem it solves.
               </p>
             ) : (
               flaggedRows.map((row, index) => (
@@ -965,9 +889,7 @@ function ProblemActions({
   const heading = row.problem_id
     ? (library.problemById.get(row.problem_id)?.problem_text ?? row.problem_id)
     : (row.custom_text ?? "");
-  const libraryCures = row.problem_id
-    ? (library.curesByProblem.get(row.problem_id) ?? [])
-    : [];
+  const libraryCures = row.problem_id ? (library.curesByProblem.get(row.problem_id) ?? []) : [];
   const customCures = plan.cures.filter(
     (c) => c.submission_problem_id === row.id && c.cure_id == null,
   );
@@ -1009,11 +931,7 @@ function ProblemActions({
           disabled={busy}
           onClick={() => onToggleCure(row.id, c.cure_id)}
           text={c.cure_text}
-          badge={
-            c.category_id
-              ? (library.categoryById.get(c.category_id)?.name ?? null)
-              : null
-          }
+          badge={c.category_id ? (library.categoryById.get(c.category_id)?.name ?? null) : null}
         />
       ))}
 
@@ -1083,9 +1001,7 @@ function ToggleRow({
     >
       <span
         className={`mt-px grid h-[15px] w-[15px] shrink-0 place-items-center rounded border text-[10px] font-black leading-none ${
-          checked
-            ? "border-emerald-600 bg-emerald-600 text-white"
-            : "border-muted-foreground/40"
+          checked ? "border-emerald-600 bg-emerald-600 text-white" : "border-muted-foreground/40"
         }`}
       >
         {checked ? "✓" : ""}

@@ -37,12 +37,7 @@ export const BRAND = {
 } as const;
 
 /** Colours used for the four score bands, lowest to highest. */
-export const BAND_COLORS = [
-  "#c98a3a",
-  "#4f8bd6",
-  "#4aa86f",
-  "#1f8a86",
-] as const;
+export const BAND_COLORS = ["#c98a3a", "#4f8bd6", "#4aa86f", "#1f8a86"] as const;
 
 /* ------------------------------------------------------------------ */
 /* Scale translation                                                   */
@@ -58,15 +53,8 @@ export const CLIENT_SCALE_MAX = 100;
  * The ValScore itself is already native 0–100 (objective 60 + advisory 40) and
  * must NOT be passed through this.
  */
-export function grossObjective(
-  objectiveScore: number,
-  objectiveMax: number,
-): number {
-  if (
-    !Number.isFinite(objectiveScore) ||
-    !Number.isFinite(objectiveMax) ||
-    objectiveMax <= 0
-  ) {
+export function grossObjective(objectiveScore: number, objectiveMax: number): number {
+  if (!Number.isFinite(objectiveScore) || !Number.isFinite(objectiveMax) || objectiveMax <= 0) {
     return 0;
   }
   return (objectiveScore / objectiveMax) * CLIENT_SCALE_MAX;
@@ -107,8 +95,7 @@ export function bandFor(
   score: number,
   bands: Array<{ min: number; max: number; label: string }>,
 ): BandInfo {
-  if (!bands.length)
-    return { index: 0, label: "", min: 0, max: CLIENT_SCALE_MAX };
+  if (!bands.length) return { index: 0, label: "", min: 0, max: CLIENT_SCALE_MAX };
   const sorted = [...bands].sort((a, b) => a.min - b.min);
   const found = sorted.findIndex((b) => score >= b.min && score <= b.max);
   const i = found >= 0 ? found : score < sorted[0].min ? 0 : sorted.length - 1;
@@ -140,9 +127,7 @@ export function formatCurrency(n: number | null | undefined): string {
 }
 
 /** A ±5% band around the midpoint, matching how results are quoted elsewhere. */
-export function formatValuationRange(
-  midpoint: number | null | undefined,
-): string {
+export function formatValuationRange(midpoint: number | null | undefined): string {
   if (midpoint == null || !Number.isFinite(midpoint)) return "—";
   return `${formatCurrency(Math.round(midpoint * 0.95))} – ${formatCurrency(
     Math.round(midpoint * 1.05),
@@ -183,17 +168,7 @@ const KNOWN_PAIRS: ReadonlyArray<{
   { objective: "S9", advisory: "A8", name: "AI Readiness & Leverage" },
 ];
 
-const STOP_WORDS = new Set([
-  "and",
-  "the",
-  "of",
-  "for",
-  "a",
-  "an",
-  "&",
-  "risk",
-  "reporting",
-]);
+const STOP_WORDS = new Set(["and", "the", "of", "for", "a", "an", "&", "risk", "reporting"]);
 
 function nameTokens(name: string): Set<string> {
   return new Set(
@@ -252,10 +227,7 @@ type SectionPair = {
  * comparison. Shared by the driver comparison and the opportunity list so the
  * two can never disagree about what a driver is.
  */
-function resolvePairs(
-  sections: SectionMeta[],
-  sectionScores: SectionScore[],
-): SectionPair[] {
+function resolvePairs(sections: SectionMeta[], sectionScores: SectionScore[]): SectionPair[] {
   const scoreBySection = new Map(sectionScores.map((s) => [s.section_id, s]));
   const metaBySection = new Map(sections.map((s) => [s.section_id, s]));
 
@@ -277,11 +249,7 @@ function resolvePairs(
   KNOWN_PAIRS.forEach((pair) => {
     // Prefer the advisory section's own name if an admin has renamed it.
     const advisoryMeta = metaBySection.get(pair.advisory);
-    push(
-      pair.objective,
-      pair.advisory,
-      advisoryMeta?.section_name?.trim() || pair.name,
-    );
+    push(pair.objective, pair.advisory, advisoryMeta?.section_name?.trim() || pair.name);
   });
 
   // Anything the table didn't cover — pair by name similarity so that a section
@@ -321,33 +289,28 @@ function resolvePairs(
 }
 
 /** Build the paired driver list from the section scores the engine produced. */
-export function buildDrivers(
-  sections: SectionMeta[],
-  sectionScores: SectionScore[],
-): Driver[] {
+export function buildDrivers(sections: SectionMeta[], sectionScores: SectionScore[]): Driver[] {
   const scoreBySection = new Map(sectionScores.map((s) => [s.section_id, s]));
 
-  return resolvePairs(sections, sectionScores).flatMap(
-    ({ objectiveId, advisoryId, name }) => {
-      const o = scoreBySection.get(objectiveId);
-      const a = scoreBySection.get(advisoryId);
-      if (!o || !a) return [];
-      const selfScore = asPercent(o.actual_score, o.max_score);
-      const advisorScore = asPercent(a.actual_score, a.max_score);
-      return [
-        {
-          key: `${objectiveId}-${advisoryId}`,
-          name,
-          selfScore,
-          advisorScore,
-          delta: advisorScore - selfScore,
-          upsidePoints: Math.max(0, a.max_score - a.actual_score),
-          advisoryActual: a.actual_score,
-          advisoryMax: a.max_score,
-        },
-      ];
-    },
-  );
+  return resolvePairs(sections, sectionScores).flatMap(({ objectiveId, advisoryId, name }) => {
+    const o = scoreBySection.get(objectiveId);
+    const a = scoreBySection.get(advisoryId);
+    if (!o || !a) return [];
+    const selfScore = asPercent(o.actual_score, o.max_score);
+    const advisorScore = asPercent(a.actual_score, a.max_score);
+    return [
+      {
+        key: `${objectiveId}-${advisoryId}`,
+        name,
+        selfScore,
+        advisorScore,
+        delta: advisorScore - selfScore,
+        upsidePoints: Math.max(0, a.max_score - a.actual_score),
+        advisoryActual: a.actual_score,
+        advisoryMax: a.max_score,
+      },
+    ];
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -437,10 +400,7 @@ export function buildOpportunities(
           objectiveGap,
           advisoryGap,
           totalGap: objectiveGap + advisoryGap,
-          capturedPct: asPercent(
-            o.actual_score + a.actual_score,
-            o.max_score + a.max_score,
-          ),
+          capturedPct: asPercent(o.actual_score + a.actual_score, o.max_score + a.max_score),
           advisoryPct: asPercent(a.actual_score, a.max_score),
         },
       ];
@@ -455,9 +415,7 @@ export function totalOpportunity(opportunities: Opportunity[]): number {
 
 /** Drivers with the most advisory points still available, biggest first. */
 export function topUpsideDrivers(drivers: Driver[], limit = 5): Driver[] {
-  return [...drivers]
-    .sort((a, b) => b.upsidePoints - a.upsidePoints)
-    .slice(0, limit);
+  return [...drivers].sort((a, b) => b.upsidePoints - a.upsidePoints).slice(0, limit);
 }
 
 /** Split drivers by how the advisor's read compared with the client's own. */
