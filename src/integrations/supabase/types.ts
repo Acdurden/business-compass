@@ -292,6 +292,39 @@ export type Database = {
           },
         ];
       };
+      email_templates: {
+        Row: {
+          body: string;
+          cta_label: string;
+          from_email: string | null;
+          from_name: string;
+          key: string;
+          subject: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          body: string;
+          cta_label: string;
+          from_email?: string | null;
+          from_name?: string;
+          key: string;
+          subject: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          body?: string;
+          cta_label?: string;
+          from_email?: string | null;
+          from_name?: string;
+          key?: string;
+          subject?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
       invite_codes: {
         Row: {
           active: boolean;

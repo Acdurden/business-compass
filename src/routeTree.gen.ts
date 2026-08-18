@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AdminAdvisorsRouteImport } from './routes/admin.advisors'
 import { Route as AdminClientsRouteImport } from './routes/admin.clients'
+import { Route as AdminEmailsRouteImport } from './routes/admin.emails'
 import { Route as AdminQuestionnaireRouteImport } from './routes/admin.questionnaire'
 import { Route as AdminSubmissionsRouteImport } from './routes/admin.submissions'
 import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
@@ -62,6 +63,11 @@ const AdminAdvisorsRoute = AdminAdvisorsRouteImport.update({
 const AdminClientsRoute = AdminClientsRouteImport.update({
   id: '/admin/clients',
   path: '/admin/clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminEmailsRoute = AdminEmailsRouteImport.update({
+  id: '/admin/emails',
+  path: '/admin/emails',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminQuestionnaireRoute = AdminQuestionnaireRouteImport.update({
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin/advisors': typeof AdminAdvisorsRoute
   '/admin/clients': typeof AdminClientsRoute
+  '/admin/emails': typeof AdminEmailsRoute
   '/admin/questionnaire': typeof AdminQuestionnaireRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/admin/advisors': typeof AdminAdvisorsRoute
   '/admin/clients': typeof AdminClientsRoute
+  '/admin/emails': typeof AdminEmailsRoute
   '/admin/questionnaire': typeof AdminQuestionnaireRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/admin/advisors': typeof AdminAdvisorsRoute
   '/admin/clients': typeof AdminClientsRoute
+  '/admin/emails': typeof AdminEmailsRoute
   '/admin/questionnaire': typeof AdminQuestionnaireRoute
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin/advisors'
     | '/admin/clients'
+    | '/admin/emails'
     | '/admin/questionnaire'
     | '/admin/submissions'
     | '/advisor/$submissionId'
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin/advisors'
     | '/admin/clients'
+    | '/admin/emails'
     | '/admin/questionnaire'
     | '/admin/submissions'
     | '/advisor/$submissionId'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin/advisors'
     | '/admin/clients'
+    | '/admin/emails'
     | '/admin/questionnaire'
     | '/admin/submissions'
     | '/advisor/$submissionId'
@@ -264,6 +276,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   AdminAdvisorsRoute: typeof AdminAdvisorsRoute
   AdminClientsRoute: typeof AdminClientsRoute
+  AdminEmailsRoute: typeof AdminEmailsRoute
   AdminQuestionnaireRoute: typeof AdminQuestionnaireRoute
   AdminSubmissionsRoute: typeof AdminSubmissionsRoute
   AdvisorSubmissionIdRoute: typeof AdvisorSubmissionIdRoute
@@ -327,6 +340,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/clients'
       fullPath: '/admin/clients'
       preLoaderRoute: typeof AdminClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/emails': {
+      id: '/admin/emails'
+      path: '/admin/emails'
+      fullPath: '/admin/emails'
+      preLoaderRoute: typeof AdminEmailsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/questionnaire': {
@@ -424,6 +444,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   AdminAdvisorsRoute: AdminAdvisorsRoute,
   AdminClientsRoute: AdminClientsRoute,
+  AdminEmailsRoute: AdminEmailsRoute,
   AdminQuestionnaireRoute: AdminQuestionnaireRoute,
   AdminSubmissionsRoute: AdminSubmissionsRoute,
   AdvisorSubmissionIdRoute: AdvisorSubmissionIdRoute,

@@ -19,10 +19,18 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, LayoutDashboard, ListChecks, LogOut, Users, UserCog } from "lucide-react";
+import {
+  ClipboardList,
+  LayoutDashboard,
+  ListChecks,
+  LogOut,
+  Mail,
+  Users,
+  UserCog,
+} from "lucide-react";
 
 export type BackOfficeSection =
-  "dashboard" | "submissions" | "clients" | "questionnaire" | "advisors" | null;
+  "dashboard" | "submissions" | "clients" | "questionnaire" | "emails" | "advisors" | null;
 
 /**
  * Cached across mounts so moving between pages does not re-ask the database
@@ -108,6 +116,13 @@ export function BackOfficeNav({ active }: { active: BackOfficeSection }) {
       label: "Questionnaire",
       to: "/admin/questionnaire",
       icon: <ClipboardList className="h-3.5 w-3.5" />,
+      show: admin === true,
+    },
+    {
+      key: "emails",
+      label: "Emails",
+      to: "/admin/emails",
+      icon: <Mail className="h-3.5 w-3.5" />,
       show: admin === true,
     },
     {
