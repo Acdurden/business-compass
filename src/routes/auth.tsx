@@ -31,16 +31,16 @@ function withTimeout<T>(promise: PromiseLike<T>, label: string) {
 }
 
 function advisorDestination(redirect: string | undefined) {
-  if (!redirect) return "/admin/submissions";
+  if (!redirect) return "/advisor";
   try {
     const url = new URL(redirect, window.location.origin);
-    if (url.origin !== window.location.origin) return "/admin/submissions";
+    if (url.origin !== window.location.origin) return "/advisor";
     if (url.pathname === "/auth" || url.pathname === "/client/auth") {
-      return "/admin/submissions";
+      return "/advisor";
     }
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
-    return "/admin/submissions";
+    return "/advisor";
   }
 }
 
