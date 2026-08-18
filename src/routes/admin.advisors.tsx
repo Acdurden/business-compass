@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { redirect } from "@tanstack/react-router";
-import { ArrowLeft, KeyRound, LogOut, ShieldCheck } from "lucide-react";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import {
   listAdvisorAccounts,
   resetAdvisorPassword,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/password-admin.functions";
 import { createAdvisor } from "@/lib/client-invites.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
+import { BackOfficeNav } from "@/components/back-office-nav";
 
 async function requireAdminAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
@@ -63,31 +64,14 @@ function AdvisorsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list]);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    toast.success("Signed out");
-    navigate({ to: "/auth" });
-  }
-
   return (
     <main className="min-h-screen">
+      <BackOfficeNav active={"advisors"} />
       <header className="border-b border-border/60">
         <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
             <h1 className="text-lg font-semibold tracking-tight">Advisors</h1>
-          </div>
-          <div className="flex gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/submissions">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Submissions
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-              <LogOut className="h-3.5 w-3.5 mr-1.5" />
-              Sign out
-            </Button>
           </div>
         </div>
       </header>

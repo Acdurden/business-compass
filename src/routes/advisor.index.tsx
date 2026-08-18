@@ -30,7 +30,8 @@ import {
   type QueueResponse,
   type QueueSubmission,
 } from "@/lib/advisor-queue";
-import { ClipboardList, ListChecks, LogOut, Users } from "lucide-react";
+import { ClipboardList, ListChecks, Users } from "lucide-react";
+import { BackOfficeNav } from "@/components/back-office-nav";
 
 export const Route = createFileRoute("/advisor/")({
   ssr: false,
@@ -173,11 +174,6 @@ function AdvisorDashboard() {
     [items, submissions, dormantCount],
   );
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
-  }
-
   if (loading) {
     return (
       <main className="grid min-h-screen place-items-center p-6">
@@ -199,29 +195,12 @@ function AdvisorDashboard() {
 
   return (
     <main className="min-h-screen pb-24">
+      <BackOfficeNav active={"dashboard"} />
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Advisor</p>
             <h1 className="text-lg font-semibold">Dashboard</h1>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/admin/submissions">
-                <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
-                All submissions
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/admin/clients">
-                <Users className="mr-1.5 h-3.5 w-3.5" />
-                Clients
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-              <LogOut className="mr-1.5 h-3.5 w-3.5" />
-              Sign out
-            </Button>
           </div>
         </div>
       </header>

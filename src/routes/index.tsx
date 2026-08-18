@@ -153,7 +153,7 @@ function ComingSoon() {
           The defining standard by which decisions are made and success is measured.
         </p>
         <div className="ks-cta">
-          <a className="ks-btn" href="/login">
+          <a className="ks-btn" href="/client/auth">
             Team Sign-In <span className="ks-arw">&rarr;</span>
           </a>
         </div>

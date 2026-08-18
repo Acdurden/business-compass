@@ -51,17 +51,9 @@ import {
   type PlanCureRow,
   type PlanProblemRow,
 } from "@/lib/action-plan";
-import {
-  ArrowLeft,
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  ClipboardList,
-  Eye,
-  Plus,
-  X,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, ClipboardList, Eye, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { BackOfficeNav } from "@/components/back-office-nav";
 
 export const Route = createFileRoute("/advisor/plan/$submissionId")({
   ssr: false,
@@ -435,6 +427,7 @@ function ActionPlanWorkspace() {
 
   return (
     <main className="min-h-screen pb-24">
+      <BackOfficeNav active={null} />
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div className="min-w-0">
@@ -447,12 +440,6 @@ function ActionPlanWorkspace() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/submissions">
-                <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
-                Submissions
-              </Link>
-            </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/advisor/$submissionId" params={{ submissionId }}>
                 <ClipboardList className="mr-1.5 h-3.5 w-3.5" />

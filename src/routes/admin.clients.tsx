@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, KeyRound, LogOut, Trash2 } from "lucide-react";
+import { KeyRound, Trash2 } from "lucide-react";
 import {
   listClientAccounts,
   resetClientPasswordByUserId,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/password-admin.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { BackOfficeNav } from "@/components/back-office-nav";
 
 async function requireAdvisorAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
@@ -25,7 +26,7 @@ async function requireAdvisorAuth(currentHref: string) {
   });
   if (!isAdvisor) {
     toast.error("Advisor role required");
-    throw redirect({ to: "/login" });
+    throw redirect({ to: "/client/auth" });
   }
   return { userId: data.session.user.id };
 }
@@ -55,31 +56,14 @@ function ClientsPage() {
       });
   }, [list]);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    toast.success("Signed out");
-    navigate({ to: "/auth" });
-  }
-
   return (
     <main className="min-h-screen">
+      <BackOfficeNav active={"clients"} />
       <header className="border-b border-border/60">
         <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
             <h1 className="text-lg font-semibold tracking-tight">Clients</h1>
-          </div>
-          <div className="flex gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/submissions">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Submissions
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-              <LogOut className="h-3.5 w-3.5 mr-1.5" />
-              Sign out
-            </Button>
           </div>
         </div>
       </header>

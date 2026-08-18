@@ -165,7 +165,7 @@ function InvitePage() {
               {existing ? (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
                   An account already exists for this email.{" "}
-                  <Link to="/login" className="underline font-medium">
+                  <Link to="/client/auth" className="underline font-medium">
                     Sign in instead
                   </Link>
                   .
@@ -183,7 +183,7 @@ function InvitePage() {
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/login" className="underline hover:text-foreground">
+            <Link to="/client/auth" className="underline hover:text-foreground">
               Client sign-in
             </Link>
           </p>

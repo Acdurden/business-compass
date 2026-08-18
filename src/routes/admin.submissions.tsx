@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
-  LogOut,
   FileDown,
   Mail,
   Unlock,
@@ -18,7 +17,6 @@ import {
   Link as LinkIcon,
   Check,
   KeyRound,
-  Users,
   MoreHorizontal,
   ArrowRight,
   Trash2,
@@ -50,6 +48,7 @@ import {
   listAllSubmissions,
   setAdvisorStatus,
 } from "@/lib/advisor-submissions.functions";
+import { BackOfficeNav } from "@/components/back-office-nav";
 
 export const Route = createFileRoute("/admin/submissions")({
   ssr: false,
@@ -756,12 +755,6 @@ function AdminSubmissionsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    toast.success("Signed out");
-    navigate({ to: "/auth" });
-  }
-
   useEffect(() => {
     listAll()
       .then((data) => {
@@ -830,6 +823,7 @@ function AdminSubmissionsPage() {
 
   return (
     <main className="min-h-screen">
+      <BackOfficeNav active={"submissions"} />
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <div>
@@ -838,31 +832,6 @@ function AdminSubmissionsPage() {
           </div>
           <div className="flex gap-2">
             <InviteClientButton links={inviteLinks} />
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/clients">
-                <Users className="h-3.5 w-3.5 mr-1.5" />
-                Clients
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/advisors">
-                <Users className="h-3.5 w-3.5 mr-1.5" />
-                Advisors
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/questionnaire">
-                <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-                Questionnaire
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/login">Home</Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-              <LogOut className="h-3.5 w-3.5 mr-1.5" />
-              Sign out
-            </Button>
           </div>
         </div>
       </header>

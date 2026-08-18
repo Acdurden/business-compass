@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
-  LogOut,
-  ArrowLeft,
   Plus,
   EyeOff,
   RotateCcw,
@@ -30,6 +28,7 @@ import {
   type EditorScoreBand,
   type EditorMultiple,
 } from "@/lib/questionnaire-admin.functions";
+import { BackOfficeNav } from "@/components/back-office-nav";
 
 export const Route = createFileRoute("/admin/questionnaire")({
   ssr: false,
@@ -239,11 +238,6 @@ function QuestionnaireEditorPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
-  }
 
   /* ---- text/points edit lifecycle (one undo step per field session) ---- */
   function beginEdit() {
@@ -641,6 +635,7 @@ function QuestionnaireEditorPage() {
 
   return (
     <main className="min-h-screen pb-28">
+      <BackOfficeNav active={"questionnaire"} />
       <header className="border-b border-border/60 sticky top-0 bg-background/95 backdrop-blur z-20">
         <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between gap-3">
           <div>
@@ -663,16 +658,6 @@ function QuestionnaireEditorPage() {
               disabled={!st.future.length}
             >
               <Redo2 className="h-3.5 w-3.5 mr-1.5" /> Redo
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/submissions">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Submissions
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-              <LogOut className="h-3.5 w-3.5 mr-1.5" />
-              Sign out
             </Button>
           </div>
         </div>

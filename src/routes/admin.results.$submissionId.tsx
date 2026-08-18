@@ -10,8 +10,9 @@ import {
   DEFAULT_VALUATION_INPUT_TYPE,
 } from "@/lib/valuation-defaults";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { FileDown, ArrowLeft, ClipboardList } from "lucide-react";
+import { FileDown, ClipboardList, ListChecks } from "lucide-react";
 import { toast } from "sonner";
+import { BackOfficeNav } from "@/components/back-office-nav";
 
 export const Route = createFileRoute("/admin/results/$submissionId")({
   ssr: false,
@@ -208,6 +209,7 @@ function ResultsPage() {
 
   return (
     <main className="min-h-screen pb-24">
+      <BackOfficeNav active={null} />
       <header className="border-b border-border/60">
         <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -220,16 +222,16 @@ function ResultsPage() {
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/submissions">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Submissions
-              </Link>
-            </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/advisor/$submissionId" params={{ submissionId }}>
                 <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
                 Edit advisory
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/advisor/plan/$submissionId" params={{ submissionId }}>
+                <ListChecks className="h-3.5 w-3.5 mr-1.5" />
+                Action plan
               </Link>
             </Button>
             <Button size="sm" onClick={() => void downloadPdf()} disabled={pdfBusy}>
