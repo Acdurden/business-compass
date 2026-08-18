@@ -7,15 +7,12 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   FileDown,
-  Mail,
   Unlock,
   RotateCcw,
   ClipboardList,
   Eye,
   Pencil,
   CheckCircle2,
-  Link as LinkIcon,
-  Check,
   KeyRound,
   MoreHorizontal,
   ArrowRight,
@@ -32,17 +29,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { getActiveInviteCodes, type InviteLink } from "@/lib/client-invites.functions";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { resetClientPassword } from "@/lib/password-admin.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { InviteClientButton } from "@/components/invite-client-button";
 import {
   deleteSubmission,
   listAllSubmissions,
@@ -211,101 +201,6 @@ function Pill({ label, value, tone }: { label: string; value: string; tone: Tone
       <span className="opacity-60">{label}</span>
       <span className="font-medium">{value}</span>
     </span>
-  );
-}
-
-function InviteLinkRow({ link }: { link: InviteLink }) {
-  const [copied, setCopied] = useState(false);
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://kriterionbvi.com";
-  const url = `${origin}/invite?code=${link.code}`;
-
-  async function handleCopy() {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        const textarea = document.createElement("textarea");
-        textarea.value = url;
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        const ok = document.execCommand("copy");
-        document.body.removeChild(textarea);
-        if (!ok) throw new Error("execCommand copy failed");
-      }
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Could not copy link");
-    }
-  }
-
-  return (
-    <div className="rounded-lg border border-border p-3">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">
-          {link.plan === "full" ? "Full service" : "Objective only"}
-        </span>
-        <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {link.plan === "full" ? "Includes advisor review" : "Self-assessment only"}
-        </span>
-      </div>
-      <div className="mt-2 flex items-center gap-2">
-        <code className="flex-1 truncate rounded-md border border-border bg-muted px-3 py-2 text-xs">
-          {url}
-        </code>
-        <Button size="sm" variant="outline" onClick={() => void handleCopy()}>
-          {copied ? (
-            <Check className="h-3.5 w-3.5 mr-1.5" />
-          ) : (
-            <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
-          )}
-          {copied ? "Copied!" : "Copy"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function InviteClientButton({ links }: { links: InviteLink[] }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <Button size="sm" onClick={() => setOpen(true)}>
-        <Mail className="h-3.5 w-3.5 mr-1.5" />
-        Invite a client
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Invite a client</DialogTitle>
-            <DialogDescription>
-              Share a link and the client sets up their own account &mdash; no password for you to
-              relay. <b>The link you send decides their plan</b>, so pick the right one.
-            </DialogDescription>
-          </DialogHeader>
-          {links.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {links.map((l) => (
-                <InviteLinkRow key={l.code} link={l} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No active invite link is configured yet.
-            </p>
-          )}
-          <p className="text-[11px] text-muted-foreground">
-            These are reusable sign-up links. A client&apos;s plan is fixed at sign-up and shown on
-            their row.
-          </p>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }
 
@@ -748,8 +643,6 @@ function SummaryTile({
 function AdminSubmissionsPage() {
   const navigate = useNavigate();
   const listAll = useServerFn(listAllSubmissions);
-  const getInviteCodes = useServerFn(getActiveInviteCodes);
-  const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -766,12 +659,6 @@ function AdminSubmissionsPage() {
         setLoading(false);
       });
   }, [listAll]);
-
-  useEffect(() => {
-    getInviteCodes()
-      .then((res) => setInviteLinks(res.links ?? []))
-      .catch(() => setInviteLinks([]));
-  }, [getInviteCodes]);
 
   function updateRow(submissionId: string, patch: Partial<Row>) {
     setRows((prev) => prev.map((x) => (x.submission_id === submissionId ? { ...x, ...patch } : x)));
@@ -831,7 +718,7 @@ function AdminSubmissionsPage() {
             <h1 className="text-lg font-semibold tracking-tight">Submissions</h1>
           </div>
           <div className="flex gap-2">
-            <InviteClientButton links={inviteLinks} />
+            <InviteClientButton />
           </div>
         </div>
       </header>

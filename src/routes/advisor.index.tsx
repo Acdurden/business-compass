@@ -32,6 +32,7 @@ import {
 } from "@/lib/advisor-queue";
 import { ClipboardList, ListChecks, Users } from "lucide-react";
 import { BackOfficeNav } from "@/components/back-office-nav";
+import { InviteClientButton } from "@/components/invite-client-button";
 
 export const Route = createFileRoute("/advisor/")({
   ssr: false,
@@ -203,6 +204,13 @@ function AdvisorDashboard() {
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Advisor</p>
             <h1 className="text-lg font-semibold">Dashboard</h1>
           </div>
+          {/*
+           * The one thing an advisor starts rather than continues, so it sits
+           * above the queue instead of inside it. Same dialog as the
+           * submissions list — one component, so the plan links cannot drift
+           * between the two screens.
+           */}
+          <InviteClientButton />
         </div>
       </header>
 
