@@ -27,6 +27,7 @@ import { Route as ClientChangePasswordRouteImport } from './routes/client.change
 import { Route as ClientQuestionnaireRouteImport } from './routes/client.questionnaire'
 import { Route as ClientSummaryRouteImport } from './routes/client.summary'
 import { Route as AdminResultsSubmissionIdRouteImport } from './routes/admin.results.$submissionId'
+import { Route as AdvisorPlanSubmissionIdRouteImport } from './routes/advisor.plan.$submissionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -119,6 +120,11 @@ const AdminResultsSubmissionIdRoute =
     path: '/admin/results/$submissionId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdvisorPlanSubmissionIdRoute = AdvisorPlanSubmissionIdRouteImport.update({
+  id: '/advisor/plan/$submissionId',
+  path: '/advisor/plan/$submissionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/advisor/': typeof AdvisorIndexRoute
   '/client/': typeof ClientIndexRoute
   '/admin/results/$submissionId': typeof AdminResultsSubmissionIdRoute
+  '/advisor/plan/$submissionId': typeof AdvisorPlanSubmissionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/advisor': typeof AdvisorIndexRoute
   '/client': typeof ClientIndexRoute
   '/admin/results/$submissionId': typeof AdminResultsSubmissionIdRoute
+  '/advisor/plan/$submissionId': typeof AdvisorPlanSubmissionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/advisor/': typeof AdvisorIndexRoute
   '/client/': typeof ClientIndexRoute
   '/admin/results/$submissionId': typeof AdminResultsSubmissionIdRoute
+  '/advisor/plan/$submissionId': typeof AdvisorPlanSubmissionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/advisor/'
     | '/client/'
     | '/admin/results/$submissionId'
+    | '/advisor/plan/$submissionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/client'
     | '/admin/results/$submissionId'
+    | '/advisor/plan/$submissionId'
   id:
     | '__root__'
     | '/'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/advisor/'
     | '/client/'
     | '/admin/results/$submissionId'
+    | '/advisor/plan/$submissionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -263,6 +275,7 @@ export interface RootRouteChildren {
   AdvisorIndexRoute: typeof AdvisorIndexRoute
   ClientIndexRoute: typeof ClientIndexRoute
   AdminResultsSubmissionIdRoute: typeof AdminResultsSubmissionIdRoute
+  AdvisorPlanSubmissionIdRoute: typeof AdvisorPlanSubmissionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminResultsSubmissionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/advisor/plan/$submissionId': {
+      id: '/advisor/plan/$submissionId'
+      path: '/advisor/plan/$submissionId'
+      fullPath: '/advisor/plan/$submissionId'
+      preLoaderRoute: typeof AdvisorPlanSubmissionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -415,6 +435,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdvisorIndexRoute: AdvisorIndexRoute,
   ClientIndexRoute: ClientIndexRoute,
   AdminResultsSubmissionIdRoute: AdminResultsSubmissionIdRoute,
+  AdvisorPlanSubmissionIdRoute: AdvisorPlanSubmissionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

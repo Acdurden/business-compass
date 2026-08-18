@@ -14,6 +14,240 @@ export type Database = {
   };
   public: {
     Tables: {
+      action_cures: {
+        Row: {
+          active: boolean;
+          category_id: string | null;
+          created_at: string;
+          cure_id: string;
+          cure_text: string;
+          effort: string | null;
+          problem_id: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          category_id?: string | null;
+          created_at?: string;
+          cure_id: string;
+          cure_text: string;
+          effort?: string | null;
+          problem_id: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          category_id?: string | null;
+          created_at?: string;
+          cure_id?: string;
+          cure_text?: string;
+          effort?: string | null;
+          problem_id?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "action_cures_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "partner_categories";
+            referencedColumns: ["category_id"];
+          },
+          {
+            foreignKeyName: "action_cures_problem_id_fkey";
+            columns: ["problem_id"];
+            isOneToOne: false;
+            referencedRelation: "action_problems";
+            referencedColumns: ["problem_id"];
+          },
+        ];
+      };
+      action_problems: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          problem_id: string;
+          problem_text: string;
+          section_id: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          problem_id: string;
+          problem_text: string;
+          section_id: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          problem_id?: string;
+          problem_text?: string;
+          section_id?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "action_problems_section_id_fkey";
+            columns: ["section_id"];
+            isOneToOne: false;
+            referencedRelation: "sections";
+            referencedColumns: ["section_id"];
+          },
+        ];
+      };
+      partner_categories: {
+        Row: {
+          active: boolean;
+          category_id: string;
+          created_at: string;
+          description: string | null;
+          name: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          category_id: string;
+          created_at?: string;
+          description?: string | null;
+          name: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          category_id?: string;
+          created_at?: string;
+          description?: string | null;
+          name?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      submission_cures: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          cure_id: string | null;
+          custom_text: string | null;
+          id: string;
+          reviewed_for_library: boolean;
+          sort_order: number;
+          submission_problem_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          cure_id?: string | null;
+          custom_text?: string | null;
+          id?: string;
+          reviewed_for_library?: boolean;
+          sort_order?: number;
+          submission_problem_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          cure_id?: string | null;
+          custom_text?: string | null;
+          id?: string;
+          reviewed_for_library?: boolean;
+          sort_order?: number;
+          submission_problem_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "submission_cures_cure_id_fkey";
+            columns: ["cure_id"];
+            isOneToOne: false;
+            referencedRelation: "action_cures";
+            referencedColumns: ["cure_id"];
+          },
+          {
+            foreignKeyName: "submission_cures_submission_problem_id_fkey";
+            columns: ["submission_problem_id"];
+            isOneToOne: false;
+            referencedRelation: "submission_problems";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      submission_problems: {
+        Row: {
+          advisor_note: string | null;
+          created_at: string;
+          created_by: string | null;
+          custom_text: string | null;
+          id: string;
+          problem_id: string | null;
+          reviewed_for_library: boolean;
+          section_id: string;
+          sort_order: number;
+          submission_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          advisor_note?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          custom_text?: string | null;
+          id?: string;
+          problem_id?: string | null;
+          reviewed_for_library?: boolean;
+          section_id: string;
+          sort_order?: number;
+          submission_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          advisor_note?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          custom_text?: string | null;
+          id?: string;
+          problem_id?: string | null;
+          reviewed_for_library?: boolean;
+          section_id?: string;
+          sort_order?: number;
+          submission_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "submission_problems_problem_id_fkey";
+            columns: ["problem_id"];
+            isOneToOne: false;
+            referencedRelation: "action_problems";
+            referencedColumns: ["problem_id"];
+          },
+          {
+            foreignKeyName: "submission_problems_section_id_fkey";
+            columns: ["section_id"];
+            isOneToOne: false;
+            referencedRelation: "sections";
+            referencedColumns: ["section_id"];
+          },
+          {
+            foreignKeyName: "submission_problems_submission_id_fkey";
+            columns: ["submission_id"];
+            isOneToOne: false;
+            referencedRelation: "submissions";
+            referencedColumns: ["submission_id"];
+          },
+        ];
+      };
       answer_options: {
         Row: {
           active: boolean;

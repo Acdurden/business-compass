@@ -32,6 +32,18 @@ import {
   type Opportunity,
   type SectionMeta,
 } from "@/lib/score-display";
+import {
+  advisoryDriverContext,
+  buildPlanItems,
+  countActions,
+  emptyLibrary,
+  loadLibrary,
+  loadPlan,
+  EMPTY_PLAN,
+  type Library,
+  type Plan,
+  type PlanItem,
+} from "@/lib/action-plan";
 
 export const Route = createFileRoute("/client/summary")({
   ssr: false,
@@ -83,6 +95,8 @@ function ClientSummary() {
   const [result, setResult] = useState<ValuationResult | null>(null);
   const [config, setConfig] = useState<ScoringConfig | null>(null);
   const [advisoryAnswerCount, setAdvisoryAnswerCount] = useState(0);
+  const [library, setLibrary] = useState<Library>(emptyLibrary());
+  const [plan, setPlan] = useState<Plan>(EMPTY_PLAN);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -162,6 +176,27 @@ function ClientSummary() {
       setSections((sectionsRes.data ?? []) as SectionMeta[]);
       setConfig(scoringConfig);
       setResult(computed);
+
+      /**
+       * The advisor's action plan, when there is one. Row-level security keeps
+       * this empty until the review has been submitted and returns only the
+       * library rows actually prescribed to this client, so a failure here is
+       * never a reason to withhold the rest of the summary.
+       */
+      try {
+        const [libraryData, planData] = await Promise.all([
+          loadLibrary(),
+          loadPlan(subData.submission_id),
+        ]);
+        if (cancelled) return;
+        setLibrary(libraryData);
+        setPlan(planData);
+      } catch {
+        if (cancelled) return;
+        setLibrary(emptyLibrary());
+        setPlan(EMPTY_PLAN);
+      }
+
       setLoading(false);
     }
     void load();
@@ -259,6 +294,8 @@ function ClientSummary() {
         sections={sections}
         result={result}
         config={config}
+        library={library}
+        plan={plan}
       />
     </Shell>
   );
@@ -345,11 +382,15 @@ function SummaryBody({
   sections,
   result,
   config,
+  library,
+  plan,
 }: {
   sub: Submission;
   sections: SectionMeta[];
   result: ValuationResult;
   config: ScoringConfig;
+  library: Library;
+  plan: Plan;
 }) {
   const inputType =
     (sub.valuation_input_type as InputType | null) ??
@@ -412,6 +453,16 @@ function SummaryBody({
   );
   const totalOpen = totalOpportunity(opportunities);
   const advisoryUpside = drivers.reduce((sum, d) => sum + d.upsidePoints, 0);
+
+  /**
+   * The advisor's own recommendations, when they have made any. Until then the
+   * page falls back to the provisional focus list, which is derived from the
+   * numbers rather than from anyone's judgement and says so.
+   */
+  const planItems = useMemo(
+    () => buildPlanItems(plan, library, advisoryDriverContext(opportunities)),
+    [plan, library, opportunities],
+  );
 
   return (
     <>
@@ -659,8 +710,10 @@ function SummaryBody({
         <ObjectiveUpsideCard opportunities={opportunities} total={totalOpen} />
       ) : null}
 
-      {/* WHERE TO FOCUS */}
-      {!isObjective && opportunities.length > 0 ? (
+      {/* THE ADVISOR'S ACTION PLAN — replaces the provisional focus list */}
+      {planItems.length > 0 ? (
+        <ActionPlanCard items={planItems} />
+      ) : !isObjective && opportunities.length > 0 ? (
         <FocusCard opportunities={opportunities} />
       ) : null}
 
@@ -1210,6 +1263,91 @@ function Verdict({
       ) : null}
       Where to focus next is below.
     </>
+  );
+}
+
+/**
+ * The advisor's action plan: the problems they named, each with the actions
+ * they prescribed underneath it.
+ *
+ * Nothing here is generated — every line was chosen by a person during the
+ * review. Actions are nested under their problem because an action without its
+ * reason reads as a generic tip, which is the opposite of what is being sold.
+ *
+ * The partner category behind each action is deliberately NOT shown. Telling an
+ * owner to "go and find a CPA" without being able to introduce one is a worse
+ * experience than saying nothing; the tag becomes a referral link once the
+ * partner network exists. Clients cannot read those tags from the database
+ * either, so this is enforced in two places, not one.
+ */
+function ActionPlanCard({ items }: { items: PlanItem[] }) {
+  const actionCount = countActions(items);
+  return (
+    <Card title="Your action plan">
+      <p
+        className="m-0 mb-4 text-[12.5px] leading-[1.6]"
+        style={{ color: BRAND.muted }}
+      >
+        Your advisor identified{" "}
+        <b style={{ color: BRAND.ink }}>
+          {items.length} {items.length === 1 ? "issue" : "issues"}
+        </b>{" "}
+        holding your value back
+        {actionCount > 0 ? (
+          <>
+            , with{" "}
+            <b style={{ color: BRAND.ink }}>
+              {actionCount} specific {actionCount === 1 ? "action" : "actions"}
+            </b>{" "}
+            to address {items.length === 1 ? "it" : "them"}
+          </>
+        ) : null}
+        . They are ordered by how much value each one is holding.
+      </p>
+      <div className="flex flex-col gap-3">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="rounded-[0_11px_11px_0] border-l-[3px] p-[13px_16px]"
+            style={{ borderColor: BRAND.upside, background: "#fdfaf3" }}
+          >
+            <div className="text-[13.5px] font-bold leading-snug">
+              {item.text}
+            </div>
+            {item.driverName ? (
+              <div
+                className="mt-0.5 text-[11.5px]"
+                style={{ color: BRAND.muted }}
+              >
+                {item.driverName}
+                {item.driverPoints != null && item.driverPoints > 0 ? (
+                  <>
+                    {" · up to "}
+                    <b style={{ color: BRAND.tealDark }}>
+                      +{item.driverPoints} points
+                    </b>
+                    {" available in this driver"}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {item.actions.length > 0 ? (
+              <ul className="m-0 mt-2.5 list-disc pl-[18px]">
+                {item.actions.map((action) => (
+                  <li
+                    key={action.id}
+                    className="mb-1 text-[12.5px] leading-[1.65] last:mb-0"
+                    style={{ color: "#2b3b48" }}
+                  >
+                    {action.text}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 

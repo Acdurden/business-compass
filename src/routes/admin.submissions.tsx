@@ -22,6 +22,7 @@ import {
   MoreHorizontal,
   ArrowRight,
   Trash2,
+  ListChecks,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -634,6 +635,16 @@ function SubmissionRow({
                 </Link>
               </DropdownMenuItem>
             )}
+
+            <DropdownMenuItem asChild>
+              <Link
+                to="/advisor/plan/$submissionId"
+                params={{ submissionId: r.submission_id }}
+              >
+                <ListChecks className="h-4 w-4" />
+                Action plan
+              </Link>
+            </DropdownMenuItem>
 
             {ready && kind !== "view_results" && (
               <DropdownMenuItem asChild>
