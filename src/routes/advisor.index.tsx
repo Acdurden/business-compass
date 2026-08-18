@@ -16,7 +16,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
-import { listClientAccounts } from "@/lib/password-admin.functions";
+import { listClientAccounts, type ClientAccountRow } from "@/lib/password-admin.functions";
 import { buildConfig, type ScoringConfig } from "@/lib/valscore_calc";
 import {
   buildNotes,
@@ -56,7 +56,14 @@ function AdvisorDashboard() {
     [],
   );
   const [planActions, setPlanActions] = useState<Array<{ submission_problem_id: string }>>([]);
-  const [neverOpened, setNeverOpened] = useState<number | null>(null);
+  /**
+   * The accounts themselves, not just how many. A number you cannot click
+   * through to is a number you have to take on faith, and the first version of
+   * this screen made a loud claim about 18 accounts that turned out to be
+   * almost entirely seed data.
+   */
+  const [dormant, setDormant] = useState<ClientAccountRow[] | null>(null);
+  const [showDormant, setShowDormant] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,10 +131,14 @@ function AdvisorDashboard() {
       try {
         const accounts = await loadClientAccounts();
         if (cancelled) return;
-        setNeverOpened(accounts.filter((a) => a.company_names.length === 0).length);
+        setDormant(
+          accounts
+            .filter((a) => a.company_names.length === 0)
+            .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "")),
+        );
       } catch {
         if (cancelled) return;
-        setNeverOpened(null);
+        setDormant(null);
       }
     }
     void load();
@@ -152,13 +163,14 @@ function AdvisorDashboard() {
   const needs = useMemo(() => sortBucket(items, "needs"), [items]);
   const waiting = useMemo(() => sortBucket(items, "waiting"), [items]);
   const done = useMemo(() => sortBucket(items, "done"), [items]);
+  const dormantCount = dormant === null ? null : dormant.length;
   const tiles = useMemo(
-    () => buildTiles(items, submissions, neverOpened),
-    [items, submissions, neverOpened],
+    () => buildTiles(items, submissions, dormantCount),
+    [items, submissions, dormantCount],
   );
   const notes = useMemo(
-    () => buildNotes(items, submissions, neverOpened),
-    [items, submissions, neverOpened],
+    () => buildNotes(items, submissions, dormantCount),
+    [items, submissions, dormantCount],
   );
 
   async function signOut() {
@@ -217,33 +229,58 @@ function AdvisorDashboard() {
       <div className="mx-auto max-w-6xl px-6 py-7">
         <SectionHeading title="Assessments and reviews" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          {tiles.map((t) => (
-            <div
-              key={t.key}
-              className={`rounded-xl border p-4 shadow-sm ${
-                t.alert ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-card"
-              }`}
-            >
-              <div className="text-[10.5px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
-                {t.key}
-              </div>
-              <div
-                className={`mt-1.5 text-[27px] font-extrabold tabular-nums tracking-tight ${
-                  t.alert
-                    ? "text-amber-700 dark:text-amber-300"
-                    : t.value === 0
-                      ? "text-muted-foreground"
-                      : ""
-                }`}
+          {tiles.map((t) => {
+            const drillable = t.key === "Not started" && (dormant?.length ?? 0) > 0;
+            const body = (
+              <>
+                <div className="text-[10.5px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
+                  {t.key}
+                </div>
+                <div
+                  className={`mt-1.5 text-[27px] font-extrabold tabular-nums tracking-tight ${
+                    t.alert
+                      ? "text-amber-700 dark:text-amber-300"
+                      : t.value === 0
+                        ? "text-muted-foreground"
+                        : ""
+                  }`}
+                >
+                  {t.value}
+                </div>
+                <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
+                  {t.footnote}
+                  {drillable ? (
+                    <span className="ml-1 font-semibold underline underline-offset-2">
+                      {showDormant ? "hide" : "show"}
+                    </span>
+                  ) : null}
+                </div>
+              </>
+            );
+            const shell = `rounded-xl border p-4 text-left shadow-sm ${
+              t.alert ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-card"
+            }`;
+            return drillable ? (
+              <button
+                key={t.key}
+                type="button"
+                aria-expanded={showDormant}
+                onClick={() => setShowDormant((v) => !v)}
+                className={`${shell} transition-colors hover:border-amber-500`}
               >
-                {t.value}
+                {body}
+              </button>
+            ) : (
+              <div key={t.key} className={shell}>
+                {body}
               </div>
-              <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
-                {t.footnote}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {showDormant && dormant && dormant.length > 0 ? (
+          <DormantAccounts accounts={dormant} />
+        ) : null}
 
         <SectionHeading title="Needs you" note="nothing moves until you act" />
         <Queue items={needs} empty="Nothing is waiting on you. Genuinely — not a placeholder." />
@@ -283,6 +320,59 @@ function AdvisorDashboard() {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Client accounts with no assessment against them.
+ *
+ * Shown in full rather than summarised, because the count on its own invites a
+ * conclusion the rows usually contradict: most of these are seed and test
+ * accounts. "Never signed in" is the tell — an account created by the admin
+ * tools that nobody ever logged into is not a person who stalled.
+ */
+function DormantAccounts({ accounts }: { accounts: ClientAccountRow[] }) {
+  const neverSignedIn = accounts.filter((a) => !a.last_sign_in_at).length;
+  return (
+    <section className="mt-3 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
+        <div>
+          <h3 className="text-[13px] font-semibold">Accounts with no assessment</h3>
+          <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+            {plural(accounts.length, "account", "accounts")}, oldest first · {neverSignedIn} never
+            signed in
+          </p>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/admin/clients">
+            <Users className="mr-1.5 h-3.5 w-3.5" />
+            Manage accounts
+          </Link>
+        </Button>
+      </div>
+      <ul className="divide-y divide-border/60">
+        {accounts.map((a) => (
+          <li
+            key={a.user_id}
+            className="grid gap-1 px-4 py-2.5 text-[12.5px] md:grid-cols-[2fr_1fr_1fr] md:items-center"
+          >
+            <span className="truncate font-medium">{a.email ?? "—"}</span>
+            <span className="text-muted-foreground">
+              signed up {a.created_at ? new Date(a.created_at).toLocaleDateString() : "—"}
+            </span>
+            <span
+              className={
+                a.last_sign_in_at ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300"
+              }
+            >
+              {a.last_sign_in_at
+                ? `last signed in ${new Date(a.last_sign_in_at).toLocaleDateString()}`
+                : "never signed in"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function SectionHeading({ title, note }: { title: string; note?: string }) {
   return (

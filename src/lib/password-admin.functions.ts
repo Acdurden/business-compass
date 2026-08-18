@@ -139,6 +139,11 @@ export type ClientAccountRow = {
   user_id: string;
   email: string | null;
   created_at: string | null;
+  /**
+   * Null means the account was created but the person never signed in — the
+   * clearest signal that a row is seed data rather than someone who stalled.
+   */
+  last_sign_in_at: string | null;
   company_names: string[];
 };
 
@@ -180,6 +185,7 @@ export const listClientAccounts = createServerFn({ method: "GET" })
         user_id: u.id,
         email: u.email ?? null,
         created_at: u.created_at ?? null,
+        last_sign_in_at: u.last_sign_in_at ?? null,
         company_names: companiesByUser.get(u.id) ?? [],
       }))
       .sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));

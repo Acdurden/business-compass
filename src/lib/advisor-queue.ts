@@ -367,7 +367,7 @@ export function buildNotes(
     out.push({
       id: "never-opened",
       count: String(neverOpened),
-      text: "invited clients have never opened their assessment. Either they stalled or they are leftovers from testing — but any that are real are the most valuable list you have.",
+      text: "client accounts exist with no assessment against them. Most are likely seed and test data rather than real people who stalled — open the list and check before reading anything into the number.",
     });
   }
 
