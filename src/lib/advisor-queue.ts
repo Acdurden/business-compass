@@ -73,6 +73,20 @@ export type QueueTile = {
   value: number;
   footnote: string;
   alert: boolean;
+  /**
+   * The submissions this number is made of, most urgent first.
+   *
+   * Every tile carries its own members so the dashboard can show what is behind
+   * a count rather than asking anyone to take it on faith. A number with no
+   * drill-through is how a claim about 18 accounts survived long enough to be
+   * repeated, when almost all of them were seed data.
+   */
+  items: QueueItem[];
+  /**
+   * True when client accounts with no assessment also make up part of this
+   * number, so the panel knows to list them alongside the submissions.
+   */
+  includesAccounts: boolean;
 };
 
 export type QueueNote = { id: string; count: string; text: string; info?: boolean };
@@ -306,15 +320,28 @@ export function buildTiles(
   /** Client accounts with no submission at all; null while still loading. */
   neverOpened: number | null,
 ): QueueTile[] {
-  const notStartedSubs = submissions.filter((s) => s.client_status === "notstarted").length;
-  const inAssessment = submissions.filter((s) => s.client_status === "inprogress").length;
+  const byUrgency = (a: QueueItem, b: QueueItem) =>
+    b.urgency - a.urgency || a.company.localeCompare(b.company);
+
+  const statusIds = (status: string) =>
+    new Set(submissions.filter((s) => s.client_status === status).map((s) => s.submission_id));
+  const notStartedIds = statusIds("notstarted");
+  const inProgressIds = statusIds("inprogress");
+
+  const notStartedItems = items.filter((i) => notStartedIds.has(i.id)).sort(byUrgency);
+  const inAssessmentItems = items.filter((i) => inProgressIds.has(i.id)).sort(byUrgency);
   const needs = items.filter((i) => i.bucket === "needs");
-  const awaiting = needs.filter((i) => i.stageStrong === STAGE_ADVISORY_NOT_STARTED).length;
-  const reviewing = needs.length - awaiting;
-  const finished = items.filter((i) => i.bucket === "done").length;
+  const awaitingItems = needs
+    .filter((i) => i.stageStrong === STAGE_ADVISORY_NOT_STARTED)
+    .sort(byUrgency);
+  const reviewingItems = needs
+    .filter((i) => i.stageStrong !== STAGE_ADVISORY_NOT_STARTED)
+    .sort(byUrgency);
+  const finishedItems = items.filter((i) => i.bucket === "done").sort(byUrgency);
+
   const oldestNeeds = needs.reduce((max, i) => Math.max(max, i.days), 0);
   const stalled = items.filter((i) => i.bucket === "waiting" && i.days > 14).length;
-  const notStarted = (neverOpened ?? 0) + notStartedSubs;
+  const notStarted = (neverOpened ?? 0) + notStartedItems.length;
 
   return [
     {
@@ -325,32 +352,42 @@ export function buildTiles(
           ? "invited, never opened"
           : `${plural(neverOpened, "account", "accounts")} never opened`,
       alert: notStarted > 0,
+      items: notStartedItems,
+      includesAccounts: true,
     },
     {
       key: "Assessment in progress",
-      value: inAssessment,
+      value: inAssessmentItems.length,
       footnote: stalled ? `${plural(stalled, "stalled", "stalled")} over 14 days` : "none stalled",
       alert: stalled > 0,
+      items: inAssessmentItems,
+      includesAccounts: false,
     },
     {
       key: "Awaiting your review",
-      value: awaiting,
-      footnote: awaiting
+      value: awaitingItems.length,
+      footnote: awaitingItems.length
         ? `oldest waiting ${plural(oldestNeeds, "day", "days")}`
         : "nothing sitting with you",
-      alert: awaiting > 0,
+      alert: awaitingItems.length > 0,
+      items: awaitingItems,
+      includesAccounts: false,
     },
     {
       key: "Review in progress",
-      value: reviewing,
-      footnote: reviewing ? "advisory or action plan open" : "none open",
+      value: reviewingItems.length,
+      footnote: reviewingItems.length ? "advisory or action plan open" : "none open",
       alert: false,
+      items: reviewingItems,
+      includesAccounts: false,
     },
     {
       key: "Finished",
-      value: finished,
-      footnote: finished ? "marked final" : "none marked final yet",
+      value: finishedItems.length,
+      footnote: finishedItems.length ? "marked final" : "none marked final yet",
       alert: false,
+      items: finishedItems,
+      includesAccounts: false,
     },
   ];
 }

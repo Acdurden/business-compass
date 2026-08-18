@@ -64,7 +64,8 @@ function AdvisorDashboard() {
    * almost entirely seed data.
    */
   const [dormant, setDormant] = useState<ClientAccountRow[] | null>(null);
-  const [showDormant, setShowDormant] = useState(false);
+  /** Which tile is expanded, by its key. One at a time; null is all closed. */
+  const [openTile, setOpenTile] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -209,7 +210,14 @@ function AdvisorDashboard() {
         <SectionHeading title="Assessments and reviews" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {tiles.map((t) => {
-            const drillable = t.key === "Not started" && (dormant?.length ?? 0) > 0;
+            const accounts = t.includesAccounts ? (dormant ?? []) : [];
+            /**
+             * A tile only opens when there is something to show. A count of
+             * zero that still invites a click would be a promise the panel
+             * cannot keep.
+             */
+            const drillable = t.items.length > 0 || accounts.length > 0;
+            const open = openTile === t.key;
             const body = (
               <>
                 <div className="text-[10.5px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
@@ -228,24 +236,30 @@ function AdvisorDashboard() {
                 </div>
                 <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
                   {t.footnote}
-                  {drillable ? (
-                    <span className="ml-1 font-semibold underline underline-offset-2">
-                      {showDormant ? "hide" : "show"}
-                    </span>
-                  ) : null}
                 </div>
+                {drillable ? (
+                  <div className="mt-1 text-[11px] font-semibold text-muted-foreground underline underline-offset-2">
+                    {open ? "hide" : "show"}
+                  </div>
+                ) : null}
               </>
             );
-            const shell = `rounded-xl border p-4 text-left shadow-sm ${
+            const shell = `rounded-xl border p-4 text-center shadow-sm ${
               t.alert ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-card"
             }`;
             return drillable ? (
               <button
                 key={t.key}
                 type="button"
-                aria-expanded={showDormant}
-                onClick={() => setShowDormant((v) => !v)}
-                className={`${shell} transition-colors hover:border-amber-500`}
+                aria-expanded={open}
+                onClick={() => setOpenTile((v) => (v === t.key ? null : t.key))}
+                className={`${shell} transition-colors ${
+                  open
+                    ? "border-primary/60 ring-1 ring-primary/30"
+                    : t.alert
+                      ? "hover:border-amber-500"
+                      : "hover:border-primary/50"
+                }`}
               >
                 {body}
               </button>
@@ -257,9 +271,24 @@ function AdvisorDashboard() {
           })}
         </div>
 
-        {showDormant && dormant && dormant.length > 0 ? (
-          <DormantAccounts accounts={dormant} />
-        ) : null}
+        {tiles.map((t) => {
+          if (openTile !== t.key) return null;
+          const accounts = t.includesAccounts ? (dormant ?? []) : [];
+          return (
+            <div key={t.key} className="mt-3 space-y-3">
+              {t.items.length > 0 ? (
+                <div>
+                  <p className="mb-1.5 text-[11.5px] text-muted-foreground">
+                    {plural(t.items.length, "assessment", "assessments")} counted in{" "}
+                    <b className="text-foreground">{t.key.toLowerCase()}</b>
+                  </p>
+                  <Queue items={t.items} empty="" />
+                </div>
+              ) : null}
+              {accounts.length > 0 ? <DormantAccounts accounts={accounts} /> : null}
+            </div>
+          );
+        })}
 
         <SectionHeading title="Needs you" note="nothing moves until you act" />
         <Queue items={needs} empty="Nothing is waiting on you. Genuinely — not a placeholder." />
