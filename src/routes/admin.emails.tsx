@@ -149,7 +149,10 @@ function EmailTemplatesPage() {
     setTesting(true);
     try {
       const result = await sendTest({ data: { key: draft.key, to: testTo.trim() || null } });
-      toast.success(`Test sent to ${result.to}. Give it a minute.`);
+      toast.success(`Cloudflare accepted it for ${result.to}.`, {
+        description: result.detail || "It returned no detail.",
+        duration: 30000,
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not send the test");
     } finally {

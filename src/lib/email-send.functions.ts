@@ -122,7 +122,7 @@ async function deliver(input: {
   subject: string;
   html: string;
   text: string;
-}): Promise<void> {
+}): Promise<string> {
   const token = process.env.CLOUDFLARE_EMAIL_API_TOKEN;
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   if (!token || !accountId) {
@@ -137,8 +137,15 @@ async function deliver(input: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    /*
+     * `from` goes as an object with `address` and `name`, which is what the
+     * REST API documents. The combined "Name <address>" form was accepted with
+     * success:true and produced no mail and no activity-log entry — the API is
+     * lenient about the shape and silent about the consequence.
+     * Note the field is `address`, not `email`.
+     */
     body: JSON.stringify({
-      from: `${input.fromName} <${input.fromEmail}>`,
+      from: { address: input.fromEmail, name: input.fromName },
       to: input.to,
       reply_to: input.replyTo ?? input.fromEmail,
       subject: input.subject,
@@ -185,6 +192,13 @@ async function deliver(input: {
       }`,
     );
   }
+
+  /**
+   * Hand back what Cloudflare actually returned. A bare "sent" has already
+   * proved worthless twice; the id or status they quote is the only thing that
+   * can be checked against their activity log.
+   */
+  return raw.slice(0, 300);
 }
 
 /**
@@ -207,7 +221,7 @@ export const sendTestEmail = createServerFn({ method: "POST" })
     }
     return { key: key as EmailTemplateKey, to: to || null };
   })
-  .handler(async ({ data, context }): Promise<{ to: string }> => {
+  .handler(async ({ data, context }): Promise<{ to: string; detail: string }> => {
     await ensureAdvisor(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -258,7 +272,7 @@ export const sendTestEmail = createServerFn({ method: "POST" })
     };
 
     const rendered = renderEmail(template, values, origin);
-    await deliver({
+    const detail = await deliver({
       fromName: template.fromName,
       fromEmail: template.fromEmail,
       to,
@@ -267,5 +281,5 @@ export const sendTestEmail = createServerFn({ method: "POST" })
       text: rendered.text,
     });
 
-    return { to };
+    return { to, detail };
   });
