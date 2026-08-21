@@ -195,21 +195,38 @@ async function deliver(input: {
  */
 export const sendTestEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { key: string }) => {
+  .inputValidator((input: { key: string; to?: string | null }) => {
     const key = String(input?.key ?? "").trim();
     if (!(EMAIL_TEMPLATE_KEYS as string[]).includes(key)) throw new Error("Unknown template");
-    return { key: key as EmailTemplateKey };
+
+    const to = String(input?.to ?? "")
+      .trim()
+      .toLowerCase();
+    if (to && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      throw new Error("That does not look like an email address");
+    }
+    return { key: key as EmailTemplateKey, to: to || null };
   })
   .handler(async ({ data, context }): Promise<{ to: string }> => {
     await ensureAdvisor(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: user, error: userErr } = await supabaseAdmin.auth.admin.getUserById(
-      context.userId,
-    );
-    if (userErr) throw new Error(userErr.message);
-    const to = user.user?.email;
-    if (!to) throw new Error("Your account has no email address to send a test to");
+    /**
+     * The address is overridable so a failure can be pinned on the right party.
+     * "It never arrives" at one mailbox proves nothing; the same message
+     * arriving at a different provider and not at the first proves the
+     * receiving end is filtering it, which is a different problem from a send
+     * that never left.
+     */
+    let to = data.to;
+    if (!to) {
+      const { data: user, error: userErr } = await supabaseAdmin.auth.admin.getUserById(
+        context.userId,
+      );
+      if (userErr) throw new Error(userErr.message);
+      to = user.user?.email ?? null;
+    }
+    if (!to) throw new Error("No address to send the test to");
 
     const template = await loadTemplate(data.key);
     if (!template.fromEmail) {

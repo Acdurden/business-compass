@@ -104,6 +104,7 @@ function EmailTemplatesPage() {
   const [showTags, setShowTags] = useState(false);
   const [sending, setSending] = useState<SendingStatus | null>(null);
   const [testing, setTesting] = useState(false);
+  const [testTo, setTestTo] = useState("");
 
   /* ---------------- templates ---------------- */
 
@@ -147,7 +148,7 @@ function EmailTemplatesPage() {
     if (!draft) return;
     setTesting(true);
     try {
-      const result = await sendTest({ data: { key: draft.key } });
+      const result = await sendTest({ data: { key: draft.key, to: testTo.trim() || null } });
       toast.success(`Test sent to ${result.to}. Give it a minute.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not send the test");
@@ -620,6 +621,13 @@ function EmailTemplatesPage() {
                 <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                 Revert to the Kriterion default
               </Button>
+              <Input
+                aria-label="Send the test to"
+                className="h-9 w-full sm:w-56"
+                placeholder="your own address"
+                value={testTo}
+                onChange={(e) => setTestTo(e.target.value)}
+              />
               <Button
                 variant="outline"
                 onClick={() => void onSendTest()}
@@ -635,7 +643,7 @@ function EmailTemplatesPage() {
                 }
               >
                 <Send className="mr-1.5 h-3.5 w-3.5" />
-                {testing ? "Sending…" : "Send a test to myself"}
+                {testing ? "Sending…" : testTo.trim() ? "Send a test" : "Send a test to myself"}
               </Button>
               <span
                 className={`ml-auto text-[12.5px] ${
