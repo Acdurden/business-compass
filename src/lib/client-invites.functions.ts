@@ -138,13 +138,18 @@ export const createAdvisor = createServerFn({ method: "POST" })
     return { email };
   })
   .handler(async ({ data, context }) => {
-    // Caller must explicitly hold the advisor role.
-    const { data: isAdvisor } = await context.supabase.rpc("has_role", {
+    /**
+     * Admin, not advisor. The Advisors screen this is called from has always
+     * been admin-only, but the check here said advisor — so any advisor could
+     * have created a colleague by calling the function directly. Tightened to
+     * match what the screen already claimed.
+     */
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
-      _role: "advisor",
+      _role: "admin",
     });
-    if (isAdvisor !== true) {
-      throw new Error("Forbidden: advisor role required");
+    if (isAdmin !== true) {
+      throw new Error("Forbidden: admin role required");
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

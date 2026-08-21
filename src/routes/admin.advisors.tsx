@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { redirect } from "@tanstack/react-router";
-import { KeyRound, ShieldCheck } from "lucide-react";
+import { KeyRound, ShieldCheck, Trash2 } from "lucide-react";
 import {
+  deleteAdvisorAccount,
   listAdvisorAccounts,
   resetAdvisorPassword,
   type AdvisorAccountRow,
@@ -16,6 +17,7 @@ import {
 import { createAdvisor } from "@/lib/client-invites.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
 import { BackOfficeNav } from "@/components/back-office-nav";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 async function requireAdminAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
@@ -42,6 +44,7 @@ export const Route = createFileRoute("/admin/advisors")({
 
 function AdvisorsPage() {
   const navigate = useNavigate();
+  const { userId } = Route.useRouteContext();
   const list = useServerFn(listAdvisorAccounts);
   const [rows, setRows] = useState<AdvisorAccountRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +66,8 @@ function AdvisorsPage() {
     loadAdvisors();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list]);
+
+  const adminCount = rows.filter((r) => r.is_admin).length;
 
   return (
     <main className="min-h-screen">
@@ -101,7 +106,16 @@ function AdvisorsPage() {
                     {r.user_id}
                   </p>
                 </div>
-                <ResetAdvisorPasswordButton userId={r.user_id} email={r.email} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <ResetAdvisorPasswordButton userId={r.user_id} email={r.email} />
+                  <DeleteAdvisorButton
+                    userId={r.user_id}
+                    email={r.email}
+                    isSelf={r.user_id === userId}
+                    isOnlyAdmin={r.is_admin && adminCount <= 1}
+                    onDeleted={loadAdvisors}
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -226,6 +240,84 @@ function ResetAdvisorPasswordButton({ userId, email }: { userId: string; email: 
         password={result?.tempPassword ?? null}
         loginUrl={loginUrl}
         title="Advisor password reset"
+      />
+    </>
+  );
+}
+
+/**
+ * Deleting an advisor is unrecoverable, so the button refuses before it asks.
+ *
+ * Two states are disabled rather than hidden, with the reason in the tooltip: a
+ * control that silently vanishes reads as a bug, while one that says why it
+ * cannot be used answers the question.
+ */
+function DeleteAdvisorButton({
+  userId,
+  email,
+  isSelf,
+  isOnlyAdmin,
+  onDeleted,
+}: {
+  userId: string;
+  email: string | null;
+  isSelf: boolean;
+  isOnlyAdmin: boolean;
+  onDeleted: () => void;
+}) {
+  const remove = useServerFn(deleteAdvisorAccount);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const blocked = isSelf
+    ? "You cannot delete your own account"
+    : isOnlyAdmin
+      ? "This is the only admin account"
+      : null;
+
+  async function handle() {
+    setBusy(true);
+    try {
+      await remove({ data: { userId } });
+      toast.success(`${email ?? "Advisor"} deleted`);
+      onDeleted();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete this advisor");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="text-destructive hover:text-destructive"
+        onClick={() => setOpen(true)}
+        disabled={busy || blocked !== null}
+        title={blocked ?? undefined}
+      >
+        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+        {busy ? "Deleting…" : "Delete"}
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Delete this advisor?"
+        description={
+          <>
+            <b>{email ?? "This advisor"}</b> will be signed out and will not be able to sign in
+            again. This cannot be undone.
+            <br />
+            <br />
+            Any assessments assigned to them are kept — they simply become unassigned, and you can
+            give them to someone else.
+          </>
+        }
+        confirmLabel="Delete advisor"
+        destructive
+        onConfirm={() => void handle()}
       />
     </>
   );

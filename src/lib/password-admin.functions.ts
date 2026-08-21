@@ -135,6 +135,66 @@ export const resetAdvisorPassword = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Remove an advisor account entirely.
+ *
+ * Three refusals, all deliberate:
+ *   - you cannot delete yourself, because the click that locks you out of your
+ *     own back office is unrecoverable from inside the app;
+ *   - you cannot delete the last admin, for the same reason one step removed;
+ *   - the target must actually hold the advisor role, so an id typed or
+ *     tampered into the request cannot reach a client or a stranger.
+ *
+ * Submissions the advisor was assigned to are DETACHED, not deleted. A review
+ * is the client's record, not the advisor's, and losing an assessment because
+ * someone left the firm would be the worst possible outcome of a tidy-up.
+ */
+export const deleteAdvisorAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => {
+    const userId = String(input?.userId ?? "").trim();
+    if (!userId) throw new Error("userId required");
+    return { userId };
+  })
+  .handler(async ({ data, context }) => {
+    await assertRole(context, "admin");
+
+    if (data.userId === context.userId) {
+      throw new Error("You cannot delete your own account");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: roles, error: rolesErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id, role");
+    if (rolesErr) throw new Error(rolesErr.message);
+
+    const rows = (roles ?? []) as Array<{ user_id: string; role: string }>;
+    const isAdvisor = rows.some((r) => r.user_id === data.userId && r.role === "advisor");
+    if (!isAdvisor) throw new Error("Target user is not an advisor");
+
+    const admins = new Set(rows.filter((r) => r.role === "admin").map((r) => r.user_id));
+    if (admins.has(data.userId) && admins.size <= 1) {
+      throw new Error("This is the only admin account. Make someone else an admin first.");
+    }
+
+    // Keep the assessments, drop the assignment.
+    const detach = await supabaseAdmin
+      .from("submissions")
+      .update({ advisor_id: null })
+      .eq("advisor_id", data.userId);
+    if (detach.error) throw new Error(detach.error.message);
+
+    const delRole = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+    if (delRole.error) throw new Error(delRole.error.message);
+
+    const del = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (del.error) throw new Error(del.error.message);
+
+    return { ok: true };
+  });
+
 export type ClientAccountRow = {
   user_id: string;
   email: string | null;
