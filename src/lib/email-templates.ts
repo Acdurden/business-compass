@@ -111,6 +111,10 @@ export const EMAIL_TEMPLATE_META: Record<EmailTemplateKey, EmailTemplateMeta> = 
  * `fromEmail` is deliberately null. Until a mailbox exists that Cloudflare is
  * verified to send from, inventing an address here would put a plausible but
  * dead sender on four templates.
+ *
+ * The bodies sign off with the sender name ALONE. They used to add a literal
+ * "Kriterion" line under it, which rendered as "Kriterion / Kriterion" while
+ * the sender name was the company — and the footer already says who sent it.
  */
 export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = {
   invite: {
@@ -124,7 +128,7 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
       "It is not a valuation calculator. The questions are the ones a buyer works through before they make an offer, and the score you get is the one we then sit down and talk about.",
       BUTTON_MARKER,
       "The link is yours and does not expire. If you would rather walk through the first few questions together, reply and we will find twenty minutes.",
-      "{{advisor_name}}\nKriterion",
+      "{{advisor_name}}",
     ].join("\n\n"),
   },
   nudge: {
@@ -138,7 +142,7 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
       "Worth saying though: the sections still ahead of you are the ones that move the number most — leadership, documentation, and how concentrated your client base is. The score you would get from what you have answered so far would not tell you much.",
       BUTTON_MARKER,
       'If a question was unclear, or the honest answer is "it depends", reply and tell me which one. That happens often and it is usually the interesting part.',
-      "{{advisor_name}}\nKriterion",
+      "{{advisor_name}}",
     ].join("\n\n"),
   },
   review_ready: {
@@ -154,7 +158,7 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
       "Your plan sets out what to do about it, in order.",
       BUTTON_MARKER,
       "Read it before we speak, and bring the parts you disagree with — those conversations are the useful ones.",
-      "{{advisor_name}}\nKriterion",
+      "{{advisor_name}}",
     ].join("\n\n"),
   },
   password_reset: {
@@ -167,7 +171,6 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
       "Someone asked to reset the password on this Kriterion account.",
       BUTTON_MARKER,
       "The link works for one hour. If you did not ask for this, ignore this message — nothing has changed and your account is untouched.",
-      "Kriterion Business Value Intelligence",
     ].join("\n\n"),
   },
 };

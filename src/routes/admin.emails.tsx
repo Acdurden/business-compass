@@ -198,6 +198,18 @@ function EmailTemplatesPage() {
       setDraft(result);
       setJustSaved(true);
       toast.success("Saved. Every email of this kind now uses this wording.");
+
+      /**
+       * Saving can be the thing that makes sending possible — setting the first
+       * sender address does exactly that. Without re-asking, the banner keeps
+       * saying nothing can be sent and the test button stays disabled until the
+       * page is reloaded, which reads as a broken button.
+       */
+      loadSendingStatus()
+        .then(setSending)
+        .catch(() => {
+          /* Leave the last known state rather than claiming it got worse. */
+        });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save");
     } finally {
@@ -205,9 +217,22 @@ function EmailTemplatesPage() {
     }
   }
 
+  /**
+   * Restore the shipped WORDING only.
+   *
+   * The sender name and address are configuration, not wording: they are the
+   * same for every template and take a domain setup to get right. Reverting the
+   * text used to blank them too, which silently un-configured sending and cost
+   * a confusing half hour of thinking the send path was broken.
+   */
   function onRevert() {
     if (!draft) return;
-    setDraft({ ...EMAIL_TEMPLATE_DEFAULTS[draft.key] });
+    const shipped = EMAIL_TEMPLATE_DEFAULTS[draft.key];
+    setDraft({
+      ...shipped,
+      fromName: draft.fromName,
+      fromEmail: draft.fromEmail,
+    });
     setJustSaved(false);
   }
 
