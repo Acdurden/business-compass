@@ -56,7 +56,26 @@ export default defineConfig(({ command }) => ({
             cloudflare: {
               nodeCompat: true,
               deployConfig: true,
-              wrangler: { name: "kriterion" },
+              wrangler: {
+                name: "kriterion",
+                /*
+                 * Plain variables must live HERE, not in the dashboard.
+                 *
+                 * A Workers Build deploys with this generated config and the
+                 * config wins: anything typed into "Runtime variables and
+                 * secrets" as a plain Text value is wiped by the next push.
+                 * Secrets survive, plain variables do not. That is how the
+                 * Cloudflare account id vanished on 2026-08-21 and took email
+                 * sending down with it, silently.
+                 *
+                 * The account id is not a credential — it appears in every
+                 * dashboard URL. The API token is, and it stays a dashboard
+                 * secret where Claude never sees it.
+                 */
+                vars: {
+                  CLOUDFLARE_ACCOUNT_ID: "8ee6da8a5dccd7cb19015cbadd6bbc7c",
+                },
+              },
             },
           }),
         ]
