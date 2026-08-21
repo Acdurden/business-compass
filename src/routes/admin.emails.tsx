@@ -17,7 +17,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertTriangle, Mail, RotateCcw } from "lucide-react";
+import { AlertTriangle, Mail, RotateCcw, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BackOfficeNav } from "@/components/back-office-nav";
 import { requireAdminAuth } from "@/lib/require-admin-auth";
 import { listEmailTemplates, saveEmailTemplate } from "@/lib/email-templates.functions";
+import { getSendingStatus, sendTestEmail, type SendingStatus } from "@/lib/email-send.functions";
 import {
   BUTTON_MARKER,
   EMAIL_TEMPLATE_DEFAULTS,
@@ -90,6 +91,8 @@ type QuestionRow = {
 function EmailTemplatesPage() {
   const load = useServerFn(listEmailTemplates);
   const save = useServerFn(saveEmailTemplate);
+  const loadSendingStatus = useServerFn(getSendingStatus);
+  const sendTest = useServerFn(sendTestEmail);
   const loadInviteCodes = useServerFn(getActiveInviteCodes);
 
   const [templates, setTemplates] = useState<EmailTemplate[] | null>(null);
@@ -99,6 +102,8 @@ function EmailTemplatesPage() {
   const [justSaved, setJustSaved] = useState(false);
   const [preview, setPreview] = useState<PreviewValues>({ values: {}, caveat: null });
   const [showTags, setShowTags] = useState(false);
+  const [sending, setSending] = useState<SendingStatus | null>(null);
+  const [testing, setTesting] = useState(false);
 
   /* ---------------- templates ---------------- */
 
@@ -117,6 +122,39 @@ function EmailTemplatesPage() {
       cancelled = true;
     };
   }, [load]);
+
+  /**
+   * Whether anything can actually be sent. Asked rather than assumed, so the
+   * test button is never offered when pressing it could only fail.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    loadSendingStatus()
+      .then((status) => {
+        if (!cancelled) setSending(status);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSending({ hasToken: false, hasAccount: false, missingSender: [], ready: false });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadSendingStatus]);
+
+  async function onSendTest() {
+    if (!draft) return;
+    setTesting(true);
+    try {
+      const result = await sendTest({ data: { key: draft.key } });
+      toast.success(`Test sent to ${result.to}. Give it a minute.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send the test");
+    } finally {
+      setTesting(false);
+    }
+  }
 
   function selectTemplate(key: EmailTemplateKey) {
     if (!templates) return;
@@ -365,6 +403,31 @@ function EmailTemplatesPage() {
         </div>
       </header>
 
+      {sending && !sending.ready ? (
+        <div className="mx-auto max-w-6xl px-6 pt-6">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-500/50 bg-amber-500/5 px-4 py-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+            <div className="text-[12.5px] leading-relaxed">
+              <p className="font-medium">
+                Nothing can be sent yet. You can still write the wording.
+              </p>
+              <p className="mt-0.5 text-muted-foreground">
+                {[
+                  !sending.hasAccount || !sending.hasToken
+                    ? "Kriterion has no credentials for the sending service."
+                    : null,
+                  sending.missingSender.length > 0
+                    ? `${sending.missingSender.length} of ${EMAIL_TEMPLATE_KEYS.length} templates have no sender address.`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="mx-auto grid max-w-6xl gap-6 px-6 py-8 md:grid-cols-[220px_minmax(0,1fr)]">
         {/* template list */}
         <nav className="h-fit overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -556,6 +619,23 @@ function EmailTemplatesPage() {
               <Button variant="outline" onClick={onRevert} disabled={busy}>
                 <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                 Revert to the Kriterion default
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void onSendTest()}
+                disabled={testing || dirty || !sending?.ready || !draft.fromEmail}
+                title={
+                  !sending?.ready
+                    ? "Sending is not switched on yet"
+                    : dirty
+                      ? "Save first, so the test matches what would go out"
+                      : !draft.fromEmail
+                        ? "This template has no sender address yet"
+                        : undefined
+                }
+              >
+                <Send className="mr-1.5 h-3.5 w-3.5" />
+                {testing ? "Sending…" : "Send a test to myself"}
               </Button>
               <span
                 className={`ml-auto text-[12.5px] ${

@@ -1,0 +1,221 @@
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+import {
+  EMAIL_TEMPLATE_DEFAULTS,
+  EMAIL_TEMPLATE_KEYS,
+  type EmailTemplate,
+  type EmailTemplateKey,
+} from "@/lib/email-templates";
+import { renderEmail } from "@/lib/email-render";
+
+/** What the auth middleware puts on `context`, as far as these helpers need it. */
+type AuthedContext = { supabase: SupabaseClient<Database>; userId: string };
+
+// ============================================================
+// Sending, through Cloudflare Email Service.
+//
+// The Worker cannot open an SMTP socket, so this goes over Cloudflare's REST
+// API. The token never leaves the server: this module is only ever reached
+// through a server function, and the token is read from the Worker environment
+// that Andrew sets himself.
+//
+// Everything here refuses loudly rather than half-working. An email that
+// silently does not send is worse than a button that says why it cannot.
+// ============================================================
+
+const SEND_ENDPOINT = (accountId: string) =>
+  `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
+
+async function ensureAdvisor(context: AuthedContext) {
+  const { data: isAdvisor } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "advisor",
+  });
+  if (isAdvisor !== true) throw new Error("Forbidden: advisor role required");
+}
+
+/** The three things that must all be true before anything can be sent. */
+export type SendingStatus = {
+  /** A Cloudflare API token is present in the Worker environment. */
+  hasToken: boolean;
+  /** The Cloudflare account id is present. */
+  hasAccount: boolean;
+  /** Templates that still have no sender address on them. */
+  missingSender: EmailTemplateKey[];
+  /** True only when a message could actually go out. */
+  ready: boolean;
+};
+
+async function loadTemplate(key: EmailTemplateKey): Promise<EmailTemplate> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("email_templates")
+    .select("key, from_name, from_email, subject, body, cta_label")
+    .eq("key", key)
+    .maybeSingle();
+
+  const fallback = EMAIL_TEMPLATE_DEFAULTS[key];
+  if (!data) return fallback;
+
+  const row = data as Record<string, unknown>;
+  const fromEmail = row.from_email == null ? null : String(row.from_email).trim();
+  return {
+    key,
+    fromName: String(row.from_name ?? fallback.fromName),
+    fromEmail: fromEmail || null,
+    subject: String(row.subject ?? fallback.subject),
+    body: String(row.body ?? fallback.body),
+    ctaLabel: String(row.cta_label ?? fallback.ctaLabel),
+  };
+}
+
+/**
+ * Why the Send buttons are or are not available.
+ *
+ * The screen asks this rather than assuming, so a button is never offered that
+ * cannot do anything — the failure this whole workstream started from.
+ */
+export const getSendingStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<SendingStatus> => {
+    await ensureAdvisor(context);
+
+    const hasToken = Boolean(process.env.CLOUDFLARE_EMAIL_API_TOKEN);
+    const hasAccount = Boolean(process.env.CLOUDFLARE_ACCOUNT_ID);
+
+    const missingSender: EmailTemplateKey[] = [];
+    for (const key of EMAIL_TEMPLATE_KEYS) {
+      const template = await loadTemplate(key);
+      if (!template.fromEmail) missingSender.push(key);
+    }
+
+    return {
+      hasToken,
+      hasAccount,
+      missingSender,
+      ready: hasToken && hasAccount && missingSender.length < EMAIL_TEMPLATE_KEYS.length,
+    };
+  });
+
+type CloudflareError = { message?: string };
+
+/**
+ * The one place a message is actually handed to Cloudflare.
+ *
+ * Errors are rethrown with Cloudflare's own wording where there is any, because
+ * "could not send" tells nobody whether the token is wrong, the domain is not
+ * verified, or the plan does not allow it.
+ */
+async function deliver(input: {
+  fromName: string;
+  fromEmail: string;
+  to: string;
+  replyTo?: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<void> {
+  const token = process.env.CLOUDFLARE_EMAIL_API_TOKEN;
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (!token || !accountId) {
+    throw new Error(
+      "Sending is not switched on yet: the Cloudflare account id and API token are not set in the Worker environment.",
+    );
+  }
+
+  const response = await fetch(SEND_ENDPOINT(accountId), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `${input.fromName} <${input.fromEmail}>`,
+      to: input.to,
+      reply_to: input.replyTo ?? input.fromEmail,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    }),
+  });
+
+  if (!response.ok) {
+    let detail = `${response.status} ${response.statusText}`;
+    try {
+      const body = (await response.json()) as { errors?: CloudflareError[] };
+      const first = body.errors?.[0]?.message;
+      if (first) detail = first;
+    } catch {
+      // A non-JSON body means the status line is the best we have.
+    }
+    throw new Error(`Cloudflare refused the message: ${detail}`);
+  }
+}
+
+/**
+ * Send one template to the signed-in advisor's own address.
+ *
+ * This exists so the first proof that sending works is one click and lands
+ * somewhere harmless, rather than being discovered on a real client.
+ */
+export const sendTestEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { key: string }) => {
+    const key = String(input?.key ?? "").trim();
+    if (!(EMAIL_TEMPLATE_KEYS as string[]).includes(key)) throw new Error("Unknown template");
+    return { key: key as EmailTemplateKey };
+  })
+  .handler(async ({ data, context }): Promise<{ to: string }> => {
+    await ensureAdvisor(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: user, error: userErr } = await supabaseAdmin.auth.admin.getUserById(
+      context.userId,
+    );
+    if (userErr) throw new Error(userErr.message);
+    const to = user.user?.email;
+    if (!to) throw new Error("Your account has no email address to send a test to");
+
+    const template = await loadTemplate(data.key);
+    if (!template.fromEmail) {
+      throw new Error(
+        "This template has no sender address yet. Set one at the top of the editor first.",
+      );
+    }
+
+    const origin = process.env.PUBLIC_SITE_ORIGIN ?? "https://kriterionbvi.com";
+
+    /**
+     * Values are deliberately obvious placeholders rather than a real client's.
+     * A test that reads exactly like a live email is a test somebody forwards
+     * by mistake.
+     */
+    const values: Record<string, string> = {
+      "{{advisor_name}}": template.fromName,
+      "{{company}}": "[company name]",
+      "{{valscore}}": "[score]",
+      "{{band}}": "[band]",
+      "{{opportunity}}": "[points]",
+      "{{top_area}}": "[largest gap]",
+      "{{top_points}}": "[points]",
+      "{{action_count}}": "[actions]",
+      "{{answered}}": "[answered]",
+      "{{total}}": "[total]",
+      "{{days}}": "[days]",
+      "{{link}}": origin,
+    };
+
+    const rendered = renderEmail(template, values, origin);
+    await deliver({
+      fromName: template.fromName,
+      fromEmail: template.fromEmail,
+      to,
+      subject: `[test] ${rendered.subject}`,
+      html: rendered.html,
+      text: rendered.text,
+    });
+
+    return { to };
+  });
