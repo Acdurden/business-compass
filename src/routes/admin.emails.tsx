@@ -169,6 +169,21 @@ function EmailTemplatesPage() {
 
   const saved = templates?.find((t) => t.key === current) ?? null;
 
+  /**
+   * The address this template will borrow if its own is left empty — the same
+   * fallback the server applies when it sends (email-store.server.ts). Computed
+   * from the list already on screen, so the two cannot drift.
+   */
+  const inheritedSender = useMemo(() => {
+    const donor = (templates ?? []).find((t) => t.key !== current && t.fromEmail);
+    return donor
+      ? { email: donor.fromEmail as string, from: EMAIL_TEMPLATE_META[donor.key].name }
+      : null;
+  }, [templates, current]);
+
+  /** What this email would actually send from right now. */
+  const effectiveFrom = draft?.fromEmail ?? inheritedSender?.email ?? null;
+
   const dirty = useMemo(() => {
     if (!draft || !saved) return false;
     return (
@@ -446,7 +461,7 @@ function EmailTemplatesPage() {
                     ? "Kriterion has no credentials for the sending service."
                     : null,
                   sending.missingSender.length > 0
-                    ? `${sending.missingSender.length} of ${EMAIL_TEMPLATE_KEYS.length} templates have no sender address.`
+                    ? "No sender address is set on any template."
                     : null,
                 ]
                   .filter(Boolean)
@@ -548,6 +563,19 @@ function EmailTemplatesPage() {
                 one the sending service has been verified to send from — until that is set up,
                 nothing can leave the app whatever is typed here.
               </p>
+              {/*
+               * One mailbox serves every template unless a template is given its
+               * own. Saying so here is what stops "no sender address" reading as
+               * a fault on a screen where sending plainly works.
+               */}
+              {!draft.fromEmail && inheritedSender ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Left empty, this email sends from{" "}
+                  <span className="font-medium text-foreground">{inheritedSender.email}</span>, the
+                  address set on <span className="font-medium">{inheritedSender.from}</span>. Type
+                  one here only to override it for this email.
+                </p>
+              ) : null}
 
               <div>
                 <Label
@@ -659,14 +687,14 @@ function EmailTemplatesPage() {
               <Button
                 variant="outline"
                 onClick={() => void onSendTest()}
-                disabled={testing || dirty || !sending?.ready || !draft.fromEmail}
+                disabled={testing || dirty || !sending?.ready || !effectiveFrom}
                 title={
                   !sending?.ready
                     ? "Sending is not switched on yet"
                     : dirty
                       ? "Save first, so the test matches what would go out"
-                      : !draft.fromEmail
-                        ? "This template has no sender address yet"
+                      : !effectiveFrom
+                        ? "No sender address is set on any template yet"
                         : undefined
                 }
               >
@@ -720,7 +748,7 @@ function EmailTemplatesPage() {
               <div className="border-b border-border px-5 pb-3 pt-4">
                 <p className="text-[15px] font-semibold tracking-tight">{fill(draft.subject)}</p>
                 <p className="mt-1 text-[11.5px] text-muted-foreground">
-                  from {draft.fromName} &lt;{draft.fromEmail ?? "address not set"}&gt;
+                  from {draft.fromName} &lt;{effectiveFrom ?? "address not set"}&gt;
                 </p>
               </div>
               <div className="px-5 py-4">

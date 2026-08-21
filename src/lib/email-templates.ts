@@ -84,7 +84,7 @@ export const EMAIL_TEMPLATE_META: Record<EmailTemplateKey, EmailTemplateMeta> = 
   review_ready: {
     key: "review_ready",
     name: "Your review is ready",
-    when: "sent when you mark a review final",
+    when: "sent by hand once the review is final",
     tags: [
       { tag: "{{company}}", describes: "their company name" },
       { tag: "{{valscore}}", describes: "their ValScore" },

@@ -3,7 +3,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import {
-  EMAIL_TEMPLATE_DEFAULTS,
   EMAIL_TEMPLATE_KEYS,
   type EmailTemplate,
   type EmailTemplateKey,
@@ -25,9 +24,6 @@ type AuthedContext = { supabase: SupabaseClient<Database>; userId: string };
 // silently does not send is worse than a button that says why it cannot.
 // ============================================================
 
-const SEND_ENDPOINT = (accountId: string) =>
-  `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`;
-
 async function ensureAdvisor(context: AuthedContext) {
   const { data: isAdvisor } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
@@ -48,27 +44,10 @@ export type SendingStatus = {
   ready: boolean;
 };
 
+/** Server-only, and it carries the sender fallback. See email-store.server.ts. */
 async function loadTemplate(key: EmailTemplateKey): Promise<EmailTemplate> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("email_templates")
-    .select("key, from_name, from_email, subject, body, cta_label")
-    .eq("key", key)
-    .maybeSingle();
-
-  const fallback = EMAIL_TEMPLATE_DEFAULTS[key];
-  if (!data) return fallback;
-
-  const row = data as Record<string, unknown>;
-  const fromEmail = row.from_email == null ? null : String(row.from_email).trim();
-  return {
-    key,
-    fromName: String(row.from_name ?? fallback.fromName),
-    fromEmail: fromEmail || null,
-    subject: String(row.subject ?? fallback.subject),
-    body: String(row.body ?? fallback.body),
-    ctaLabel: String(row.cta_label ?? fallback.ctaLabel),
-  };
+  const { loadTemplateForSending } = await import("@/lib/email-store.server");
+  return loadTemplateForSending(key);
 }
 
 /**
@@ -82,124 +61,27 @@ export const getSendingStatus = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<SendingStatus> => {
     await ensureAdvisor(context);
 
-    const hasToken = Boolean(process.env.CLOUDFLARE_EMAIL_API_TOKEN);
-    const hasAccount = Boolean(process.env.CLOUDFLARE_ACCOUNT_ID);
+    const { sendingIsConfigured } = await import("@/lib/email-delivery.server");
+    const configured = sendingIsConfigured();
+    const hasToken = configured;
+    const hasAccount = configured;
 
-    const missingSender: EmailTemplateKey[] = [];
-    for (const key of EMAIL_TEMPLATE_KEYS) {
-      const template = await loadTemplate(key);
-      if (!template.fromEmail) missingSender.push(key);
-    }
+    /*
+     * One address configured anywhere covers every template — see the sender
+     * fallback in email-store.server.ts. So this is all-or-nothing: either
+     * Kriterion has a mailbox to send from or it has none.
+     */
+    const { loadAllTemplates, effectiveSender } = await import("@/lib/email-store.server");
+    const all = await loadAllTemplates();
+    const missingSender: EmailTemplateKey[] = effectiveSender(all) ? [] : [...EMAIL_TEMPLATE_KEYS];
 
     return {
       hasToken,
       hasAccount,
       missingSender,
-      ready: hasToken && hasAccount && missingSender.length < EMAIL_TEMPLATE_KEYS.length,
+      ready: hasToken && hasAccount && missingSender.length === 0,
     };
   });
-
-type CloudflareError = { message?: string; code?: number };
-type CloudflareResponse = {
-  success?: boolean;
-  errors?: CloudflareError[];
-  messages?: CloudflareError[];
-  result?: unknown;
-};
-
-/**
- * The one place a message is actually handed to Cloudflare.
- *
- * Errors are rethrown with Cloudflare's own wording where there is any, because
- * "could not send" tells nobody whether the token is wrong, the domain is not
- * verified, or the plan does not allow it.
- */
-async function deliver(input: {
-  fromName: string;
-  fromEmail: string;
-  to: string;
-  replyTo?: string;
-  subject: string;
-  html: string;
-  text: string;
-}): Promise<string> {
-  const token = process.env.CLOUDFLARE_EMAIL_API_TOKEN;
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  if (!token || !accountId) {
-    throw new Error(
-      "Sending is not switched on yet: the Cloudflare account id and API token are not set in the Worker environment.",
-    );
-  }
-
-  const response = await fetch(SEND_ENDPOINT(accountId), {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    /*
-     * `from` goes as an object with `address` and `name`, which is what the
-     * REST API documents. The combined "Name <address>" form was accepted with
-     * success:true and produced no mail and no activity-log entry — the API is
-     * lenient about the shape and silent about the consequence.
-     * Note the field is `address`, not `email`.
-     */
-    body: JSON.stringify({
-      from: { address: input.fromEmail, name: input.fromName },
-      to: input.to,
-      reply_to: input.replyTo ?? input.fromEmail,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-    }),
-  });
-
-  /**
-   * Cloudflare's v4 API answers 200 OK with `success: false` for most
-   * rejections. Trusting the status code alone reports a send that never
-   * happened — which is exactly what it did the first time this ran: the app
-   * said "test sent" and Cloudflare's activity log had no record of it.
-   * The body is the authority here, not the status line.
-   */
-  let body: CloudflareResponse | null = null;
-  let raw = "";
-  try {
-    raw = await response.text();
-    body = raw ? (JSON.parse(raw) as CloudflareResponse) : null;
-  } catch {
-    // Leave body null; `raw` is still the best evidence we have.
-  }
-
-  const messages = [...(body?.errors ?? []), ...(body?.messages ?? [])]
-    .map((e) => e?.message)
-    .filter((m): m is string => Boolean(m));
-
-  const rejected = !response.ok || body?.success === false;
-  if (rejected) {
-    const detail =
-      messages[0] ?? (raw ? raw.slice(0, 300) : `${response.status} ${response.statusText}`);
-    throw new Error(`Cloudflare refused the message: ${detail}`);
-  }
-
-  /**
-   * A 200 with neither `success: true` nor a recognisable body is not proof of
-   * anything. Refusing it is better than another false confirmation.
-   */
-  if (body?.success !== true) {
-    throw new Error(
-      `Cloudflare did not confirm the send. It answered ${response.status} with: ${
-        raw ? raw.slice(0, 300) : "an empty body"
-      }`,
-    );
-  }
-
-  /**
-   * Hand back what Cloudflare actually returned. A bare "sent" has already
-   * proved worthless twice; the id or status they quote is the only thing that
-   * can be checked against their activity log.
-   */
-  return raw.slice(0, 300);
-}
 
 /**
  * Send one template to the signed-in advisor's own address.
@@ -271,8 +153,9 @@ export const sendTestEmail = createServerFn({ method: "POST" })
       "{{link}}": origin,
     };
 
+    const { deliverEmail } = await import("@/lib/email-delivery.server");
     const rendered = renderEmail(template, values, origin);
-    const detail = await deliver({
+    const detail = await deliverEmail({
       fromName: template.fromName,
       fromEmail: template.fromEmail,
       to,

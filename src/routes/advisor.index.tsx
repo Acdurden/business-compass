@@ -30,9 +30,10 @@ import {
   type QueueResponse,
   type QueueSubmission,
 } from "@/lib/advisor-queue";
-import { ClipboardList, ListChecks, Users } from "lucide-react";
+import { ClipboardList, ListChecks, Send, Users } from "lucide-react";
 import { BackOfficeNav } from "@/components/back-office-nav";
 import { InviteClientButton } from "@/components/invite-client-button";
+import { SendEmailDialog } from "@/components/send-email-dialog";
 
 export const Route = createFileRoute("/advisor/")({
   ssr: false,
@@ -299,16 +300,24 @@ function AdvisorDashboard() {
         })}
 
         <SectionHeading title="Needs you" note="nothing moves until you act" />
-        <Queue items={needs} empty="Nothing is waiting on you. Genuinely — not a placeholder." />
+        <Queue
+          items={needs}
+          empty="Nothing is waiting on you. Genuinely — not a placeholder."
+          emailAction="review_ready"
+        />
 
         <SectionHeading
           title="Waiting on the client"
           note="you are not the blocker, but silence still loses clients"
         />
-        <Queue items={waiting} empty="No client is mid-assessment." />
+        <Queue items={waiting} empty="No client is mid-assessment." emailAction="nudge" />
 
         <SectionHeading title="Finished" note="reviews marked final" />
-        <Queue items={done} empty="No review has been marked final yet." />
+        <Queue
+          items={done}
+          empty="No review has been marked final yet."
+          emailAction="review_ready"
+        />
 
         {notes.length > 0 ? (
           <>
@@ -403,7 +412,21 @@ function SectionHeading({ title, note }: { title: string; note?: string }) {
   );
 }
 
-function Queue({ items, empty }: { items: QueueItem[]; empty: string }) {
+function Queue({
+  items,
+  empty,
+  emailAction,
+}: {
+  items: QueueItem[];
+  empty: string;
+  /**
+   * Which email this list offers, when the row itself allows it. The row
+   * decides: a nudge needs a client who has not finished, and "your review is
+   * ready" needs a review that is in and carries advisory answers. A button
+   * that opens onto a refusal is worse than no button.
+   */
+  emailAction?: "nudge" | "review_ready";
+}) {
   if (items.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card px-4 py-5 text-[13px] italic text-muted-foreground shadow-sm">
@@ -453,6 +476,12 @@ function Queue({ items, empty }: { items: QueueItem[]; empty: string }) {
             waiting <b>{plural(i.days, "day", "days")}</b>
           </div>
           <div className="flex flex-wrap justify-start gap-2 md:justify-end">
+            {emailAction === "nudge" && i.canNudge ? (
+              <EmailRowButton item={i} action="nudge" />
+            ) : null}
+            {emailAction === "review_ready" && i.canAnnounce ? (
+              <EmailRowButton item={i} action="review_ready" />
+            ) : null}
             {i.secondary ? (
               <ActionButton submissionId={i.id} action={i.secondary} variant="outline" />
             ) : null}
@@ -499,5 +528,33 @@ function ActionButton({
         {action.label}
       </Link>
     </Button>
+  );
+}
+
+/**
+ * Send this client the one email their situation calls for.
+ *
+ * Opens a draft rather than sending: the approved design was one click and the
+ * advisor approves, because an automated nudge is a different product from an
+ * advisor who chose to send something.
+ */
+function EmailRowButton({ item, action }: { item: QueueItem; action: "nudge" | "review_ready" }) {
+  const [open, setOpen] = useState(false);
+  const label = action === "nudge" ? "Send a nudge" : "Tell them it's ready";
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Send className="mr-1.5 h-3.5 w-3.5" />
+        {label}
+      </Button>
+      <SendEmailDialog
+        open={open}
+        onOpenChange={setOpen}
+        templateKey={action}
+        submissionId={item.id}
+        title={`${label} — ${item.company}`}
+      />
+    </>
   );
 }

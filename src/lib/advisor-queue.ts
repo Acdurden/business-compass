@@ -66,6 +66,19 @@ export type QueueItem = {
   secondary: QueueAction | null;
   /** Higher sorts first inside a bucket. */
   urgency: number;
+  /**
+   * Whether a nudge makes sense: the client has not finished. Decided here
+   * rather than from the bucket, because "waiting on the client" also holds
+   * people who have not started, and both are nudgeable.
+   */
+  canNudge: boolean;
+  /**
+   * Whether "your review is ready" makes sense: the review is in AND carries
+   * advisory answers. Without both, the email would announce a score that is
+   * the objective half masquerading as the whole — the same trap the client
+   * summary and the score line guard.
+   */
+  canAnnounce: boolean;
 };
 
 export type QueueTile = {
@@ -178,6 +191,8 @@ export function buildQueueItems(input: {
     const isObjectivePlan = s.plan === "objective";
     const clientDone = s.client_status === "submitted" || s.client_status === "complete";
     const reviewIn = s.advisor_status === "submitted" || s.advisor_status === "final";
+    const canNudge = !clientDone;
+    const canAnnounce = reviewIn && counts.advisory > 0;
 
     /**
      * A ValScore is only quoted once the review that produced it is in AND the
@@ -211,6 +226,8 @@ export function buildQueueItems(input: {
       company: s.company_name,
       plan: s.plan,
       days,
+      canNudge,
+      canAnnounce,
     };
 
     /* ---- finished ---- */

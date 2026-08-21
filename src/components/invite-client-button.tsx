@@ -7,14 +7,14 @@
  * the moment one of them forgets, a screen offers a stale plan link and the
  * client signs up on the wrong plan.
  *
- * NOTE: this copies a link for the advisor to paste into their own mail. The
- * app still cannot send it — see claude/email-and-notifications.md.
+ * Each plan link can be copied, or emailed straight from here. Emailing opens
+ * a draft first: nothing in Kriterion sends without someone reading it.
  */
 
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Check, Link as LinkIcon, Mail } from "lucide-react";
+import { Check, Link as LinkIcon, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,9 +24,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getActiveInviteCodes, type InviteLink } from "@/lib/client-invites.functions";
+import { SendEmailDialog } from "@/components/send-email-dialog";
 
 function InviteLinkRow({ link }: { link: InviteLink }) {
   const [copied, setCopied] = useState(false);
+  const [composing, setComposing] = useState(false);
   const origin =
     typeof window !== "undefined" ? window.location.origin : "https://kriterionbvi.com";
   const url = `${origin}/invite?code=${link.code}`;
@@ -76,7 +78,18 @@ function InviteLinkRow({ link }: { link: InviteLink }) {
           )}
           {copied ? "Copied!" : "Copy"}
         </Button>
+        <Button size="sm" onClick={() => setComposing(true)}>
+          <Send className="mr-1.5 h-3.5 w-3.5" />
+          Email it
+        </Button>
       </div>
+      <SendEmailDialog
+        open={composing}
+        onOpenChange={setComposing}
+        templateKey="invite"
+        plan={link.plan === "objective" ? "objective" : "full"}
+        title={`Invite a client — ${link.plan === "full" ? "full service" : "objective only"}`}
+      />
     </div>
   );
 }
@@ -112,8 +125,9 @@ export function InviteClientButton({ size = "sm" }: { size?: "sm" | "default" })
           <DialogHeader>
             <DialogTitle>Invite a client</DialogTitle>
             <DialogDescription>
-              Share a link and the client sets up their own account &mdash; no password for you to
-              relay. <b>The link you send decides their plan</b>, so pick the right one.
+              Copy a link, or email it from Kriterion. Either way the client sets up their own
+              account &mdash; no password for you to relay. <b>The link decides their plan</b>, so
+              pick the right one.
             </DialogDescription>
           </DialogHeader>
           {links === null ? (
