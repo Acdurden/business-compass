@@ -99,7 +99,13 @@ export const getSendingStatus = createServerFn({ method: "GET" })
     };
   });
 
-type CloudflareError = { message?: string };
+type CloudflareError = { message?: string; code?: number };
+type CloudflareResponse = {
+  success?: boolean;
+  errors?: CloudflareError[];
+  messages?: CloudflareError[];
+  result?: unknown;
+};
 
 /**
  * The one place a message is actually handed to Cloudflare.
@@ -141,16 +147,43 @@ async function deliver(input: {
     }),
   });
 
-  if (!response.ok) {
-    let detail = `${response.status} ${response.statusText}`;
-    try {
-      const body = (await response.json()) as { errors?: CloudflareError[] };
-      const first = body.errors?.[0]?.message;
-      if (first) detail = first;
-    } catch {
-      // A non-JSON body means the status line is the best we have.
-    }
+  /**
+   * Cloudflare's v4 API answers 200 OK with `success: false` for most
+   * rejections. Trusting the status code alone reports a send that never
+   * happened — which is exactly what it did the first time this ran: the app
+   * said "test sent" and Cloudflare's activity log had no record of it.
+   * The body is the authority here, not the status line.
+   */
+  let body: CloudflareResponse | null = null;
+  let raw = "";
+  try {
+    raw = await response.text();
+    body = raw ? (JSON.parse(raw) as CloudflareResponse) : null;
+  } catch {
+    // Leave body null; `raw` is still the best evidence we have.
+  }
+
+  const messages = [...(body?.errors ?? []), ...(body?.messages ?? [])]
+    .map((e) => e?.message)
+    .filter((m): m is string => Boolean(m));
+
+  const rejected = !response.ok || body?.success === false;
+  if (rejected) {
+    const detail =
+      messages[0] ?? (raw ? raw.slice(0, 300) : `${response.status} ${response.statusText}`);
     throw new Error(`Cloudflare refused the message: ${detail}`);
+  }
+
+  /**
+   * A 200 with neither `success: true` nor a recognisable body is not proof of
+   * anything. Refusing it is better than another false confirmation.
+   */
+  if (body?.success !== true) {
+    throw new Error(
+      `Cloudflare did not confirm the send. It answered ${response.status} with: ${
+        raw ? raw.slice(0, 300) : "an empty body"
+      }`,
+    );
   }
 }
 
