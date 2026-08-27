@@ -39,6 +39,20 @@ export type EmailDraft = {
   subject: string;
   /** Tags already resolved. What the advisor edits is what is sent. */
   body: string;
+  /**
+   * The name the message appears to come from, as the template has it. Shown as
+   * an editable field so one message can go out under a person's name without
+   * changing the template for everyone.
+   */
+  fromName: string;
+  /**
+   * True when no name is saved on the advisor's account and the template's name
+   * is standing in. The compose window says so rather than implying the name
+   * came from the person sending it.
+   */
+  fromNameIsFallback: boolean;
+  /** The sending address. Fixed, and shown only so the advisor can see it. */
+  fromEmail: string | null;
   ctaLabel: string;
   ctaUrl: string;
   /** Why this cannot be sent at all, in plain words. Null when it can. */
@@ -185,7 +199,23 @@ export const getEmailDraft = createServerFn({ method: "GET" })
       blocked = "This email has no sender address. Set one on the Emails screen first.";
     }
 
-    const values: Record<string, string> = { "{{advisor_name}}": template.fromName };
+    /**
+     * Who this appears to come from.
+     *
+     * The template's own name is the fallback, not the answer. An invite reads
+     * as a personal message, so it should carry the name of whoever is actually
+     * sending it. Only the first name is used: "Dan" is what a person signs,
+     * "Dan Santy" is what a company signs.
+     *
+     * `{{advisor_name}}` resolves to the same value, so the sign-off at the
+     * bottom of the message and the From line cannot disagree.
+     */
+    const me = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    const savedName = String(me.data?.user?.user_metadata?.full_name ?? "").trim();
+    const fromName = savedName.split(/\s+/)[0] || template.fromName;
+    const fromNameIsFallback = savedName.length === 0;
+
+    const values: Record<string, string> = { "{{advisor_name}}": fromName };
     let to: string | null = null;
     let ctaUrl = origin;
 
@@ -294,6 +324,9 @@ export const getEmailDraft = createServerFn({ method: "GET" })
       to,
       subject: fillTags(template.subject, values),
       body: fillTags(template.body, values),
+      fromName,
+      fromNameIsFallback,
+      fromEmail: template.fromEmail,
       ctaLabel: template.ctaLabel,
       ctaUrl,
       blocked,
@@ -315,6 +348,7 @@ export const sendComposedEmail = createServerFn({ method: "POST" })
       to: string;
       subject: string;
       body: string;
+      fromName: string;
       ctaLabel: string;
       ctaUrl: string;
     }) => {
@@ -336,11 +370,15 @@ export const sendComposedEmail = createServerFn({ method: "POST" })
         .trim();
       if (!body) throw new Error("The message cannot be empty");
 
+      // An empty From name would send as a bare address, which reads worse than
+      // anything the template could say. The handler falls back when it is blank.
+      const fromName = String(input?.fromName ?? "").trim();
+
       const ctaLabel = String(input?.ctaLabel ?? "").trim() || "Open Kriterion";
       const ctaUrl = String(input?.ctaUrl ?? "").trim();
       if (!/^https?:\/\//.test(ctaUrl)) throw new Error("The button link is not a valid address");
 
-      return { key, to, subject, body, ctaLabel, ctaUrl };
+      return { key, to, subject, body, fromName, ctaLabel, ctaUrl };
     },
   )
   .handler(async ({ data, context }): Promise<{ to: string; detail: string }> => {
@@ -359,7 +397,9 @@ export const sendComposedEmail = createServerFn({ method: "POST" })
 
     const { deliverEmail } = await import("@/lib/email-delivery.server");
     const detail = await deliverEmail({
-      fromName: template.fromName,
+      // What the advisor left in the From field wins. The template's name is
+      // the fallback, so a cleared field cannot send as a bare address.
+      fromName: data.fromName || template.fromName,
       fromEmail: template.fromEmail,
       to: data.to,
       subject: rendered.subject,

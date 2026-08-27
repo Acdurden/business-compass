@@ -12,6 +12,7 @@ import {
   deleteAdvisorAccount,
   listAdvisorAccounts,
   resetAdvisorPassword,
+  setAdvisorDisplayName,
   type AdvisorAccountRow,
 } from "@/lib/password-admin.functions";
 import { createAdvisor } from "@/lib/client-invites.functions";
@@ -105,6 +106,11 @@ function AdvisorsPage() {
                   <p className="text-[11px] font-mono text-muted-foreground mt-0.5 truncate">
                     {r.user_id}
                   </p>
+                  <DisplayNameField
+                    userId={r.user_id}
+                    initial={r.full_name}
+                    onSaved={loadAdvisors}
+                  />
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <ResetAdvisorPasswordButton userId={r.user_id} email={r.email} />
@@ -197,6 +203,78 @@ function CreateAdvisorCard({ onCreated }: { onCreated: () => void }) {
         title="Advisor account created"
       />
     </form>
+  );
+}
+
+/**
+ * The advisor's own name.
+ *
+ * Its first word becomes the From name on email they compose, and the sign-off
+ * inside the message follows the same value, so this is the difference between
+ * an invite that reads as a personal message and one that signs off as a
+ * company. Empty is a legitimate state: the template's name is used instead.
+ */
+function DisplayNameField({
+  userId,
+  initial,
+  onSaved,
+}: {
+  userId: string;
+  initial: string;
+  onSaved: () => void;
+}) {
+  const save = useServerFn(setAdvisorDisplayName);
+  const [value, setValue] = useState(initial);
+  const [busy, setBusy] = useState(false);
+
+  // A reload replaces the rows, so the field must follow the saved value rather
+  // than keep whatever was typed against a row that no longer exists.
+  useEffect(() => {
+    setValue(initial);
+  }, [initial]);
+
+  const dirty = value.trim() !== initial.trim();
+
+  async function commit() {
+    if (!dirty || busy) return;
+    setBusy(true);
+    try {
+      await save({ data: { userId, fullName: value } });
+      toast.success(value.trim() ? "Name saved" : "Name cleared");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save that name");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <Input
+        value={value}
+        placeholder="No name set — emails will sign off with the template name"
+        disabled={busy}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void commit();
+          }
+        }}
+        className="h-8 max-w-xs text-[13px]"
+      />
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-8"
+        disabled={!dirty || busy}
+        onClick={() => void commit()}
+      >
+        Save
+      </Button>
+    </div>
   );
 }
 

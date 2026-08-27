@@ -56,6 +56,8 @@ export function SendEmailDialog({
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  /** Defaults to the advisor's own first name; editable for this one message. */
+  const [fromName, setFromName] = useState("");
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -72,6 +74,7 @@ export function SendEmailDialog({
         setTo(d.to ?? "");
         setSubject(d.subject);
         setBody(d.body);
+        setFromName(d.fromName);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Could not build the draft");
@@ -91,6 +94,7 @@ export function SendEmailDialog({
           to: to.trim(),
           subject,
           body,
+          fromName: fromName.trim(),
           ctaLabel: draft.ctaLabel,
           ctaUrl: draft.ctaUrl,
         },
@@ -140,6 +144,49 @@ export function SendEmailDialog({
                 {draft.warning}
               </p>
             )}
+
+            <div>
+              <Label
+                htmlFor="send-from"
+                className="text-xs uppercase tracking-wide text-muted-foreground"
+              >
+                From
+              </Label>
+              <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  id="send-from"
+                  className="sm:max-w-[220px]"
+                  value={fromName}
+                  placeholder="Your name"
+                  onChange={(e) => setFromName(e.target.value)}
+                  disabled={Boolean(blocked)}
+                />
+                {/*
+                 * The address is shown, never typed. Cloudflare authorises
+                 * sending for the whole domain, so the address is a settled fact
+                 * rather than a per-message choice, and a field would only
+                 * create ways to fail.
+                 */}
+                <span className="rounded-md border border-dashed border-border px-3 py-2 font-mono text-[12.5px] text-muted-foreground">
+                  {draft.fromEmail ?? "no sending address set"}
+                </span>
+              </div>
+              {draft.fromName !== fromName ? (
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                  Changed for this email only. The sign-off at the end of the message is separate,
+                  so change that too if it should match.
+                </p>
+              ) : draft.fromNameIsFallback ? (
+                <p className="mt-1.5 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-[11.5px] leading-relaxed text-amber-800 dark:text-amber-200">
+                  No name is saved on your advisor account, so this is the standard wording standing
+                  in. Add one on the Advisors screen and it will fill in by itself next time.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                  From your advisor account. Change it here and only this email is affected.
+                </p>
+              )}
+            </div>
 
             <div>
               <Label

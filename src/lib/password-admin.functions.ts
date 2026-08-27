@@ -67,6 +67,17 @@ export type AdvisorAccountRow = {
   email: string | null;
   is_admin: boolean;
   created_at: string | null;
+  /**
+   * The advisor's own name, empty until someone fills it in.
+   *
+   * There is no profiles table in this app; Supabase auth is the only account
+   * store, so the name lives in the account's own metadata beside the flags
+   * already kept there. Its first word becomes the From name on email the
+   * advisor composes, which is why an empty one falls back to the template
+   * rather than to something derived from the address — nobody should receive
+   * an invite signed "Dsanty".
+   */
+  full_name: string;
 };
 
 export const listAdvisorAccounts = createServerFn({ method: "GET" })
@@ -95,8 +106,57 @@ export const listAdvisorAccounts = createServerFn({ method: "GET" })
         email: u.email ?? null,
         is_admin: adminIds.has(u.id),
         created_at: u.created_at ?? null,
+        full_name: String(u.user_metadata?.full_name ?? "").trim(),
       }))
       .sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
+  });
+
+/**
+ * Set or clear an advisor's display name.
+ *
+ * Admin-gated and written through the service role, matching every other write
+ * on this screen. Worth knowing: a signed-in user can also change their own
+ * `user_metadata` through the Supabase client. That is acceptable here because
+ * the name is not a permission — the compose window already lets an advisor put
+ * any name on a single message — but it is the reason the plan flag lives in
+ * `app_metadata` instead, and a name is the only thing that should join it here.
+ */
+export const setAdvisorDisplayName = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string; fullName: string }) => {
+    const userId = String(input?.userId ?? "").trim();
+    if (!userId) throw new Error("userId required");
+    const fullName = String(input?.fullName ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+    return { userId, fullName };
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true; full_name: string }> => {
+    await assertRole(context, "admin");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: role, error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", data.userId)
+      .eq("role", "advisor")
+      .maybeSingle();
+    if (roleErr) throw new Error(roleErr.message);
+    if (!role) throw new Error("Target user is not an advisor");
+
+    // Merge rather than replace: the account also carries must_change_password
+    // and the verification flags, and overwriting the object would drop them.
+    const existing = await supabaseAdmin.auth.admin.getUserById(data.userId);
+    if (existing.error) throw new Error(existing.error.message);
+    const meta = { ...(existing.data?.user?.user_metadata ?? {}), full_name: data.fullName };
+
+    const upd = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      user_metadata: meta,
+    });
+    if (upd.error) throw new Error(upd.error.message);
+
+    return { ok: true, full_name: data.fullName };
   });
 
 export const resetAdvisorPassword = createServerFn({ method: "POST" })
