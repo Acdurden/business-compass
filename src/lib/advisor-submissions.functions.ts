@@ -123,6 +123,47 @@ export const saveAdvisorResponse = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Remove one advisory answer, putting the question back to unanswered.
+ *
+ * `responses.answer_option_id` is NOT NULL, so there is no way to represent
+ * "asked, not answered" on an existing row: clearing has to delete it. The only
+ * alternative that existed before this was `advisor_reset_advisor_responses`,
+ * which wipes all eighteen, so undoing one mistyped answer meant redoing the
+ * whole review.
+ *
+ * Deliberately advisor-only. The client questionnaire saves through the
+ * `save_client_response` database routine and would need its own counterpart
+ * there; that is a separate decision because it affects people outside the
+ * practice.
+ *
+ * An unanswered question scores zero while still counting toward the total, so
+ * clearing an answer quietly lowers the ValScore. What stops that reaching a
+ * client is the "all advisory questions answered" check in the Complete Action
+ * Plan gate, which refuses to publish a short review.
+ */
+export const clearAdvisorResponse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      submissionId: string;
+      questionnaireType: "objective" | "advisory";
+      questionId: string;
+    }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    await ensureAdvisor(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("responses")
+      .delete()
+      .eq("submission_id", data.submissionId)
+      .eq("question_id", data.questionId)
+      .eq("questionnaire_type", data.questionnaireType);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const setAdvisorStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(

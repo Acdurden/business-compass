@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
+  clearAdvisorResponse,
   getAdvisorSubmission,
   saveAdvisorResponse,
   setAdvisorStatus,
@@ -75,6 +76,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const navigate = useNavigate();
   const loadAdvisor = useServerFn(getAdvisorSubmission);
   const saveAdvisor = useServerFn(saveAdvisorResponse);
+  const clearAdvisor = useServerFn(clearAdvisorResponse);
   const setAdvStatus = useServerFn(setAdvisorStatus);
 
   const [companyName, setCompanyName] = useState("");
@@ -282,6 +284,24 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
 
   async function handleSelect(question: Question, option: AnswerOption) {
     if (props.readOnly) return;
+
+    /**
+     * Clicking the answer that is already chosen clears it.
+     *
+     * Advisor only. The client questionnaire saves through a database routine
+     * that has no counterpart for deleting a row, and changing what a client can
+     * do to their own submitted answers is a separate decision.
+     *
+     * Until this existed the only way to undo one advisory answer was
+     * `advisor_reset_advisor_responses`, which wipes all eighteen. The action
+     * plan has always toggled on re-click, so this also makes the two halves of
+     * the review behave the same way.
+     */
+    if (props.mode === "advisor" && responses[question.question_id] === option.id) {
+      await handleClear(question);
+      return;
+    }
+
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
     setSaving(question.question_id);
     let error: unknown = null;
@@ -314,6 +334,35 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     if (error) {
       toast.error("Couldn't save answer");
       console.error(error);
+    }
+  }
+
+  /** Put one question back to unanswered. Advisor only; see handleSelect. */
+  async function handleClear(question: Question) {
+    if (props.mode !== "advisor") return;
+    const previous = responses[question.question_id];
+    setResponses((prev) => {
+      const next = { ...prev };
+      delete next[question.question_id];
+      return next;
+    });
+    setSaving(question.question_id);
+    try {
+      await clearAdvisor({
+        data: {
+          submissionId: props.submissionId,
+          questionnaireType,
+          questionId: question.question_id,
+        },
+      });
+    } catch (e) {
+      // Put the answer back rather than leaving the screen claiming a change
+      // that never reached the database.
+      setResponses((prev) => ({ ...prev, [question.question_id]: previous }));
+      toast.error("Couldn't clear that answer");
+      console.error(e);
+    } finally {
+      setSaving(null);
     }
   }
 
