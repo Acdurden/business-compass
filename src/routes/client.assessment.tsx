@@ -30,6 +30,7 @@ import {
   type ClientStage,
   type NavTarget,
 } from "@/components/client-shell";
+import { ValuationDisclaimer } from "@/components/valuation-disclaimer";
 import {
   buildConfig,
   computeValuation,
@@ -254,6 +255,7 @@ function MyAssessment() {
           sections={sections}
           extras={extras}
           reviewed={reviewed}
+          awaitingReview={plan !== "objective" && !reviewed}
           target={target}
           setTarget={setTarget}
           savingTarget={savingTarget}
@@ -351,6 +353,7 @@ function Submitted({
   sections,
   extras,
   reviewed,
+  awaitingReview,
   target,
   setTarget,
   savingTarget,
@@ -361,6 +364,9 @@ function Submitted({
   sections: SectionMeta[];
   extras: Extras | null;
   reviewed: boolean;
+  /** True only where an advisor review is genuinely still to come. An
+   *  objective-only client has `reviewed` false forever and is not waiting. */
+  awaitingReview: boolean;
   target: number | null;
   setTarget: (n: number | null) => void;
   savingTarget: boolean;
@@ -541,6 +547,8 @@ function Submitted({
           assessment so you can change it.
         </p>
       </Card>
+
+      <ValuationDisclaimer provisional={awaitingReview} hasRange={hasAmount} />
     </div>
   );
 }

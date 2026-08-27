@@ -44,6 +44,7 @@ import {
   type Plan,
   type PlanItem,
 } from "@/lib/action-plan";
+import { ValuationDisclaimer } from "@/components/valuation-disclaimer";
 
 export const Route = createFileRoute("/client/summary")({
   ssr: false,
@@ -708,10 +709,7 @@ function SummaryBody({
 
       {isObjective ? <UpgradeCard /> : null}
 
-      <p className="mt-2.5 text-center text-[11.5px] leading-[1.5]" style={{ color: BRAND.muted }}>
-        Estimates are model outputs and are not a formal valuation or an offer. Ranges reflect a ±5%
-        band around the midpoint. Scores are shown on a 0–100 scale.
-      </p>
+      <ValuationDisclaimer hasRange={hasAmount} />
     </>
   );
 }

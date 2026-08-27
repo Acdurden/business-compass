@@ -31,6 +31,7 @@ import {
   type Opportunity,
   type SectionMeta,
 } from "@/lib/score-display";
+import { ValuationDisclaimer } from "@/components/valuation-disclaimer";
 
 export const Route = createFileRoute("/client/")({
   ssr: false,
@@ -1132,6 +1133,8 @@ function Complete({
           </Card>
         </div>
       </div>
+
+      <ValuationDisclaimer hasRange={hasAmount} />
     </>
   );
 }
