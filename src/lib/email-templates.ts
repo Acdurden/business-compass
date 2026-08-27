@@ -126,6 +126,10 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
     body: [
       "Here is your Kriterion assessment. It takes about twenty minutes and covers nine areas of the business, from the quality of your financials to how much of the operation still runs through you.",
       "It is not a valuation calculator. The questions are the ones a buyer works through before they make an offer, and the score you get is the one we then sit down and talk about.",
+      // The invite is sent as plain person-to-person mail, so the marker becomes
+      // a bare web address rather than a button. The line above it has to
+      // introduce that address, because nothing else will.
+      "Here is your link:",
       BUTTON_MARKER,
       "The link is yours and does not expire. If you would rather walk through the first few questions together, reply and we will find twenty minutes.",
       "{{advisor_name}}",
