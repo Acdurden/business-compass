@@ -25,7 +25,6 @@ import {
   type ValuationResult,
 } from "@/lib/valscore_calc";
 import {
-  DEFAULT_TARGET_VALUATION,
   DEFAULT_VALUATION_INPUT_AMOUNT,
   DEFAULT_VALUATION_INPUT_TYPE,
 } from "@/lib/valuation-defaults";
@@ -207,7 +206,10 @@ function ActionPlanWorkspace() {
             valuationInputAmount: Number(
               subData.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT,
             ),
-            targetValuation: Number(subData.target_valuation ?? DEFAULT_TARGET_VALUATION),
+            // No default: the target is the client's own goal, set on
+            // /client/assessment. Zero makes targetAnalysis return null rather
+            // than analysing a goal nobody gave us.
+            targetValuation: Number(subData.target_valuation ?? 0),
           },
           scoringConfig,
         );

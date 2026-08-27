@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { computeValuation, buildConfig, type ValuationResult } from "@/lib/valscore_calc";
 import {
-  DEFAULT_TARGET_VALUATION,
   DEFAULT_VALUATION_INPUT_AMOUNT,
   DEFAULT_VALUATION_INPUT_TYPE,
 } from "@/lib/valuation-defaults";
@@ -130,7 +129,10 @@ function ResultsPage() {
       const inputType =
         (subData.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
       const amount = Number(subData.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
-      const target = Number(subData.target_valuation ?? DEFAULT_TARGET_VALUATION);
+      // No default: a target is the client's own goal, set by them on
+      // /client/assessment. Zero makes targetAnalysis return null rather than
+      // analysing a goal nobody gave us.
+      const target = Number(subData.target_valuation ?? 0);
 
       const scoringConfig = buildConfig(
         (scoreBandsRes.data ?? []) as never,

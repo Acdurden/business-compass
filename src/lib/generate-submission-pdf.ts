@@ -3,7 +3,6 @@ import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { computeValuation, buildConfig } from "@/lib/valscore_calc.js";
 import {
-  DEFAULT_TARGET_VALUATION,
   DEFAULT_VALUATION_INPUT_AMOUNT,
   DEFAULT_VALUATION_INPUT_TYPE,
 } from "@/lib/valuation-defaults";
@@ -80,7 +79,17 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
 
   const inputType = (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
   const amount = Number(sub.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
-  const target = Number(sub.target_valuation ?? DEFAULT_TARGET_VALUATION);
+  /**
+   * No default. A target is the client's own goal, and until 2026-08-27 nothing
+   * in the product collected one, so falling back to a shared constant produced
+   * a target analysis for a goal nobody had set. Zero makes `targetAnalysis`
+   * return null, which is the truthful answer. Clients set this themselves on
+   * `/client/assessment`.
+   *
+   * `renderTargetBlock` below is currently unreferenced, so none of this reaches
+   * the page today — but it would have the moment anyone wired it up.
+   */
+  const target = Number(sub.target_valuation ?? 0);
 
   const scoringConfig = buildConfig(
     (scoreBandsRes.data ?? []) as never,

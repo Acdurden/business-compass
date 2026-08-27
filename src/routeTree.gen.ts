@@ -23,6 +23,7 @@ import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
 import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
 import { Route as AdvisorChangePasswordRouteImport } from './routes/advisor.change-password'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
+import { Route as ClientAssessmentRouteImport } from './routes/client.assessment'
 import { Route as ClientAuthRouteImport } from './routes/client.auth'
 import { Route as ClientChangePasswordRouteImport } from './routes/client.change-password'
 import { Route as ClientQuestionnaireRouteImport } from './routes/client.questionnaire'
@@ -100,6 +101,11 @@ const ClientIndexRoute = ClientIndexRouteImport.update({
   path: '/client/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientAssessmentRoute = ClientAssessmentRouteImport.update({
+  id: '/client/assessment',
+  path: '/client/assessment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientAuthRoute = ClientAuthRouteImport.update({
   id: '/client/auth',
   path: '/client/auth',
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/assessment': typeof ClientAssessmentRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/change-password': typeof ClientChangePasswordRoute
   '/client/questionnaire': typeof ClientQuestionnaireRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/assessment': typeof ClientAssessmentRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/change-password': typeof ClientChangePasswordRoute
   '/client/questionnaire': typeof ClientQuestionnaireRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/assessment': typeof ClientAssessmentRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/change-password': typeof ClientChangePasswordRoute
   '/client/questionnaire': typeof ClientQuestionnaireRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
+    | '/client/assessment'
     | '/client/auth'
     | '/client/change-password'
     | '/client/questionnaire'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
+    | '/client/assessment'
     | '/client/auth'
     | '/client/change-password'
     | '/client/questionnaire'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
+    | '/client/assessment'
     | '/client/auth'
     | '/client/change-password'
     | '/client/questionnaire'
@@ -281,6 +293,7 @@ export interface RootRouteChildren {
   AdminSubmissionsRoute: typeof AdminSubmissionsRoute
   AdvisorSubmissionIdRoute: typeof AdvisorSubmissionIdRoute
   AdvisorChangePasswordRoute: typeof AdvisorChangePasswordRoute
+  ClientAssessmentRoute: typeof ClientAssessmentRoute
   ClientAuthRoute: typeof ClientAuthRoute
   ClientChangePasswordRoute: typeof ClientChangePasswordRoute
   ClientQuestionnaireRoute: typeof ClientQuestionnaireRoute
@@ -391,6 +404,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/assessment': {
+      id: '/client/assessment'
+      path: '/client/assessment'
+      fullPath: '/client/assessment'
+      preLoaderRoute: typeof ClientAssessmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client/auth': {
       id: '/client/auth'
       path: '/client/auth'
@@ -449,6 +469,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSubmissionsRoute: AdminSubmissionsRoute,
   AdvisorSubmissionIdRoute: AdvisorSubmissionIdRoute,
   AdvisorChangePasswordRoute: AdvisorChangePasswordRoute,
+  ClientAssessmentRoute: ClientAssessmentRoute,
   ClientAuthRoute: ClientAuthRoute,
   ClientChangePasswordRoute: ClientChangePasswordRoute,
   ClientQuestionnaireRoute: ClientQuestionnaireRoute,
