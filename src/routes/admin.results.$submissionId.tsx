@@ -10,7 +10,7 @@ import {
   DEFAULT_VALUATION_INPUT_TYPE,
 } from "@/lib/valuation-defaults";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { FileDown, ClipboardList, ListChecks } from "lucide-react";
+import { ArrowLeft, FileDown, ClipboardList, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { BackOfficeNav } from "@/components/back-office-nav";
 
@@ -221,7 +221,13 @@ function ResultsPage() {
               {sub.submission_id}
             </p>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin/submissions">
+                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                Back to submissions
+              </Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/advisor/$submissionId" params={{ submissionId }}>
                 <ClipboardList className="h-3.5 w-3.5 mr-1.5" />

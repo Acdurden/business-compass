@@ -51,9 +51,24 @@ import {
   type PlanCureRow,
   type PlanProblemRow,
 } from "@/lib/action-plan";
-import { ChevronDown, ChevronRight, ChevronUp, ClipboardList, Eye, Plus, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ClipboardList,
+  Eye,
+  Lock,
+  Minus,
+  Plus,
+  Unlock,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { BackOfficeNav } from "@/components/back-office-nav";
+import { setAdvisorStatus } from "@/lib/advisor-submissions.functions";
 
 export const Route = createFileRoute("/advisor/plan/$submissionId")({
   ssr: false,
@@ -77,6 +92,24 @@ type Submission = {
   valuation_input_type: InputType | null;
   valuation_input_amount: number | null;
   target_valuation: number | null;
+  /** Null when no client login has been attached, which the gate warns about. */
+  owner_user_id: string | null;
+};
+
+/**
+ * One thing the plan must satisfy before a client can be shown it.
+ *
+ * `block` refuses the completion outright; `warn` states the cost and lets the
+ * advisor through; `pending` is a check that is specified but has nothing to
+ * check against yet, shown rather than hidden so the gate never overstates what
+ * it verified.
+ */
+type GateCheck = {
+  key: string;
+  level: "block" | "warn" | "pending";
+  ok: boolean | null;
+  label: string;
+  detail: string;
 };
 
 const BASIS_LABEL: Record<InputType, string> = {
@@ -108,6 +141,11 @@ function ActionPlanWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  /** How many advisory questions exist, and how many this review answered. */
+  const [advisoryTotal, setAdvisoryTotal] = useState(0);
+  const [advisoryAnswered, setAdvisoryAnswered] = useState(0);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,7 +154,7 @@ function ActionPlanWorkspace() {
         const { data: subData, error: subErr } = await supabase
           .from("submissions")
           .select(
-            "submission_id,company_name,client_status,advisor_status,plan,valuation_input_type,valuation_input_amount,target_valuation",
+            "submission_id,company_name,client_status,advisor_status,plan,valuation_input_type,valuation_input_amount,target_valuation,owner_user_id",
           )
           .eq("submission_id", submissionId)
           .maybeSingle();
@@ -174,6 +212,18 @@ function ActionPlanWorkspace() {
           scoringConfig,
         );
 
+        // An unanswered advisory question scores zero while still counting
+        // toward the denominator, so a short review quietly drags the ValScore
+        // down. The gate needs both figures to say so.
+        const advisoryQuestions = (
+          (questionsRes.data ?? []) as { question_id: string; questionnaire_type: string }[]
+        ).filter((q) => q.questionnaire_type === "advisory");
+        const advisoryResponses = (
+          (responsesRes.data ?? []) as { question_id: string; questionnaire_type: string }[]
+        ).filter((r) => r.questionnaire_type === "advisory");
+
+        setAdvisoryTotal(advisoryQuestions.length);
+        setAdvisoryAnswered(advisoryResponses.length);
         setSub(subData as Submission);
         setSections((sectionsRes.data ?? []) as SectionMeta[]);
         setConfig(scoringConfig);
@@ -269,9 +319,103 @@ function ActionPlanWorkspace() {
     });
   }, []);
 
+  /**
+   * Everything standing between the advisor's working state and the client's
+   * screen. This is the only pre-publish gate in the product, so the checks the
+   * other punch-list items need live here rather than being scattered around.
+   */
+  const gateChecks: GateCheck[] = useMemo(() => {
+    const orphans = planItems.filter((i) => i.actions.length === 0);
+    const flaggedCount = planItems.length;
+    // An objective-only client never receives an advisory review, so there is
+    // nothing for the completeness check to measure and it must not block.
+    const advisoryApplies = sub?.plan !== "objective" && advisoryTotal > 0;
+    const advisoryComplete = advisoryApplies && advisoryAnswered >= advisoryTotal;
+
+    return [
+      {
+        key: "orphans",
+        level: "block",
+        ok: orphans.length === 0,
+        label: "Every flagged problem has at least one action",
+        detail:
+          orphans.length === 0
+            ? `${flaggedCount} flagged ${flaggedCount === 1 ? "problem" : "problems"}, each with at least one action against it.`
+            : `${orphans.length} ${orphans.length === 1 ? "problem has" : "problems have"} nothing prescribed: ${orphans
+                .map((o) => `“${o.text}”`)
+                .join(", ")}. The client would read the weakness with nothing to do about it.`,
+      },
+      {
+        key: "advisory",
+        level: advisoryApplies ? "block" : "pending",
+        ok: advisoryApplies ? advisoryComplete : null,
+        label: advisoryApplies
+          ? `All ${advisoryTotal} advisory questions answered`
+          : "The advisory review is complete",
+        detail: !advisoryApplies
+          ? sub?.plan === "objective"
+            ? "Not checked. This client is on the objective-only plan, so there is no advisory review."
+            : "Not checked. No advisory questions are set up, so there is nothing to measure."
+          : advisoryComplete
+            ? `${advisoryAnswered} of ${advisoryTotal} answered.`
+            : `${advisoryAnswered} of ${advisoryTotal} answered. An unanswered question scores zero while still counting toward the total, so a short review drags the ValScore down for a reason that has nothing to do with the business.`,
+      },
+      {
+        key: "flagged",
+        level: "block",
+        ok: flaggedCount > 0,
+        label: "At least one problem flagged",
+        detail:
+          flaggedCount > 0
+            ? `${flaggedCount} flagged.`
+            : "An empty plan produces a result page with no findings at all.",
+      },
+      {
+        key: "verdict",
+        level: "pending",
+        ok: null,
+        label: "The client-facing verdict sentence exists",
+        detail:
+          "Not checked yet. The verdict sentence belongs to the result page rebuild and does not exist in the product today. This check turns on when that ships.",
+      },
+      {
+        key: "account",
+        level: "warn",
+        ok: sub?.owner_user_id != null,
+        label: "A client account is attached to this submission",
+        detail:
+          sub?.owner_user_id != null
+            ? "Attached. The review-ready email has somewhere to go."
+            : "No client login is attached, so the review-ready email cannot be sent. You can still complete the plan, but attach an account before the client is told it is ready.",
+      },
+    ];
+  }, [planItems, advisoryAnswered, advisoryTotal, sub]);
+
+  const gateBlocked = gateChecks.some((c) => c.level === "block" && c.ok === false);
+
+  /** Mark the review final and lock the plan, or put it back to editable. */
+  async function setCompleted(next: boolean) {
+    if (completing) return;
+    setCompleting(true);
+    try {
+      await setAdvisorStatus({
+        data: { submissionId, status: next ? "final" : "submitted" },
+      });
+      setSub((prev) => (prev ? { ...prev, advisor_status: next ? "final" : "submitted" } : prev));
+      setGateOpen(false);
+      toast.success(next ? "Action plan completed" : "Plan reopened for editing");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not change the status");
+    } finally {
+      setCompleting(false);
+    }
+  }
+
   /** Run one write, keeping the screen honest about whether it saved. */
   async function run(work: () => Promise<void>, failure: string) {
-    if (busy) return;
+    // A completed plan is read-only until it is explicitly reopened. The
+    // controls are already disabled; this stops anything else reaching a write.
+    if (busy || sub?.advisor_status === "final") return;
     setBusy(true);
     try {
       await work();
@@ -424,6 +568,8 @@ function ActionPlanWorkspace() {
   const reviewOut = sub.advisor_status === "submitted" || sub.advisor_status === "final";
   const isObjectivePlan = sub.plan === "objective";
   const totalActions = countActions(planItems);
+  /** A completed plan is read-only until the advisor reopens it. */
+  const locked = sub.advisor_status === "final";
 
   return (
     <main className="min-h-screen pb-24">
@@ -441,6 +587,12 @@ function ActionPlanWorkspace() {
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
             <Button asChild variant="outline" size="sm">
+              <Link to="/admin/submissions">
+                <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+                Back to submissions
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
               <Link to="/advisor/$submissionId" params={{ submissionId }}>
                 <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
                 Advisory answers
@@ -452,19 +604,64 @@ function ActionPlanWorkspace() {
                 Results
               </Link>
             </Button>
+            {locked ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={completing}
+                onClick={() => void setCompleted(false)}
+              >
+                <Unlock className="mr-1.5 h-3.5 w-3.5" />
+                Reopen for editing
+              </Button>
+            ) : (
+              <Button size="sm" disabled={completing} onClick={() => setGateOpen(true)}>
+                Complete Action Plan
+              </Button>
+            )}
           </div>
         </div>
       </header>
 
       <div className="mx-auto grid max-w-6xl gap-6 px-6 py-7 lg:grid-cols-[1fr_300px] lg:items-start">
         <div className="min-w-0 space-y-4">
+          {locked ? (
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-4 py-3.5">
+              <div>
+                <p className="flex items-center gap-1.5 text-[14px] font-semibold text-emerald-900 dark:text-emerald-200">
+                  <Lock className="h-3.5 w-3.5" />
+                  Action plan completed
+                </p>
+                <p className="mt-0.5 text-[12.5px] text-emerald-900/80 dark:text-emerald-200/80">
+                  The review is marked final and the plan is read-only. Reopen it to make changes.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/admin/results/$submissionId" params={{ submissionId }}>
+                  <Eye className="mr-1.5 h-3.5 w-3.5" />
+                  View what the client sees
+                </Link>
+              </Button>
+            </div>
+          ) : null}
+
+          {gateOpen ? (
+            <CompletionGate
+              checks={gateChecks}
+              blocked={gateBlocked}
+              busy={completing}
+              onCancel={() => setGateOpen(false)}
+              onConfirm={() => void setCompleted(true)}
+            />
+          ) : null}
+
           {isObjectivePlan ? (
             <Banner tone="amber">
               This client is on the objective-only plan, so there is no advisor review in their
               portal. Anything you build here will not be shown to them unless they move to full
               service.
             </Banner>
-          ) : reviewOut ? (
+          ) : locked ? null : reviewOut ? (
             <Banner tone="green">
               The advisory review is {sub.advisor_status}. This plan is live on the client&apos;s
               summary — every change you make here is visible to them straight away.
@@ -477,9 +674,9 @@ function ActionPlanWorkspace() {
           )}
 
           <p className="text-[13px] leading-relaxed text-muted-foreground">
-            Drivers are listed the way the client sees them — most value available first. Flag the
-            problems this business actually has, then choose what to do about each one. Everything
-            saves as you click it.
+            {locked
+              ? "This is the finished plan, in the order the client reads it. Nothing here can be changed until you reopen it."
+              : "Drivers are listed the way the client sees them — most value available first. Flag the problems this business actually has, then choose what to do about each one. Everything saves as you click it."}
           </p>
 
           {workspaceSections.length === 0 ? (
@@ -497,7 +694,7 @@ function ActionPlanWorkspace() {
                 plan={plan}
                 flaggedByProblemId={flaggedByProblemId}
                 prescribedCureIds={prescribedCureIds}
-                busy={busy}
+                busy={busy || locked}
                 onToggleProblem={(problemId) => {
                   const existing = flaggedByProblemId.get(problemId);
                   void run(
@@ -627,6 +824,133 @@ function Banner({
     <div className={`rounded-md border px-4 py-3 text-[12.5px] leading-relaxed ${cls}`}>
       {children}
     </div>
+  );
+}
+
+/**
+ * The pre-publish gate.
+ *
+ * Deliberately states the result of every check, passing ones included. A panel
+ * that only lists failures leaves the advisor guessing what was actually
+ * verified, and this is the one moment where that matters.
+ */
+function CompletionGate({
+  checks,
+  blocked,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  checks: GateCheck[];
+  blocked: boolean;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const warned = checks.some((c) => c.level === "warn" && c.ok === false);
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-md">
+      <div
+        className={`flex flex-wrap items-baseline justify-between gap-3 border-b border-border px-4 py-3.5 ${
+          blocked ? "bg-destructive/10" : "bg-emerald-500/10"
+        }`}
+      >
+        <h2 className="text-[14.5px] font-semibold">Before this plan goes to the client</h2>
+        <span
+          className={`text-[12.5px] font-semibold ${
+            blocked ? "text-destructive" : "text-emerald-800 dark:text-emerald-200"
+          }`}
+        >
+          {blocked
+            ? "Cannot complete yet"
+            : warned
+              ? "Ready, with one thing to know"
+              : "Ready to complete"}
+        </span>
+      </div>
+
+      <ul>
+        {checks.map((c) => {
+          const state =
+            c.level === "pending"
+              ? "pending"
+              : c.ok
+                ? "pass"
+                : c.level === "block"
+                  ? "fail"
+                  : "warn";
+          return (
+            <li
+              key={c.key}
+              className="grid grid-cols-[18px_1fr_auto] items-start gap-3 border-b border-border px-4 py-3 last:border-b-0"
+            >
+              <span
+                className={`mt-0.5 grid h-[18px] w-[18px] place-items-center rounded-full text-white ${
+                  state === "pass"
+                    ? "bg-emerald-600"
+                    : state === "fail"
+                      ? "bg-destructive"
+                      : state === "warn"
+                        ? "bg-amber-600"
+                        : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {state === "pass" ? (
+                  <Check className="h-3 w-3" />
+                ) : state === "fail" ? (
+                  <X className="h-3 w-3" />
+                ) : state === "warn" ? (
+                  <AlertTriangle className="h-3 w-3" />
+                ) : (
+                  <Minus className="h-3 w-3" />
+                )}
+              </span>
+              <span className="text-[13px]">
+                <span className="font-medium">{c.label}</span>
+                <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted-foreground">
+                  {c.detail}
+                </span>
+              </span>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                  state === "fail"
+                    ? "bg-destructive/10 text-destructive"
+                    : state === "warn"
+                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                      : state === "pending"
+                        ? "bg-muted text-muted-foreground"
+                        : "text-transparent"
+                }`}
+              >
+                {state === "fail"
+                  ? "Blocks"
+                  : state === "warn"
+                    ? "Warning"
+                    : state === "pending"
+                      ? "Not yet"
+                      : ""}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="flex flex-wrap items-center gap-2.5 bg-muted/50 px-4 py-3">
+        <span className="flex-1 basis-60 text-[12.5px] text-muted-foreground">
+          {blocked
+            ? "Fix what is blocking, then try again."
+            : "Completing marks the review final and locks the plan. You can reopen it at any time."}
+        </span>
+        <Button variant="outline" size="sm" onClick={onCancel} disabled={busy}>
+          Cancel
+        </Button>
+        <Button size="sm" onClick={onConfirm} disabled={blocked || busy}>
+          <Lock className="mr-1.5 h-3.5 w-3.5" />
+          Complete and lock
+        </Button>
+      </div>
+    </section>
   );
 }
 
