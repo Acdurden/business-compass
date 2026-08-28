@@ -6,7 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
-import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
+/*
+ * The CLIENT pdf, not `generate-submission-pdf`. That one is the advisor's
+ * working file — headed "Valuation Report", with the submission id and the raw
+ * score arithmetic on it — and it was reachable from this button until
+ * 2026-08-28. Advisor and admin screens still use it; a client never should.
+ */
+import { generateClientPdf } from "@/lib/generate-client-pdf";
 import {
   ClientShell,
   type ClientPlan,
@@ -859,7 +865,7 @@ function Complete({
     if (!submissionId) return;
     setDownloading(true);
     try {
-      await generateSubmissionPdf(submissionId);
+      await generateClientPdf(submissionId);
     } catch {
       toast.error("We couldn't build your PDF. Please try again.");
     } finally {
@@ -1093,7 +1099,7 @@ function Complete({
                 aria-hidden
               />
               <div className="flex-1">
-                {isObjective ? "Objective Score Summary" : "ValScore Summary"}
+                Value Readiness Assessment
                 <div className="text-[11px]" style={{ color: BRAND.muted }}>
                   Ready · PDF
                 </div>
