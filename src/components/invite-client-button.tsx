@@ -57,8 +57,8 @@ function InviteLinkRow({ link }: { link: InviteLink }) {
   }
 
   return (
-    <div className="rounded-lg border border-border p-3">
-      <div className="flex items-center gap-2">
+    <div className="min-w-0 rounded-lg border border-border p-3">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">
           {link.plan === "full" ? "Full service" : "Objective only"}
         </span>
@@ -66,11 +66,18 @@ function InviteLinkRow({ link }: { link: InviteLink }) {
           {link.plan === "full" ? "Includes advisor review" : "Self-assessment only"}
         </span>
       </div>
-      <div className="mt-2 flex items-center gap-2">
-        <code className="flex-1 truncate rounded-md border border-border bg-muted px-3 py-2 text-xs">
+      {/*
+       * `min-w-0` on the URL is load-bearing. A flex item defaults to
+       * `min-width: auto`, so the long invite URL refuses to shrink below its
+       * own single-line width, `truncate` never gets to truncate anything, and
+       * the whole row pushes out past the dialog's max-w-lg — which is exactly
+       * how the buttons ended up sitting on the page behind the modal.
+       */}
+      <div className="mt-2 flex min-w-0 items-center gap-2">
+        <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-muted px-3 py-2 text-xs">
           {url}
         </code>
-        <Button size="sm" variant="outline" onClick={() => void handleCopy()}>
+        <Button size="sm" variant="outline" className="shrink-0" onClick={() => void handleCopy()}>
           {copied ? (
             <Check className="mr-1.5 h-3.5 w-3.5" />
           ) : (
@@ -78,7 +85,7 @@ function InviteLinkRow({ link }: { link: InviteLink }) {
           )}
           {copied ? "Copied!" : "Copy"}
         </Button>
-        <Button size="sm" onClick={() => setComposing(true)}>
+        <Button size="sm" className="shrink-0" onClick={() => setComposing(true)}>
           <Send className="mr-1.5 h-3.5 w-3.5" />
           Email it
         </Button>
@@ -133,7 +140,7 @@ export function InviteClientButton({ size = "sm" }: { size?: "sm" | "default" })
           {links === null ? (
             <p className="text-sm text-muted-foreground">Loading the links…</p>
           ) : links.length > 0 ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               {links.map((l) => (
                 <InviteLinkRow key={l.code} link={l} />
               ))}
