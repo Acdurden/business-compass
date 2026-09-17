@@ -62,6 +62,7 @@ export type Database = {
       action_problems: {
         Row: {
           active: boolean;
+          buyer_consequence: string | null;
           created_at: string;
           problem_id: string;
           problem_text: string;
@@ -71,6 +72,7 @@ export type Database = {
         };
         Insert: {
           active?: boolean;
+          buyer_consequence?: string | null;
           created_at?: string;
           problem_id: string;
           problem_text: string;
@@ -80,6 +82,7 @@ export type Database = {
         };
         Update: {
           active?: boolean;
+          buyer_consequence?: string | null;
           created_at?: string;
           problem_id?: string;
           problem_text?: string;
@@ -667,6 +670,7 @@ export type Database = {
         Row: {
           advisor_id: string | null;
           advisor_status: string;
+          advisor_verdict: string | null;
           client_status: string;
           client_token: string;
           company_name: string;
@@ -682,6 +686,7 @@ export type Database = {
         Insert: {
           advisor_id?: string | null;
           advisor_status?: string;
+          advisor_verdict?: string | null;
           client_status?: string;
           client_token?: string;
           company_name: string;
@@ -697,6 +702,7 @@ export type Database = {
         Update: {
           advisor_id?: string | null;
           advisor_status?: string;
+          advisor_verdict?: string | null;
           client_status?: string;
           client_token?: string;
           company_name?: string;

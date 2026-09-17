@@ -30,6 +30,12 @@ export type LibraryProblem = {
   problem_id: string;
   section_id: string;
   problem_text: string;
+  /**
+   * What a buyer DOES about this problem. Written once for the library, never
+   * per client, so the result page can show a consequence beneath every finding
+   * at zero advisor cost. Null until the library row has one.
+   */
+  buyer_consequence: string | null;
   sort_order: number;
 };
 
@@ -113,7 +119,7 @@ export async function loadLibrary(): Promise<Library> {
   const [problemsRes, curesRes, categoriesRes] = await Promise.all([
     supabase
       .from("action_problems")
-      .select("problem_id,section_id,problem_text,sort_order")
+      .select("problem_id,section_id,problem_text,buyer_consequence,sort_order")
       .eq("active", true)
       .order("sort_order"),
     supabase
@@ -228,6 +234,13 @@ export type PlanItem = {
   /** Driver name and points available, when the section could be paired. */
   driverName: string | null;
   driverPoints: number | null;
+  /**
+   * The library's buyer-consequence paragraph for this problem. Null for a
+   * custom problem the advisor typed, which has no library row behind it, and
+   * null for a client, who cannot read the library. The result page omits the
+   * paragraph rather than inventing one.
+   */
+  buyerConsequence: string | null;
   actions: PlanAction[];
 };
 
@@ -304,6 +317,7 @@ export function buildPlanItems(
       sortOrder: row.sort_order,
       driverName: driver?.name ?? null,
       driverPoints: driver?.points ?? null,
+      buyerConsequence: libraryProblem?.buyer_consequence ?? null,
       actions,
     };
   });

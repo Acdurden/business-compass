@@ -257,3 +257,45 @@ export const deleteSubmission = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+/**
+ * Save the advisor's verdict sentence for one submission.
+ *
+ * This is the sentence the client reads first on their result page, above the
+ * score and above the money. It is the one piece of the result that a person
+ * writes rather than the model produces, which is the reason it exists: the
+ * numbers say where the business sits, and this says what a buyer would make
+ * of it.
+ *
+ * Stored on the submission rather than in the action plan because it is about
+ * the business as a whole, not about any one flagged problem, and because the
+ * result page needs it whether or not a plan has been built yet.
+ *
+ * Trimmed to null when empty so "no verdict written" is one state rather than
+ * two, and the completion gate has a single thing to test.
+ */
+export const saveAdvisorVerdict = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { submissionId: string; verdict: string }) => {
+    const submissionId = String(data?.submissionId ?? "").trim();
+    if (!submissionId) throw new Error("Missing submission");
+    /*
+     * Capped rather than unbounded. The result page gives this one line at
+     * reading size, and a verdict that runs to a paragraph is a different
+     * artefact wearing the same field.
+     */
+    const verdict = String(data?.verdict ?? "")
+      .trim()
+      .slice(0, 400);
+    return { submissionId, verdict };
+  })
+  .handler(async ({ data, context }) => {
+    await ensureAdvisor(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("submissions")
+      .update({ advisor_verdict: data.verdict.length > 0 ? data.verdict : null })
+      .eq("submission_id", data.submissionId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const, saved: data.verdict.length > 0 };
+  });

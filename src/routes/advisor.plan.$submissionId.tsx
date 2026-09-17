@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import {
   buildConfig,
@@ -67,7 +68,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BackOfficeNav } from "@/components/back-office-nav";
-import { setAdvisorStatus } from "@/lib/advisor-submissions.functions";
+import { saveAdvisorVerdict, setAdvisorStatus } from "@/lib/advisor-submissions.functions";
 
 export const Route = createFileRoute("/advisor/plan/$submissionId")({
   ssr: false,
@@ -93,6 +94,8 @@ type Submission = {
   target_valuation: number | null;
   /** Null when no client login has been attached, which the gate warns about. */
   owner_user_id: string | null;
+  /** The advisor's one-sentence read, shown at the top of the client result page. */
+  advisor_verdict: string | null;
 };
 
 /**
@@ -145,6 +148,14 @@ function ActionPlanWorkspace() {
   const [advisoryAnswered, setAdvisoryAnswered] = useState(0);
   const [gateOpen, setGateOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  /**
+   * The verdict is held locally while it is being typed and written on blur,
+   * rather than on every keystroke. Everything else on this screen saves per
+   * click because each click is one discrete choice; a sentence is not.
+   */
+  const [verdict, setVerdict] = useState("");
+  const [verdictSaving, setVerdictSaving] = useState(false);
+  const [verdictSaved, setVerdictSaved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +164,7 @@ function ActionPlanWorkspace() {
         const { data: subData, error: subErr } = await supabase
           .from("submissions")
           .select(
-            "submission_id,company_name,client_status,advisor_status,plan,valuation_input_type,valuation_input_amount,target_valuation,owner_user_id",
+            "submission_id,company_name,client_status,advisor_status,plan,valuation_input_type,valuation_input_amount,target_valuation,owner_user_id,advisor_verdict",
           )
           .eq("submission_id", submissionId)
           .maybeSingle();
@@ -227,6 +238,7 @@ function ActionPlanWorkspace() {
         setAdvisoryTotal(advisoryQuestions.length);
         setAdvisoryAnswered(advisoryResponses.length);
         setSub(subData as Submission);
+        setVerdict((subData as Submission).advisor_verdict ?? "");
         setSections((sectionsRes.data ?? []) as SectionMeta[]);
         setConfig(scoringConfig);
         setResult(computed);
@@ -374,11 +386,19 @@ function ActionPlanWorkspace() {
       },
       {
         key: "verdict",
-        level: "pending",
-        ok: null,
-        label: "The client-facing verdict sentence exists",
+        /*
+         * A warning rather than a block. A plan with no verdict is still a
+         * usable result page; it just opens on the score instead of on a
+         * sentence. Blocking here would stop a finished review publishing over
+         * one line of prose.
+         */
+        level: "warn",
+        ok: (sub?.advisor_verdict ?? "").trim().length > 0,
+        label: "The client-facing verdict sentence is written",
         detail:
-          "Not checked yet. The verdict sentence belongs to the result page rebuild and does not exist in the product today. This check turns on when that ships.",
+          (sub?.advisor_verdict ?? "").trim().length > 0
+            ? "Written. It is the first thing the client reads, above the score."
+            : "Not written. The result page will open on the number instead of on your read of the business, which is the part the client cannot get from the model.",
       },
       {
         key: "account",
@@ -394,6 +414,27 @@ function ActionPlanWorkspace() {
   }, [planItems, advisoryAnswered, advisoryTotal, sub]);
 
   const gateBlocked = gateChecks.some((c) => c.level === "block" && c.ok === false);
+
+  /**
+   * Write the verdict sentence. Called on blur rather than per keystroke, and a
+   * no-op when nothing changed so tabbing through the field does not write.
+   */
+  async function commitVerdict() {
+    const next = verdict.trim();
+    if (verdictSaving) return;
+    if (next === (sub?.advisor_verdict ?? "")) return;
+    setVerdictSaving(true);
+    try {
+      await saveAdvisorVerdict({ data: { submissionId, verdict: next } });
+      setSub((prev) => (prev ? { ...prev, advisor_verdict: next.length > 0 ? next : null } : prev));
+      setVerdictSaved(true);
+      window.setTimeout(() => setVerdictSaved(false), 2000);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the verdict");
+    } finally {
+      setVerdictSaving(false);
+    }
+  }
 
   /** Mark the review final and lock the plan, or put it back to editable. */
   async function setCompleted(next: boolean) {
@@ -674,6 +715,33 @@ function ActionPlanWorkspace() {
               advisory review is submitted.
             </Banner>
           )}
+
+          <section className="rounded-xl border border-border bg-card p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-[14px] font-semibold">Your verdict</h2>
+              <span className="text-[12px] text-muted-foreground">
+                {verdictSaving ? "Saving…" : verdictSaved ? "Saved" : "Saves when you click away"}
+              </span>
+            </div>
+            <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
+              One or two sentences on what a buyer would make of this business. It sits at the top
+              of the client&apos;s result page, above the score and above the money, and it is the
+              only part of the result a person writes rather than the model produces.
+            </p>
+            <Textarea
+              className="mt-3 min-h-[76px] text-[14px]"
+              placeholder="A capable agency with real client relationships, where the earnings and the client base both still run through the founder."
+              maxLength={400}
+              value={verdict}
+              disabled={locked || verdictSaving}
+              onChange={(e) => setVerdict(e.target.value)}
+              onBlur={() => void commitVerdict()}
+            />
+            <p className="mt-1.5 text-[11.5px] text-muted-foreground">
+              {verdict.trim().length}/400 characters. Leave it empty and the result page opens on
+              the score instead.
+            </p>
+          </section>
 
           <p className="text-[13px] leading-relaxed text-muted-foreground">
             {locked
