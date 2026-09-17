@@ -26,7 +26,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, LogOut } from "lucide-react";
-import { BRAND, displayScore, formatCurrency } from "@/lib/score-display";
+import { BRAND, displayScore, formatCurrency, formatValuationRange } from "@/lib/score-display";
 import { ValuationDisclaimer } from "@/components/valuation-disclaimer";
 import {
   loadClientReport,
@@ -225,8 +225,6 @@ function Card({ title, children }: { title?: string; children: React.ReactNode }
 
 function ReportView({ report }: { report: ClientReport }) {
   const hasMoney = report.basisAmount != null && report.basisAmount > 0;
-  const lo = round10k(report.midpoint * 0.95);
-  const hi = round10k(report.midpoint * 1.05);
   const topArea = report.areas.slice().sort((a, b) => b.available - a.available)[0];
 
   return (
@@ -284,7 +282,7 @@ function ReportView({ report }: { report: ClientReport }) {
         >
           <ValueCell
             k="Indicative value"
-            v={hasMoney ? `${formatCurrency(lo)} to ${formatCurrency(hi)}` : "Not yet priced"}
+            v={hasMoney ? formatValuationRange(report.midpoint) : "Not yet priced"}
             s={
               hasMoney
                 ? `Midpoint ${formatCurrency(round10k(report.midpoint))}. That is ${report.multiple.toFixed(2)} times the ${report.basisLabel} of ${formatCurrency(report.basisAmount ?? 0)} you gave us.`

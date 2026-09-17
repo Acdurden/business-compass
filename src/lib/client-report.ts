@@ -85,10 +85,12 @@ export type ClientReport = {
   uncoveredAreas: string[];
 };
 
-/** Nearest ten thousand. Dollar precision on a modelled estimate is a lie. */
-export function round10k(n: number): number {
-  return Math.round(n / 10000) * 10000;
-}
+/**
+ * Re-exported so callers of the report do not have to know where rounding
+ * lives. There is one definition, in `score-display.ts`, alongside the
+ * formatter that every screen and the PDF share.
+ */
+export { round10k } from "@/lib/score-display";
 
 type SubmissionRow = {
   submission_id: string;

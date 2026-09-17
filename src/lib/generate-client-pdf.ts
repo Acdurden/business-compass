@@ -17,7 +17,7 @@
  */
 
 import { jsPDF } from "jspdf";
-import { formatCurrency } from "@/lib/score-display";
+import { formatCurrency, formatValuationRange } from "@/lib/score-display";
 import { round10k, verdictOrStandIn, type ClientReport } from "@/lib/client-report";
 
 const NAVY = "#0e1c2b";
@@ -141,12 +141,10 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   by += 26;
 
   if (hasMoney) {
-    const lo = round10k(report.midpoint * 0.95);
-    const hi = round10k(report.midpoint * 1.05);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(24);
     doc.setTextColor(NAVY);
-    doc.text(`${formatCurrency(lo)} - ${formatCurrency(hi)}`, bx, by);
+    doc.text(formatValuationRange(report.midpoint), bx, by);
     by += 20;
 
     doc.setFont("helvetica", "normal");

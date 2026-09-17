@@ -117,20 +117,50 @@ export function bandSegments(config: ScoringConfig) {
   }));
 }
 
-export function formatCurrency(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
+/**
+ * Nearest ten thousand.
+ *
+ * Every valuation figure goes through this before it is shown to anyone. Six
+ * significant figures on a number built from a self-reported questionnaire is
+ * false precision, and it is the kind of precision a client reads as a promise.
+ */
+export function round10k(n: number): number {
+  return Math.round(n / 10000) * 10000;
 }
 
-/** A ±5% band around the midpoint, matching how results are quoted elsewhere. */
+/**
+ * Money, short.
+ *
+ * ONE formatter, used by the advisor screens, the client screens and the PDF
+ * alike. Andrew's rule, 2026-09-17: the advisor must never see a different
+ * number from the client. The advisor workspace used to print
+ * "$1,646,667 – $1,820,000" beside a client report reading "$1.65M – $1.82M",
+ * which is the same valuation wearing two faces in a conversation where both
+ * people are looking at their own screen.
+ *
+ * Millions carry two decimals, thousands are whole. The millions threshold is
+ * 0.9995 rather than 1 so $999,999 reads "$1.00M" instead of "$1000K".
+ */
+export function formatCurrency(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  const millions = abs / 1_000_000;
+  if (millions >= 0.9995) return `${sign}$${millions.toFixed(2)}M`;
+  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}K`;
+  return `${sign}$${Math.round(abs)}`;
+}
+
+/**
+ * A ±5% band around the midpoint, rounded before it is formatted.
+ *
+ * The rounding is here rather than at the call sites so no screen can forget
+ * it. Both ends and the midpoint therefore agree wherever they appear.
+ */
 export function formatValuationRange(midpoint: number | null | undefined): string {
   if (midpoint == null || !Number.isFinite(midpoint)) return "—";
-  return `${formatCurrency(Math.round(midpoint * 0.95))} – ${formatCurrency(
-    Math.round(midpoint * 1.05),
+  return `${formatCurrency(round10k(midpoint * 0.95))} – ${formatCurrency(
+    round10k(midpoint * 1.05),
   )}`;
 }
 

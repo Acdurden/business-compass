@@ -43,6 +43,7 @@ import {
   displayScore,
   formatCurrency,
   grossObjective,
+  round10k,
   type Opportunity,
   type SectionMeta,
 } from "@/lib/score-display";
@@ -86,11 +87,6 @@ const BASIS_WORD: Record<InputType, string> = {
   netfeeincome: "net fee income",
   ebitda: "EBITDA",
 };
-
-/** Dollars are shown to the nearest $10,000. Display layer only. */
-function round10k(n: number): number {
-  return Math.round(n / 10000) * 10000;
-}
 
 function MyAssessment() {
   const navigate = useNavigate();
