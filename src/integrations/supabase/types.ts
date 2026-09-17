@@ -478,6 +478,7 @@ export type Database = {
           created_at: string;
           points_awarded: number | null;
           question_id: string;
+          question_text: string | null;
           questionnaire_type: string | null;
           response_id: string;
           section_id: string | null;
@@ -492,6 +493,7 @@ export type Database = {
           created_at?: string;
           points_awarded?: number | null;
           question_id: string;
+          question_text?: string | null;
           questionnaire_type?: string | null;
           response_id: string;
           section_id?: string | null;
@@ -506,6 +508,7 @@ export type Database = {
           created_at?: string;
           points_awarded?: number | null;
           question_id?: string;
+          question_text?: string | null;
           questionnaire_type?: string | null;
           response_id?: string;
           section_id?: string | null;

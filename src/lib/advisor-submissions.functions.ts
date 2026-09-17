@@ -103,6 +103,27 @@ export const saveAdvisorResponse = createServerFn({ method: "POST" })
     await ensureAdvisor(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const responseId = `${data.submissionId}_${data.questionId}`;
+
+    /**
+     * Freeze the question wording onto the answer, the way `selected_answer_text`
+     * already freezes the answer wording. Editing the questionnaire later then
+     * cannot rewrite what this respondent was actually asked.
+     *
+     * Read here rather than taken from the caller: the browser sends the text it
+     * happens to be rendering, which is one stale tab away from being wrong, and
+     * this column is meant to be the record of what was asked.
+     *
+     * A failure to read it is not a reason to lose the answer. The column is
+     * nullable and null already means "not captured, fall back to the live
+     * question", so a missing lookup degrades to the behaviour that existed
+     * before the column did.
+     */
+    const { data: questionRow } = await supabaseAdmin
+      .from("questions")
+      .select("question_text")
+      .eq("question_id", data.questionId)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin.from("responses").upsert(
       {
         response_id: responseId,
@@ -113,6 +134,7 @@ export const saveAdvisorResponse = createServerFn({ method: "POST" })
         questionnaire_type: data.questionnaireType,
         unique_id_response: data.uniqueIdResponse,
         selected_answer_text: data.answerText,
+        question_text: questionRow?.question_text ?? null,
         points_awarded: data.points,
         answered_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
