@@ -45,7 +45,7 @@ export function ValuationDisclaimer({
         This is an estimate produced by a model, not a valuation, an appraisal or an offer. It is
         built from the answers you gave us, which we have not audited or independently verified.
         What a business actually sells for depends on the buyer, the timing, the deal terms and what
-        comes out in diligence — none of which this assessment measures. Treat{" "}
+        comes out in diligence, none of which this assessment measures. Treat{" "}
         {hasRange ? "the range" : "this"} as a starting point for a conversation, not a price, and
         take your own professional advice before acting on it.
         {hasRange

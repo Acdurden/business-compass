@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Kriterion" },
-      { name: "description", content: "Kriterion — A Business Value Intelligence Platform" },
+      { name: "description", content: "Kriterion, a Business Value Intelligence Platform" },
       { name: "author", content: "Kriterion LLC" },
       { property: "og:title", content: "Kriterion" },
       { property: "og:description", content: "A Business Value Intelligence Platform" },

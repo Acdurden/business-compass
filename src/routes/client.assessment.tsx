@@ -49,6 +49,7 @@ import {
   buildOpportunities,
   displayScore,
   formatCurrency,
+  formatValuationRange,
   grossObjective,
   round10k,
   type Opportunity,
@@ -111,6 +112,18 @@ function MyAssessment() {
   /** What the client typed, as digits. Null means they have not set one. */
   const [target, setTarget] = useState<number | null>(null);
   const [savingTarget, setSavingTarget] = useState(false);
+
+  /*
+   * Bumped after a target is saved, to re-run the loader below.
+   *
+   * The target analysis is computed by the engine as part of `result`, and
+   * `result` is built once when the page loads. Before 2026-09-18 saving a
+   * target wrote the row, showed a toast, and changed nothing else: the
+   * component's own `target` stayed null so the planner kept rendering its
+   * empty state, and even had it not, `result` still held the analysis for the
+   * old target. Setting a target appeared to do nothing, because it did.
+   */
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,7 +205,7 @@ function MyAssessment() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -214,6 +227,13 @@ function MyAssessment() {
     }
     toast.success(next ? "Target saved" : "Target cleared");
     setExtras((prev) => (prev ? { ...prev, target_valuation: next } : prev));
+    /*
+     * Both lines matter. The first moves the planner out of its empty state
+     * straight away; the second re-runs the engine so the analysis it renders
+     * belongs to the target just saved rather than the one before it.
+     */
+    setTarget(next);
+    setReloadKey((k) => k + 1);
   }
 
   const plan: ClientPlan = extras?.plan === "objective" ? "objective" : "full";
@@ -257,6 +277,7 @@ function MyAssessment() {
           result={result}
           sections={sections}
           extras={extras}
+          companyName={sub?.company_name ?? ""}
           reviewed={reviewed}
           awaitingReview={plan !== "objective" && !reviewed}
           target={target}
@@ -276,9 +297,12 @@ function MyAssessment() {
 
 /* ------------------------------------------------------------------ */
 
-function Card({ children }: { children: React.ReactNode }) {
+function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <section className="rounded-xl border bg-white p-6" style={{ borderColor: BRAND.rail }}>
+    <section
+      className={`rounded-xl border bg-white p-6 ${className ?? ""}`}
+      style={{ borderColor: BRAND.rail }}
+    >
       {children}
     </section>
   );
@@ -355,6 +379,7 @@ function Submitted({
   result,
   sections,
   extras,
+  companyName,
   reviewed,
   awaitingReview,
   target,
@@ -366,6 +391,7 @@ function Submitted({
   result: ValuationResult;
   sections: SectionMeta[];
   extras: Extras | null;
+  companyName: string;
   reviewed: boolean;
   /** True only where an advisor review is genuinely still to come. An
    *  objective-only client has `reviewed` false forever and is not waiting. */
@@ -409,7 +435,7 @@ function Submitted({
   const totalGap = Math.round(opportunities.reduce((sum, o) => sum + o.totalGap, 0));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-center">
       <div>
         <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: BRAND.muted }}>
           My assessment
@@ -417,7 +443,10 @@ function Submitted({
         <h1 className="mt-1.5 text-[26px] font-semibold" style={{ color: BRAND.ink }}>
           What your own answers describe
         </h1>
-        <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed" style={{ color: BRAND.muted }}>
+        <p
+          className="mx-auto mt-2 max-w-[62ch] text-[15px] leading-relaxed"
+          style={{ color: BRAND.muted }}
+        >
           {reviewed
             ? "This is your side of the assessment, kept as a record. Your reviewed result sits alongside it and is the one to work from."
             : awaitingReview
@@ -437,10 +466,18 @@ function Submitted({
       </div>
 
       <Card>
-        <div className="flex flex-wrap gap-x-12 gap-y-5">
+        {companyName ? (
+          <p
+            className="mb-4 text-[13px] font-semibold uppercase tracking-[0.1em]"
+            style={{ color: BRAND.ink }}
+          >
+            {companyName}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap justify-center gap-x-12 gap-y-5">
           <div>
             <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: BRAND.muted }}>
-              Your score
+              ValScore
             </p>
             <p className="mt-1.5 text-[42px] font-bold leading-none" style={{ color: BRAND.teal }}>
               {displayScore(score)}
@@ -452,12 +489,17 @@ function Submitted({
                 Where that puts you today
               </p>
               <p className="mt-1.5 text-[26px] font-semibold" style={{ color: BRAND.ink }}>
-                {formatCurrency(round10k(midpoint * 0.95))} –{" "}
-                {formatCurrency(round10k(midpoint * 1.05))}
+                {formatValuationRange(midpoint)}
               </p>
-              <p className="mt-1 max-w-[42ch] text-[13px]" style={{ color: BRAND.muted }}>
-                At {result.objective.multiple.toFixed(2)} times the {BASIS_WORD[basis]} of{" "}
-                {formatCurrency(amount)} you entered.
+              {/*
+               * The multiple is gone, deliberately, and the input is not. Andrew,
+               * 2026-09-18: drop the multiple, it is jargon. The figure the client
+               * gave us stays, because without it the range reads as a number
+               * Kriterion produced about their business rather than one their own
+               * answer produced.
+               */}
+              <p className="mx-auto mt-1 max-w-[42ch] text-[13px]" style={{ color: BRAND.muted }}>
+                Based on the {BASIS_WORD[basis]} of {formatCurrency(amount)} you entered.
               </p>
             </div>
           ) : null}
@@ -480,73 +522,120 @@ function Submitted({
 
       <div>
         <h2 className="text-[19px] font-semibold" style={{ color: BRAND.ink }}>
-          Where those points are
+          Possible upside
         </h2>
         <p
-          className="mt-1.5 max-w-[62ch] text-[14px] leading-relaxed"
+          className="mx-auto mt-1.5 max-w-[62ch] text-[14px] leading-relaxed"
           style={{ color: BRAND.muted }}
         >
-          The eight things a buyer works through before making an offer, ordered by how much of your
-          score is still available in each one. {totalGap} points in total.
+          {totalGap} points, spread across the eight areas a buyer works through before making an
+          offer. The areas holding the most sit at the top.
         </p>
-        <div className="mt-4 rounded-xl border bg-white" style={{ borderColor: BRAND.rail }}>
+
+        {/*
+         * Two-tone, after the PDF. The single teal bar this replaced filled
+         * toward the right with no key, so a long bar looked like good news when
+         * it meant the opposite. Teal is what the answers have earned, sand is
+         * what is still on the table, and the number on the right is the sand
+         * expressed in points.
+         */}
+        <div
+          className="mx-auto mt-3 flex max-w-[62ch] items-center justify-center gap-5 text-[12px]"
+          style={{ color: BRAND.muted }}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-2 w-4 rounded-full"
+              style={{ background: BRAND.teal }}
+            />
+            Earned
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-2 w-4 rounded-full"
+              style={{ background: BRAND.upside }}
+            />
+            Still available
+          </span>
+        </div>
+
+        <div
+          className="mt-4 overflow-hidden rounded-xl border bg-white text-left"
+          style={{ borderColor: BRAND.rail }}
+        >
           {opportunities.map((o) => {
-            const pct = o.capturedPct;
+            const captured = Math.max(0, Math.min(100, o.capturedPct));
+            const open = o.totalGap >= 1;
             return (
               <div
                 key={o.key}
-                className="grid grid-cols-[1fr_auto] items-center gap-4 border-b px-5 py-3.5 last:border-b-0 md:grid-cols-[1fr_140px_56px]"
+                className="grid grid-cols-[1fr_auto] items-center gap-4 border-b px-5 py-3.5 last:border-b-0 md:grid-cols-[1fr_150px_60px]"
                 style={{ borderColor: BRAND.rail }}
               >
                 <span className="text-[14.5px]" style={{ color: BRAND.ink }}>
                   {o.name}
                 </span>
                 <span
-                  className="hidden h-1.5 overflow-hidden rounded-full md:block"
-                  style={{ background: "#eef1f5" }}
+                  className="hidden h-2 overflow-hidden rounded-full md:flex"
+                  style={{ background: BRAND.upside }}
                 >
                   <span
                     className="block h-full rounded-full"
-                    style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: BRAND.teal }}
+                    style={{ width: `${captured}%`, background: BRAND.teal }}
                   />
                 </span>
                 <span
-                  className="text-right text-[14px] tabular-nums"
-                  style={{ color: o.totalGap >= 1 ? BRAND.ink : BRAND.muted }}
+                  className="text-right text-[14px] font-semibold tabular-nums"
+                  style={{ color: open ? BRAND.teal : BRAND.muted }}
                 >
-                  {o.totalGap >= 1 ? `+${Math.round(o.totalGap)}` : "full"}
+                  {open ? `+${Math.round(o.totalGap)}` : "full"}
                 </span>
               </div>
             );
           })}
+          <div
+            className="grid grid-cols-[1fr_auto] items-center gap-4 border-t px-5 py-3.5 md:grid-cols-[1fr_150px_60px]"
+            style={{ borderColor: BRAND.rail, background: "#f8fafb" }}
+          >
+            <span className="text-[14px] font-semibold" style={{ color: BRAND.ink }}>
+              Still available across all eight areas
+            </span>
+            <span className="hidden md:block" />
+            <span
+              className="text-right text-[14px] font-semibold tabular-nums"
+              style={{ color: BRAND.teal }}
+            >
+              {totalGap}
+            </span>
+          </div>
         </div>
       </div>
 
       {reviewed ? (
         <Button onClick={onViewResults}>See your reviewed results</Button>
       ) : awaitingReview ? (
-        <Card>
+        <Card className="text-left">
           <h3 className="text-[15.5px] font-semibold" style={{ color: BRAND.ink }}>
             What happens next
           </h3>
-          <ol
-            className="mt-3 space-y-2.5 text-[14px] leading-relaxed"
-            style={{ color: BRAND.muted }}
-          >
-            <li>Your advisor is working through the same eight areas independently.</li>
-            <li>Your results are released, and the figures above will move in either direction.</li>
-            <li>You talk it through. That is the conversation the assessment exists for.</li>
-          </ol>
+          <p className="mt-3 text-[14px] leading-relaxed" style={{ color: BRAND.muted }}>
+            Your advisor is working through the same eight areas now, against what a buyer would
+            conclude from the same facts. That review is the only thing that moves your ValScore
+            before the two of you speak, and it can move it in either direction.
+          </p>
+          <p className="mt-3 text-[14px] leading-relaxed" style={{ color: BRAND.muted }}>
+            Two things worth doing while you wait. Look at the areas above where points are still
+            available and decide which of them you would defend. And note anything you answered
+            quickly that you would answer differently with the file in front of you. Those are the
+            parts of the conversation worth having.
+          </p>
         </Card>
       ) : (
-        <Card>
+        <Card className="text-left">
           <h3 className="text-[15.5px] font-semibold" style={{ color: BRAND.ink }}>
             Where this stands
           </h3>
-          <p
-            className="mt-3 max-w-[62ch] text-[14px] leading-relaxed"
-            style={{ color: BRAND.muted }}
-          >
+          <p className="mt-3 text-[14px] leading-relaxed" style={{ color: BRAND.muted }}>
             Your assessment is complete and the figures above are final as they stand. They are
             built from your own answers, which is the whole of what this assessment covers. An
             advisor review is available later as an add-on: it tests the same eight areas against
@@ -556,21 +645,20 @@ function Submitted({
         </Card>
       )}
 
-      <Card>
+      <Card className="text-left">
         <h3 className="text-[15.5px] font-semibold" style={{ color: BRAND.ink }}>
           Does something here look wrong?
         </h3>
-        <p
-          className="mt-1.5 max-w-[60ch] text-[14px] leading-relaxed"
-          style={{ color: BRAND.muted }}
-        >
+        <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: BRAND.muted }}>
           This page is a record of what you told us, so if an answer does not match how you would
           put it today, that matters. Contact Kriterion and we can reopen your assessment so you can
           change it.
         </p>
       </Card>
 
-      <ValuationDisclaimer provisional={awaitingReview} hasRange={hasAmount} />
+      <div className="text-left">
+        <ValuationDisclaimer provisional={awaitingReview} hasRange={hasAmount} />
+      </div>
     </div>
   );
 }
@@ -627,7 +715,7 @@ function TargetPlanner({
           What would you want it to be worth?
         </h2>
         <p
-          className="mt-1.5 max-w-[58ch] text-[14px] leading-relaxed"
+          className="mx-auto mt-1.5 max-w-[58ch] text-[14px] leading-relaxed"
           style={{ color: BRAND.muted }}
         >
           We do not have an income figure for the business yet, so there is nothing to work
@@ -655,7 +743,7 @@ function TargetPlanner({
           What would you want it to be worth?
         </h2>
         <p
-          className="mt-1.5 max-w-[58ch] text-[14px] leading-relaxed"
+          className="mx-auto mt-1.5 max-w-[58ch] text-[14px] leading-relaxed"
           style={{ color: BRAND.muted }}
         >
           Put a number in and this shows what it would take to get there. You can change it whenever
@@ -664,7 +752,7 @@ function TargetPlanner({
       </div>
 
       <div className="px-6 py-5">
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
           <span className="text-[15px]" style={{ color: BRAND.muted }}>
             $
           </span>
@@ -703,7 +791,10 @@ function TargetPlanner({
 
         <div className="mt-5">
           {target == null || target <= 0 ? (
-            <p className="max-w-[60ch] text-[14px] leading-relaxed" style={{ color: BRAND.muted }}>
+            <p
+              className="mx-auto max-w-[60ch] text-[14px] leading-relaxed"
+              style={{ color: BRAND.muted }}
+            >
               Put a figure in above and this fills in. Most people have a number in mind already,
               even if they have never said it out loud.
             </p>
@@ -726,7 +817,7 @@ function TargetPlanner({
                     <b>{displayScore(score)}</b>.
                   </p>
                   <p
-                    className="mt-3 max-w-[62ch] text-[14px] leading-relaxed"
+                    className="mx-auto mt-3 max-w-[62ch] text-[14px] leading-relaxed"
                     style={{ color: BRAND.muted }}
                   >
                     That is{" "}
@@ -743,7 +834,7 @@ function TargetPlanner({
 
               {extraIncome > 0 && (
                 <p
-                  className="mt-4 rounded-lg border px-4 py-3 text-[13.5px] leading-relaxed"
+                  className="mx-auto mt-4 max-w-[62ch] rounded-lg border px-4 py-3 text-left text-[13.5px] leading-relaxed"
                   style={{
                     borderColor: "#e2c795",
                     background: "#fbf2e3",

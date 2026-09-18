@@ -291,13 +291,14 @@ function ReportView({ report }: { report: ClientReport }) {
               className="mt-2 text-[11px] uppercase tracking-[0.16em]"
               style={{ color: BRAND.muted }}
             >
-              Your ValScore
+              ValScore
             </div>
-            {report.bandLabel ? (
-              <div className="mt-1 text-[12.5px]" style={{ color: BRAND.muted }}>
-                {report.bandLabel}
-              </div>
-            ) : null}
+            {/*
+             * The band label is deliberately absent. Andrew, 2026-09-18: the band
+             * stays internal for now and appears in nothing a client reads.
+             * `report.bandLabel` is still assembled, because the advisor screens
+             * use it and because "for now" was the word used.
+             */}
           </div>
           <div className="min-w-[15rem] flex-1">
             <p className="text-[14.5px] leading-relaxed" style={{ color: BRAND.ink }}>

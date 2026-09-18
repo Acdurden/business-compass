@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome card: alignment</title>
+<style>
+  :root{
+    --navy:#0e1c2b; --ink:#12222f; --muted:#61707e; --teal:#1f8a86;
+    --tealDark:#166f6b; --rail:#dde4ea; --cardline:#e4e9ef; --factbg:#f6f8fa;
+    --page:#eef2f5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .bar{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;padding:14px 20px;
+    display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+  .bar h1{margin:0;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+  .bar p{margin:0;font-size:12.5px;color:#9fb3c4;flex:1 1 260px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tabs button{font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;
+    border:1px solid #2b4054;background:#16293c;color:#cfdbe5;cursor:pointer}
+  .tabs button[aria-pressed="true"]{background:#fff;color:var(--navy);border-color:#fff}
+  .wrap{max-width:900px;margin:0 auto;padding:26px 16px 60px}
+  .note{font-size:12.5px;line-height:1.55;color:var(--muted);margin:0 0 18px;
+    background:#fff;border:1px solid var(--cardline);border-left:3px solid var(--teal);
+    border-radius:0 8px 8px 0;padding:11px 14px}
+  .card{background:#fff;border:1px solid var(--cardline);border-radius:13px;padding:22px}
+  .eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0}
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:4px 0 0;font-size:23px;
+    font-weight:600;letter-spacing:-.2px}
+  .pill{border-radius:999px;border:1px solid #bfe6e3;background:#dcefec;color:var(--tealDark);
+    padding:3px 10px;font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+  .sub{font-size:13.5px;color:var(--muted);margin:6px 0 18px}
+  h2{font-size:26px;font-weight:600;letter-spacing:-.3px;margin:0}
+  .lede{font-size:14px;line-height:1.65;color:var(--muted);margin:10px 0 0;max-width:620px}
+  .facts{display:grid;gap:12px;grid-template-columns:1fr;margin-top:20px}
+  @media(min-width:640px){.facts{grid-template-columns:repeat(3,1fr)}}
+  .fact{border:1px solid var(--cardline);background:var(--factbg);border-radius:10px;padding:13px 15px}
+  .fact b{display:block;font-size:13px}
+  .fact span{display:block;margin-top:2px;font-size:11.5px;line-height:1.45;color:var(--muted)}
+  .formwrap{margin-top:24px;max-width:420px}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
+  input{width:100%;font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--rail);
+    border-radius:8px;background:#fff;color:var(--ink)}
+  .btn{margin-top:18px;font:inherit;font-size:14.5px;font-weight:600;padding:11px 22px;border-radius:9px;
+    border:0;background:var(--navy);color:#fff;cursor:pointer}
+  .next{margin-top:20px;border-top:1px solid #eef2f6;padding-top:15px;font-size:12.5px;line-height:1.6;
+    color:var(--muted)}
+  .next b{color:var(--ink);font-weight:600}
+  .diff{background:#fff8e6;outline:2px solid #e8c877;outline-offset:1px;border-radius:3px}
+
+  /* ---- alignment variants ---- */
+  body[data-v="center"] .card,
+  body[data-v="center"] .pagehead{text-align:center}
+  body[data-v="center"] .lede{margin-left:auto;margin-right:auto}
+  body[data-v="center"] .head{justify-content:center}
+  body[data-v="center"] .formwrap{margin-left:auto;margin-right:auto}
+
+  body[data-v="hybrid"] .pagehead,
+  body[data-v="hybrid"] .cardtop{text-align:center}
+  body[data-v="hybrid"] .cardtop .lede{margin-left:auto;margin-right:auto}
+  body[data-v="hybrid"] .head{justify-content:center}
+  body[data-v="hybrid"] .formwrap{margin-left:auto;margin-right:auto;text-align:left}
+</style>
+</head>
+<body data-v="now">
+
+<div class="bar">
+  <h1>Welcome card</h1>
+  <p>Same card, three alignments. Copy fixes are applied in all three; the highlighted spans are what changed.</p>
+  <div class="tabs">
+    <button data-set="now" aria-pressed="true">Left, as it is now</button>
+    <button data-set="center" aria-pressed="false">Everything centered</button>
+    <button data-set="hybrid" aria-pressed="false">Centered top, left form</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <p class="note" id="note"></p>
+
+  <div class="pagehead">
+    <p class="eyebrow">Welcome</p>
+    <div class="head">Let's get started <span class="pill">Full service</span></div>
+    <p class="sub">You haven't started your assessment yet.</p>
+  </div>
+
+  <div class="card">
+    <div class="cardtop">
+      <h2>Let's find out what your business is worth</h2>
+      <p class="lede">
+        This assessment scores your business across the areas buyers actually
+        price<span class="diff">:</span> financial quality, client concentration, founder dependency,
+        operations, positioning and growth. You'll get <span class="diff">your ValScore</span> and an
+        estimated valuation range at the end.
+      </p>
+
+      <div class="facts">
+        <div class="fact">
+          <b><span class="diff">About 20 minutes</span></b>
+          <span>Saves as you go<span class="diff">, so you can leave and come back anytime</span></span>
+        </div>
+        <div class="fact">
+          <b>24 questions</b>
+          <span>Across <span class="diff">nine areas, eight of them scored</span></span>
+        </div>
+        <div class="fact">
+          <b>Then an advisor review</b>
+          <span>Your answers validated by an experienced advisor</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="formwrap">
+      <label for="co">Company name</label>
+      <input id="co" placeholder="Acme Co.">
+      <button class="btn" type="button">Begin your assessment</button>
+    </div>
+
+    <p class="next">
+      <b>What happens next:</b> you complete the assessment, your advisor reviews it and restates your
+      ValScore, then your full summary and action plan unlock here.
+    </p>
+  </div>
+</div>
+
+<script>
+  var notes = {
+    now: "This is the current alignment with the copy corrected. Long prose sits flush left, which is how the rest of the portal reads.",
+    center: "Everything centered, including the intro paragraph and the company-name field. Watch the second and third lines of the intro: a centered paragraph gives the eye no fixed left edge to return to, so each line starts in a different place.",
+    hybrid: "Heading, intro and the three fact tiles centered; the form and the footnote stay left. The page reads as centered without centering a paragraph anyone has to read twice."
+  };
+  var body = document.body, note = document.getElementById("note");
+  function set(v){
+    body.setAttribute("data-v", v);
+    note.textContent = notes[v];
+    document.querySelectorAll(".tabs button").forEach(function(b){
+      b.setAttribute("aria-pressed", String(b.dataset.set === v));
+    });
+  }
+  document.querySelectorAll(".tabs button").forEach(function(b){
+    b.addEventListener("click", function(){ set(b.dataset.set); });
+  });
+  set("now");
+</script>
+</body>
+</html>

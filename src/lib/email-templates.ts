@@ -143,7 +143,7 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
     ctaLabel: "Pick up where you left off",
     body: [
       "You started the Kriterion assessment {{days}} days ago and answered {{answered}} of the {{total}} questions. No deadline on this, and no chasing intended.",
-      "Worth saying though: the sections still ahead of you are the ones that move the number most — leadership, documentation, and how concentrated your client base is. The score you would get from what you have answered so far would not tell you much.",
+      "Worth saying though: the sections still ahead of you are the ones that move the number most: leadership, documentation, and how concentrated your client base is. The score you would get from what you have answered so far would not tell you much.",
       BUTTON_MARKER,
       'If a question was unclear, or the honest answer is "it depends", reply and tell me which one. That happens often and it is usually the interesting part.',
       "{{advisor_name}}",
@@ -158,10 +158,10 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
     body: [
       "I have finished reviewing {{company}} and your results are ready.",
       "Your ValScore is {{valscore}}, which places you at the {{band}}.",
-      "The score is worth less than what sits behind it. There are {{opportunity}} points of value your business is not currently being credited for, and {{top_area}} alone accounts for {{top_points}} of them — the largest single gap by a wide margin.",
+      "The score is worth less than what sits behind it. There are {{opportunity}} points of value your business is not currently being credited for, and {{top_area}} alone accounts for {{top_points}} of them, the largest single gap by a wide margin.",
       "Your plan sets out what to do about it, in order.",
       BUTTON_MARKER,
-      "Read it before we speak, and bring the parts you disagree with — those conversations are the useful ones.",
+      "Read it before we speak, and bring the parts you disagree with. Those conversations are the useful ones.",
       "{{advisor_name}}",
     ].join("\n\n"),
   },
@@ -174,7 +174,7 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
     body: [
       "Someone asked to reset the password on this Kriterion account.",
       BUTTON_MARKER,
-      "The link works for one hour. If you did not ask for this, ignore this message — nothing has changed and your account is untouched.",
+      "The link works for one hour. If you did not ask for this, ignore this message. Nothing has changed and your account is untouched.",
     ].join("\n\n"),
   },
 };

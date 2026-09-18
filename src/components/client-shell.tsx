@@ -41,7 +41,13 @@ function navItems(
 ): NavItem[] {
   const done = stage === "complete";
   const soon = "Available when your results are ready";
-  const unbuilt = "Coming soon";
+  /*
+   * Opportunities, Documents and Account used to sit here as permanently locked
+   * items reading "Coming soon". Removed 2026-09-18 at Andrew's instruction: a
+   * pilot client reading three dead links learns that a third of the product
+   * does not exist, which is a fact about our roadmap and not about their
+   * business. They come back as real items when they are real.
+   */
   return [
     { label: "Dashboard", to: "/client", active: active === "/client" },
     {
@@ -63,8 +69,6 @@ function navItems(
       locked: !done,
       reason: soon,
     },
-    { label: "Opportunities", locked: true, reason: unbuilt },
-    { label: "Documents", locked: true, reason: unbuilt },
     ...(plan === "objective" && done
       ? [
           {
@@ -74,7 +78,6 @@ function navItems(
           } satisfies NavItem,
         ]
       : []),
-    { label: "Account", locked: true, reason: unbuilt },
     { label: "Sign out", onClick: onSignOut },
   ];
 }

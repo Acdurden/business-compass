@@ -173,17 +173,18 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(MUTED);
-  doc.text("YOUR SCORE", sx, y + 26, { align: "right", charSpace: 1.1 });
+  doc.text("VALSCORE", sx, y + 26, { align: "right", charSpace: 1.1 });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(34);
   doc.setTextColor(TEAL);
   doc.text(String(Math.round(report.score)), sx, y + 62, { align: "right" });
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(MUTED);
-  doc.text(report.bandLabel, sx, y + 80, { align: "right" });
+  /*
+   * No band label. Andrew, 2026-09-18: the band stays internal for now and
+   * appears in nothing a client reads. `report.bandLabel` is still assembled,
+   * because the advisor screens use it and because "for now" was the word used.
+   */
 
   y += boxH + 30;
 

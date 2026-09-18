@@ -6,11 +6,11 @@ import { KRITERION_LOGO } from "@/assets/kriterionLogo";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Kriterion LLC — A Business Value Intelligence Platform" },
+      { title: "Kriterion LLC, a Business Value Intelligence Platform" },
       {
         name: "description",
         content:
-          "Kriterion — the transaction-readiness advisor for business owners approaching exit. Coming Q1 2027.",
+          "Kriterion, the transaction-readiness advisor for business owners approaching exit. Coming Q1 2027.",
       },
       { property: "og:title", content: "Kriterion LLC" },
       {

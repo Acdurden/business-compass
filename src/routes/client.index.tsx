@@ -372,11 +372,11 @@ function PageHead({
   plan?: Plan;
 }) {
   return (
-    <div className="mb-[18px]">
+    <div className="mb-[18px] text-center">
       <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: BRAND.muted }}>
         {eyebrow}
       </p>
-      <h1 className="mt-1 flex flex-wrap items-center gap-2.5 text-[23px] font-semibold tracking-tight">
+      <h1 className="mt-1 flex flex-wrap items-center justify-center gap-2.5 text-[23px] font-semibold tracking-tight">
         {title}
         {plan ? (
           <span
@@ -494,22 +494,25 @@ function NotStarted({
         sub="You haven't started your assessment yet."
         plan={plan}
       />
-      <Card>
+      <Card className="text-center">
         <h2 className="text-[26px] font-semibold tracking-tight">
           Let&apos;s find out what your business is worth
         </h2>
         <p
-          className="mt-2.5 max-w-[620px] text-[14px] leading-[1.65]"
+          className="mx-auto mt-2.5 max-w-[620px] text-[14px] leading-[1.65]"
           style={{ color: BRAND.muted }}
         >
-          This assessment scores your business across the areas buyers actually price — financial
+          This assessment scores your business across the areas buyers actually price: financial
           quality, client concentration, founder dependency, operations, positioning and growth.
-          You&apos;ll get a value-readiness score and an estimated valuation range at the end.
+          You&apos;ll get your ValScore and an estimated valuation range at the end.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <Fact title="10–15 minutes" sub="Saves as you go — leave and come back anytime" />
-          <Fact title="24 questions" sub="Across 8 scored value drivers" />
+          <Fact
+            title="About 20 minutes"
+            sub="Saves as you go, so you can leave and come back anytime"
+          />
+          <Fact title="24 questions" sub="Across nine areas, eight of them scored" />
           {plan === "full" ? (
             <Fact
               title="Then an advisor review"
@@ -524,7 +527,7 @@ function NotStarted({
         </div>
 
         {hasSubmission ? (
-          <div className="mt-6 max-w-md">
+          <div className="mx-auto mt-6 max-w-md">
             <p className="text-sm" style={{ color: BRAND.muted }}>
               Assessment for{" "}
               <span className="font-medium" style={{ color: BRAND.ink }}>
@@ -536,7 +539,7 @@ function NotStarted({
             </Button>
           </div>
         ) : (
-          <form onSubmit={onStart} className="mt-6 max-w-md">
+          <form onSubmit={onStart} className="mx-auto mt-6 max-w-md text-left">
             <Label htmlFor="company">Company name</Label>
             <Input
               id="company"
@@ -554,14 +557,14 @@ function NotStarted({
         )}
 
         <p
-          className="mt-5 border-t pt-4 text-[12.5px] leading-[1.6]"
+          className="mt-5 border-t pt-4 text-left text-[12.5px] leading-[1.6]"
           style={{ borderColor: "#eef2f6", color: BRAND.muted }}
         >
           <span className="font-medium" style={{ color: BRAND.ink }}>
             What happens next:
           </span>{" "}
           {plan === "full"
-            ? "you complete the assessment, your advisor reviews it and restates your score, then your full ValScore summary and action plan unlock here."
+            ? "you complete the assessment, your advisor reviews it and restates your ValScore, then your full summary and action plan unlock here."
             : "you complete the assessment and your score, valuation range and target planner are ready immediately. An advisor review is available later as an add-on if you want it."}
         </p>
       </Card>
@@ -625,8 +628,8 @@ function InProgress({
               />
             </div>
             <p className="mt-2.5 text-[12.5px] leading-[1.5]" style={{ color: BRAND.muted }}>
-              Every answer is saved automatically — you can close this and pick up exactly where you
-              left off.
+              Every answer is saved automatically, so you can close this and pick up exactly where
+              you left off.
             </p>
           </div>
           <Button size="lg" className="shrink-0" onClick={onContinue}>
@@ -636,11 +639,10 @@ function InProgress({
       </Card>
 
       <Card title="What you'll get">
-        <p className="text-sm font-medium">Your score unlocks when you finish</p>
+        <p className="text-sm font-medium">Your ValScore unlocks when you finish</p>
         <p className="mt-1 text-[13px] leading-[1.6]" style={{ color: BRAND.muted }}>
-          We don&apos;t show a partial score — a half-finished assessment would give you a
-          misleading number. Complete all the questions and your score, valuation range and biggest
-          opportunities all appear here.
+          Complete all the questions and your ValScore, valuation range and biggest opportunities
+          all appear here.
         </p>
       </Card>
     </>
@@ -710,7 +712,7 @@ function AwaitingReview({ companyName }: { companyName: string }) {
         <TimelineItem
           state="current"
           title="Your advisor is reviewing it"
-          body="They're working through the things a questionnaire can't capture — customer retention, staff tenure, how transferable your earnings really are — and will restate your score based on what they find."
+          body="They're working through the things a questionnaire can't capture: customer retention, staff tenure, how transferable your earnings really are. They will restate your ValScore based on what they find."
         />
         <TimelineItem
           state="todo"
@@ -720,7 +722,7 @@ function AwaitingReview({ companyName }: { companyName: string }) {
         <TimelineItem
           state="todo"
           title="Your summary and action plan unlock"
-          body="Including your advisor-adjusted valuation and a prioritised plan — right here, no action needed from you."
+          body="Including your advisor-adjusted valuation and a prioritised plan, right here, no action needed from you."
           last
         />
       </Card>
@@ -982,7 +984,7 @@ function Complete({
           <Card title="Your biggest opportunities">
             {opportunities.length === 0 ? (
               <p className="text-[13px]" style={{ color: BRAND.muted }}>
-                Nothing outstanding — you have captured everything this assessment measures.
+                Nothing outstanding. You have captured everything this assessment measures.
               </p>
             ) : (
               <>
@@ -1012,7 +1014,7 @@ function Complete({
               style={{ borderColor: "#eef2f6", color: BRAND.muted }}
             >
               {isObjective
-                ? "These areas hold the most unclaimed points — improving them raises your score and the valuation multiple that comes with it. An advisor review turns this into a concrete plan."
+                ? "These areas hold the most unclaimed points. Improving them raises your ValScore and the valuation that comes with it. An advisor review turns this into a concrete plan."
                 : "Your advisor flagged these as the priorities. Each one is broken down driver by driver in your summary."}
             </p>
           </Card>
@@ -1058,7 +1060,7 @@ function Complete({
                 restates your score and builds a prioritised action plan.
               </p>
               <ul className="mt-3 list-disc space-y-1 pl-5 text-[12.5px]">
-                <li>Your ValScore — validated, not self-reported</li>
+                <li>Your ValScore, validated rather than self-reported</li>
                 <li>A prioritised plan for the gaps above</li>
                 <li>Full valuation report</li>
               </ul>
@@ -1080,8 +1082,8 @@ function Complete({
           >
             <p className="text-[14px] font-bold">Set your value goal</p>
             <p className="mt-1 text-[12.5px] leading-[1.5]" style={{ color: BRAND.muted }}>
-              Tell us what you&apos;d like the business to be worth, and we&apos;ll map the score —
-              and any income growth — it would take to get there.
+              Tell us what you&apos;d like the business to be worth, and we&apos;ll map the
+              ValScore, and any income growth, it would take to get there.
             </p>
             <Button className="mt-3" onClick={onViewSummary}>
               {target > 0 ? "Change your target" : "Set a target"}

@@ -663,9 +663,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
             {finError ? (
               <p className="mt-2 text-xs text-destructive">{finError}</p>
             ) : (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Required. Enter the actual figure — no default is provided.
-              </p>
+              <p className="mt-2 text-xs text-muted-foreground">Required.</p>
             )}
           </div>
         </div>
@@ -726,7 +724,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
           <div className="mx-auto max-w-3xl px-6 py-4 flex items-center justify-between gap-4">
             <span className="text-sm text-muted-foreground">
-              Review mode — answers are read-only.
+              Review mode. Answers are read-only.
             </span>
             <Button asChild>
               <Link to={exitTo}>Back to hub</Link>

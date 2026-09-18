@@ -16,7 +16,7 @@ export const Route = createFileRoute("/invite")({
   }),
   head: () => ({
     meta: [
-      { title: "Kriterion — Set up your account" },
+      { title: "Kriterion. Set up your account" },
       {
         name: "description",
         content:
@@ -55,7 +55,7 @@ function InvitePage() {
       if (!res.ok) {
         // Account already exists for this email.
         setExisting(true);
-        toast.message("You already have an account — please sign in.");
+        toast.message("You already have an account. Please sign in.");
         return;
       }
       // Account created — sign them in and drop them into the portal.
