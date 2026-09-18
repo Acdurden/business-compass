@@ -140,13 +140,13 @@ export function buildClientPdf(report: ClientReport, variant: PdfVariant = "vals
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
   doc.setTextColor(MUTED);
-  doc.text(
-    `Completed ${formatLongDate(report.completedOn)}${
-      isValScore ? " · Reviewed by your Kriterion advisor" : ""
-    }`,
-    M,
-    y,
-  );
+  const completedLine = [
+    report.completedOn ? `Completed ${formatLongDate(report.completedOn)}` : null,
+    isValScore ? "Reviewed by your Kriterion advisor" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  if (completedLine) doc.text(completedLine, M, y);
   y += 30;
 
   /* ---------------- score and value ---------------- */

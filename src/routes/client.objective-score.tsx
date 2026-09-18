@@ -36,6 +36,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Download } from "lucide-react";
 import { generateObjectivePdf } from "@/lib/generate-client-pdf";
+import { Share2 } from "lucide-react";
+import { ShareScoreDialog } from "@/components/share-score-dialog";
 import {
   ClientShell,
   type ClientPlan,
@@ -90,6 +92,8 @@ type MySubmission = {
 
 type Extras = {
   advisor_status: string | null;
+  /** When they finished. Used by the share card; never invented if absent. */
+  updated_at: string | null;
   plan: string | null;
   valuation_input_type: InputType | null;
   valuation_input_amount: number | null;
@@ -153,7 +157,9 @@ function MyAssessment() {
 
       const { data: extraRow } = await supabase
         .from("submissions")
-        .select("advisor_status,plan,valuation_input_type,valuation_input_amount,target_valuation")
+        .select(
+          "advisor_status,plan,valuation_input_type,valuation_input_amount,target_valuation,updated_at",
+        )
         .eq("submission_id", row.submission_id)
         .maybeSingle();
       if (cancelled) return;
@@ -506,8 +512,14 @@ function Submitted({
             </div>
           ) : null}
         </div>
-        <div className="mt-5">
+        <div className="mt-5 flex flex-wrap justify-center gap-2.5">
           <DownloadObjectivePdf />
+          <ShareButton
+            score={score}
+            company={companyName}
+            midpoint={hasAmount ? midpoint : null}
+            completedOn={extras?.updated_at ? new Date(extras.updated_at) : null}
+          />
         </div>
       </Card>
 
@@ -683,6 +695,45 @@ function Submitted({
  * Every client who has submitted can take this one, which is the point of the
  * Objective Score being finished on submission rather than on review.
  */
+/**
+ * Share the Objective Score.
+ *
+ * Available to every client who has submitted, because the Objective Score is
+ * finished at that point. The ValScore page carries the same control for the
+ * other product.
+ */
+function ShareButton({
+  score,
+  company,
+  midpoint,
+  completedOn,
+}: {
+  score: number;
+  company: string;
+  midpoint: number | null;
+  /** Null where the submission carries no timestamp. The card omits the line. */
+  completedOn: Date | null;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <Share2 className="mr-1.5 h-3.5 w-3.5" />
+        Share
+      </Button>
+      <ShareScoreDialog
+        open={open}
+        onOpenChange={setOpen}
+        variant="objective"
+        score={score}
+        company={company}
+        midpoint={midpoint}
+        completedOn={completedOn}
+      />
+    </>
+  );
+}
+
 function DownloadObjectivePdf() {
   const [busy, setBusy] = useState(false);
 

@@ -80,7 +80,8 @@ export type ProductView = {
 export type ClientReport = {
   submissionId: string;
   companyName: string;
-  completedOn: Date;
+  /** Null where the submission carries no timestamp. Never today as a stand-in. */
+  completedOn: Date | null;
   /** True only where an advisor has genuinely reviewed this submission. */
   reviewed: boolean;
   /** Objective-only clients never get a review, so they never wait for one. */
@@ -388,7 +389,13 @@ export async function loadClientReport(submissionId?: string): Promise<ClientRep
   return {
     submissionId: id,
     companyName: (sub.company_name ?? "Your business").trim() || "Your business",
-    completedOn: sub.updated_at ? new Date(sub.updated_at) : new Date(),
+    /*
+     * Null rather than today. This read `: new Date()` until 2026-09-18, so a
+     * submission with no timestamp printed "Completed <today>" on the client's
+     * document: a date nobody recorded, stated as fact, on the one page that is
+     * supposed to invent nothing.
+     */
+    completedOn: sub.updated_at ? new Date(sub.updated_at) : null,
     reviewed,
     isObjectivePlan,
     clientSubmitted: sub.client_status === "submitted" || sub.client_status === "complete",

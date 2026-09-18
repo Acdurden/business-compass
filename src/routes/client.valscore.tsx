@@ -31,7 +31,8 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, LogOut, Download } from "lucide-react";
+import { ArrowLeft, LogOut, Download, Share2 } from "lucide-react";
+import { ShareScoreDialog } from "@/components/share-score-dialog";
 import { generateClientPdf } from "@/lib/generate-client-pdf";
 import { BRAND, displayScore, formatCurrency, formatValuationRange } from "@/lib/score-display";
 import { ValuationDisclaimer } from "@/components/valuation-disclaimer";
@@ -148,7 +149,12 @@ function ClientSummary() {
     <Shell
       onSignOut={signOut}
       company={report.companyName}
-      action={<DownloadPdfButton submissionId={report.submissionId} />}
+      action={
+        <div className="flex flex-wrap items-center gap-2">
+          <ShareValScoreButton report={report} />
+          <DownloadPdfButton submissionId={report.submissionId} />
+        </div>
+      }
     >
       <ReportView report={report} />
     </Shell>
@@ -163,6 +169,37 @@ function ClientSummary() {
  * the file used to be the Complete screen at the end of the questionnaire: a
  * client who came back to their results later had no way to download anything.
  */
+/**
+ * Share the ValScore. The Objective Score page carries the same control for the
+ * other product, and both open the one dialog so the two cards cannot drift.
+ */
+function ShareValScoreButton({ report }: { report: ClientReport }) {
+  const [open, setOpen] = useState(false);
+  const hasMoney = report.basisAmount != null && report.basisAmount > 0;
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0 bg-white"
+        onClick={() => setOpen(true)}
+      >
+        <Share2 className="mr-1.5 h-3.5 w-3.5" />
+        Share
+      </Button>
+      <ShareScoreDialog
+        open={open}
+        onOpenChange={setOpen}
+        variant="valscore"
+        score={report.score}
+        company={report.companyName}
+        midpoint={hasMoney ? report.midpoint : null}
+        completedOn={report.completedOn}
+      />
+    </>
+  );
+}
+
 function DownloadPdfButton({ submissionId }: { submissionId: string }) {
   const [busy, setBusy] = useState(false);
 
