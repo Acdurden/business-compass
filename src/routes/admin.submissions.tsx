@@ -499,9 +499,10 @@ function SubmissionRow({
               </DropdownMenuItem>
             )}
 
+            {/* The advisor's working file, not the client's document. */}
             <DropdownMenuItem onSelect={() => void downloadPdf()}>
               <FileDown className="h-4 w-4" />
-              Download PDF
+              Internal PDF
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />

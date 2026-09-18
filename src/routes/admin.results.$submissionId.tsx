@@ -9,7 +9,8 @@ import {
   DEFAULT_VALUATION_INPUT_TYPE,
 } from "@/lib/valuation-defaults";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { ArrowLeft, FileDown, ClipboardList, ListChecks } from "lucide-react";
+import { generateClientPdf } from "@/lib/generate-client-pdf";
+import { ArrowLeft, FileDown, ClipboardList, ListChecks, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { BackOfficeNav } from "@/components/back-office-nav";
 
@@ -88,6 +89,7 @@ function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [clientPdfBusy, setClientPdfBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,6 +165,10 @@ function ResultsPage() {
     };
   }, [submissionId]);
 
+  /**
+   * The advisor's working file: every question, every answer, both halves of
+   * the score. Internal. A client never sees this.
+   */
   async function downloadPdf() {
     setPdfBusy(true);
     try {
@@ -171,6 +177,25 @@ function ResultsPage() {
       toast.error(e instanceof Error ? e.message : "Could not generate PDF");
     } finally {
       setPdfBusy(false);
+    }
+  }
+
+  /**
+   * The exact bytes the client downloads from their own result screen.
+   *
+   * Here because an advisor had no way to see the client's document without
+   * signing in as the client, which meant the file being shown in meetings was
+   * the internal one above. Same `buildClientPdf`, same report, same numbers:
+   * this button and the client's button cannot produce different documents.
+   */
+  async function downloadClientPdf() {
+    setClientPdfBusy(true);
+    try {
+      await generateClientPdf(submissionId);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate the client PDF");
+    } finally {
+      setClientPdfBusy(false);
     }
   }
 
@@ -242,9 +267,23 @@ function ResultsPage() {
                 Action plan
               </Link>
             </Button>
-            <Button size="sm" onClick={() => void downloadPdf()} disabled={pdfBusy}>
+            {/*
+              Two documents, labelled as two documents. "Download PDF" on its
+              own is how the internal working file ended up being the one shown
+              to people outside the practice.
+            */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void downloadPdf()}
+              disabled={pdfBusy}
+            >
               <FileDown className="h-3.5 w-3.5 mr-1.5" />
-              {pdfBusy ? "Generating…" : "Download PDF"}
+              {pdfBusy ? "Generating…" : "Internal PDF"}
+            </Button>
+            <Button size="sm" onClick={() => void downloadClientPdf()} disabled={clientPdfBusy}>
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              {clientPdfBusy ? "Generating…" : "Client PDF"}
             </Button>
           </div>
         </div>

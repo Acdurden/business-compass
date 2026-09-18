@@ -25,7 +25,8 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, LogOut, Download } from "lucide-react";
+import { generateClientPdf } from "@/lib/generate-client-pdf";
 import { BRAND, displayScore, formatCurrency, formatValuationRange } from "@/lib/score-display";
 import { ValuationDisclaimer } from "@/components/valuation-disclaimer";
 import {
@@ -137,9 +138,50 @@ function ClientSummary() {
   }
 
   return (
-    <Shell onSignOut={signOut} company={report.companyName}>
+    <Shell
+      onSignOut={signOut}
+      company={report.companyName}
+      action={<DownloadPdfButton submissionId={report.submissionId} />}
+    >
       <ReportView report={report} />
     </Shell>
+  );
+}
+
+/**
+ * The same report, as a file they can keep.
+ *
+ * This page and the PDF are two renderings of one `ClientReport`, so there is
+ * nothing here the document leaves out. It exists because the only route to
+ * the file used to be the Complete screen at the end of the questionnaire: a
+ * client who came back to their results later had no way to download anything.
+ */
+function DownloadPdfButton({ submissionId }: { submissionId: string }) {
+  const [busy, setBusy] = useState(false);
+
+  async function download() {
+    setBusy(true);
+    try {
+      await generateClientPdf(submissionId);
+    } catch {
+      const { toast } = await import("sonner");
+      toast.error("We couldn't build your PDF. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="shrink-0 bg-white"
+      onClick={() => void download()}
+      disabled={busy}
+    >
+      <Download className="mr-1.5 h-3.5 w-3.5" />
+      {busy ? "Preparing…" : "Download PDF"}
+    </Button>
   );
 }
 
@@ -149,10 +191,13 @@ function Shell({
   children,
   onSignOut,
   company,
+  action,
 }: {
   children: React.ReactNode;
   onSignOut: () => void | Promise<void>;
   company?: string;
+  /** Right-hand control on the toolbar row. Absent on the blocked states. */
+  action?: React.ReactNode;
 }) {
   const navigate = useNavigate();
   return (
@@ -175,15 +220,18 @@ function Shell({
         </div>
       </header>
       <div className="mx-auto max-w-4xl px-6 py-8">
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/client" })}
-          className="mb-5 inline-flex items-center gap-1.5 text-[13px] font-medium"
-          style={{ color: BRAND.muted }}
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to your portal
-        </button>
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/client" })}
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium"
+            style={{ color: BRAND.muted }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to your portal
+          </button>
+          {action ? <div className="ml-auto">{action}</div> : null}
+        </div>
         {children}
       </div>
     </main>
