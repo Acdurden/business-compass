@@ -32,6 +32,7 @@ import {
   displayScore,
   formatCurrency,
   formatValuationRange,
+  round10k,
   grossObjective,
   totalOpportunity,
   type Opportunity,
@@ -182,11 +183,20 @@ function ClientHome() {
       const advisoryAnswers = advisoryCount ?? 0;
       setAdvisoryAnswered(advisoryAnswers);
 
-      // Only load the scoring machinery when there is actually a result to
-      // show. A half-finished assessment must not produce a partial score.
-      if (
-        deriveStage(row, extraData?.advisor_status ?? null, rowPlan, advisoryAnswers) === "complete"
-      ) {
+      /*
+       * Only load the scoring machinery once the client has actually finished.
+       * A half-finished assessment must not produce a partial score.
+       *
+       * "awaiting" now qualifies as well, added 2026-09-18 at Andrew's
+       * instruction. A full-service client who has submitted has a real
+       * objective score, and hiding it until an advisor gets to them left the
+       * longest stretch of the journey with nothing on it. What is shown is the
+       * objective half grossed onto 0 to 100, the same number and the same word
+       * ("Provisional") that /client/assessment already uses, so the two pages
+       * cannot disagree.
+       */
+      const derived = deriveStage(row, extraData?.advisor_status ?? null, rowPlan, advisoryAnswers);
+      if (derived === "complete" || derived === "awaiting") {
         const loaded = await loadScoreData(row.submission_id, extraData);
         setScoreData(loaded);
       }
@@ -263,7 +273,7 @@ function ClientHome() {
           onContinue={() => navigate({ to: "/client/questionnaire" })}
         />
       ) : stage === "awaiting" ? (
-        <AwaitingReview companyName={sub?.company_name ?? ""} />
+        <AwaitingReview companyName={sub?.company_name ?? ""} scoreData={scoreData} />
       ) : (
         <Complete
           plan={plan}
@@ -695,7 +705,26 @@ function TimelineItem({
   );
 }
 
-function AwaitingReview({ companyName }: { companyName: string }) {
+function AwaitingReview({
+  companyName,
+  scoreData,
+}: {
+  companyName: string;
+  scoreData: ScoreData | null;
+}) {
+  /*
+   * The objective half, grossed onto 0 to 100. Identical arithmetic to
+   * `/client/assessment`, deliberately: the same client must not read two
+   * different numbers on two pages of the same portal.
+   */
+  const objectiveMax =
+    scoreData?.result.sectionScores
+      .filter((s) => s.questionnaire_type === "objective")
+      .reduce((sum, s) => sum + s.max_score, 0) ?? 0;
+  const provisional = scoreData
+    ? grossObjective(scoreData.result.objectiveScore, objectiveMax)
+    : null;
+
   return (
     <>
       <PageHead
@@ -703,6 +732,24 @@ function AwaitingReview({ companyName }: { companyName: string }) {
         title="Your assessment is in review"
         sub={`${companyName} · here's where things stand.`}
       />
+
+      {provisional != null ? (
+        <Card className="text-center">
+          <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: BRAND.muted }}>
+            ValScore
+          </p>
+          <p className="mt-1.5 text-[42px] font-bold leading-none" style={{ color: BRAND.teal }}>
+            {displayScore(provisional)}
+          </p>
+          <span
+            className="mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[12.5px]"
+            style={{ borderColor: "#e4e9ef", color: BRAND.muted, background: "#ffffff" }}
+          >
+            Provisional · this will change after your advisor&apos;s review
+          </span>
+        </Card>
+      ) : null}
+
       <Card>
         <TimelineItem
           state="done"
@@ -955,7 +1002,7 @@ function Complete({
             label="Estimated value"
             value={formatValuationRange(leg.estimatedValuation)}
             valueClass="text-[18px]"
-            note={`Midpoint ${formatCurrency(leg.estimatedValuation)}`}
+            note={`Midpoint ${formatCurrency(round10k(leg.estimatedValuation))}`}
           />
         ) : (
           <Tile

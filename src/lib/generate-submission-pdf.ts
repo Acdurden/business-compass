@@ -2,25 +2,27 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { computeValuation, buildConfig } from "@/lib/valscore_calc.js";
-import {
-  DEFAULT_VALUATION_INPUT_AMOUNT,
-  DEFAULT_VALUATION_INPUT_TYPE,
-} from "@/lib/valuation-defaults";
+import { DEFAULT_VALUATION_INPUT_TYPE } from "@/lib/valuation-defaults";
+import { formatCurrency, round10k } from "@/lib/score-display";
 
 type InputType = "netfeeincome" | "ebitda";
 
+/**
+ * Money and multiples go through the shared helpers, same as every client
+ * surface. Until 2026-09-18 this file carried its own `Intl.NumberFormat` and
+ * printed $1,646,667 where the client's own report read $1.65M, and its own
+ * `toFixed(1)` printed 1.2x where the client read 1.17 times. Advisor and
+ * client reading different numbers off the same submission is the specific
+ * failure the one-formatter rule exists to stop.
+ */
 function fmtCurrency(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
+  return formatCurrency(round10k(n));
 }
 
 function fmtMultiple(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
-  return `${n.toFixed(1)}x`;
+  return `${n.toFixed(2)}x`;
 }
 
 function fmtScore(n: number | null | undefined) {
@@ -78,7 +80,22 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   }>;
 
   const inputType = (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
-  const amount = Number(sub.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
+  /**
+   * No default amount either, as of 2026-09-18.
+   *
+   * This used to fall back to DEFAULT_VALUATION_INPUT_AMOUNT, $1,500,000, which
+   * was then printed under "Financial Inputs / Amount" and used to derive a
+   * valuation, on a document headed with the client's company name and footed
+   * "prepared for the named company". A figure nobody gave us was being shown
+   * as a figure they did. The advisor queue was simultaneously telling the
+   * advisor this client could not produce a valuation.
+   *
+   * Zero means the valuation section is omitted instead, which is the truthful
+   * answer and matches what `advisor.plan` already does with `hasAmount`.
+   */
+  const rawAmount = Number(sub.valuation_input_amount ?? 0);
+  const hasAmount = Number.isFinite(rawAmount) && rawAmount > 0;
+  const amount = hasAmount ? rawAmount : 0;
   /**
    * No default. A target is the client's own goal, and until 2026-08-27 nothing
    * in the product collected one, so falling back to a shared constant produced
@@ -243,7 +260,7 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
     startY: y,
     body: [
       ["Basis", inputType === "ebitda" ? "EBITDA" : "Net Fee Income"],
-      ["Amount", fmtCurrency(amount)],
+      ["Amount", hasAmount ? fmtCurrency(amount) : "Not provided"],
     ],
     theme: "plain",
     margin: { left: margin, right: margin },
@@ -259,30 +276,72 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
   y = ensureSpace(doc, y, 140, margin);
   y = sectionHeading(doc, "Valuation Results", y, margin, primary);
 
-  const adj = result.adjusted;
-  const valuationRows: string[][] = [
-    [
-      "ValScore",
-      adj.marketPosition || "—",
-      fmtMultiple(adj.multiple),
-      fmtCurrency(adj.estimatedValuation),
-    ],
-  ];
+  if (!hasAmount) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...muted);
+    doc.text(
+      "No income figure is on file for this client, so no valuation is shown.",
+      margin,
+      y + 4,
+      { maxWidth: pageW - margin * 2 },
+    );
+    y += 28;
+  } else {
+    /**
+     * WHICH LEG, AND WHY IT MATTERS.
+     *
+     * Until 2026-09-18 this table printed `result.adjusted` unconditionally,
+     * while `includeAdjusted` was computed above and never used here. With no
+     * advisory answers `valScore` equals the RAW objective score out of 60,
+     * because valScore is objectiveScore + advisoryScore and the second term
+     * is zero. The adjusted leg then banded that raw number against
+     * `adjustedBands`, which run 0 to 100, and interpolated its multiple
+     * against `adjustedFloors`, which also run 0 to 100. A 45 out of 60 was
+     * priced as a 45 out of 100: roughly 0.45x instead of 1.17x, about
+     * $675,000 printed where $1.755M was right, under the client's own name.
+     *
+     * This is the same defect as the client PDF shipped on 2026-08-28. It was
+     * fixed in `client-report.ts` and never fixed here.
+     *
+     * The objective leg is always honest, because it is banded and priced
+     * against the objective scale it belongs to. The ValScore leg is added
+     * only once there are advisory answers for it to be made of.
+     */
+    const objective = result.objective;
+    const valuationRows: string[][] = [
+      [
+        "Objective only",
+        objective.marketPosition || "—",
+        fmtMultiple(objective.multiple),
+        fmtCurrency(objective.estimatedValuation),
+      ],
+    ];
+    if (includeAdjusted) {
+      const adj = result.adjusted;
+      valuationRows.push([
+        "ValScore",
+        adj.marketPosition || "—",
+        fmtMultiple(adj.multiple),
+        fmtCurrency(adj.estimatedValuation),
+      ]);
+    }
 
-  autoTable(doc, {
-    startY: y,
-    head: [["Basis", "Market Position", "Multiple", "Estimated Valuation"]],
-    body: valuationRows,
-    theme: "grid",
-    margin: { left: margin, right: margin },
-    styles: { fontSize: 10, cellPadding: 7, textColor: primary },
-    headStyles: { fillColor: [241, 245, 249], textColor: primary, fontStyle: "bold" },
-    columnStyles: {
-      2: { halign: "right", cellWidth: 70 },
-      3: { halign: "right", cellWidth: 130, fontStyle: "bold" },
-    },
-  });
-  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 24;
+    autoTable(doc, {
+      startY: y,
+      head: [["Basis", "Market Position", "Multiple", "Estimated Valuation"]],
+      body: valuationRows,
+      theme: "grid",
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 10, cellPadding: 7, textColor: primary },
+      headStyles: { fillColor: [241, 245, 249], textColor: primary, fontStyle: "bold" },
+      columnStyles: {
+        2: { halign: "right", cellWidth: 70 },
+        3: { halign: "right", cellWidth: 130, fontStyle: "bold" },
+      },
+    });
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 24;
+  }
 
   // ValScore summary box (if advisory)
   if (includeAdjusted) {

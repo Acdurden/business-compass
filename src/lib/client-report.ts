@@ -172,7 +172,15 @@ export async function loadClientReport(submissionId?: string): Promise<ClientRep
     responses as never,
     (questionsRes.data ?? []) as never,
     {
-      valuationInputType: (sub.valuation_input_type as InputType | null) ?? "ebitda",
+      /*
+       * Default to net fee income, matching DEFAULT_VALUATION_INPUT_TYPE and every
+       * other site in the repo. This read "ebitda" until 2026-09-18, which for a
+       * row with a null type and a non-null amount priced the business against
+       * the EBITDA anchors, roughly two to four times the NFI anchors, and then
+       * labelled the result "Net Fee Income" two hundred lines further down. The
+       * same client saw a different valuation on /client than on /client/summary.
+       */
+      valuationInputType: (sub.valuation_input_type as InputType | null) ?? "netfeeincome",
       valuationInputAmount: hasAmount ? rawAmount : 0,
       targetValuation: 0,
     },

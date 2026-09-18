@@ -4,10 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 import { computeValuation, buildConfig, type ValuationResult } from "@/lib/valscore_calc";
-import {
-  DEFAULT_VALUATION_INPUT_AMOUNT,
-  DEFAULT_VALUATION_INPUT_TYPE,
-} from "@/lib/valuation-defaults";
+import { DEFAULT_VALUATION_INPUT_TYPE } from "@/lib/valuation-defaults";
+import { formatCurrency, formatValuationRange, round10k } from "@/lib/score-display";
 import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { generateClientPdf } from "@/lib/generate-client-pdf";
 import { ArrowLeft, FileDown, ClipboardList, ListChecks, FileText } from "lucide-react";
@@ -56,27 +54,32 @@ type ResponseRow = {
   points_awarded: number | null;
 };
 
+/*
+ * Money and multiples go through the shared helpers, same as the client's own
+ * report. This screen carried its own Intl formatter until 2026-09-18 and
+ * printed $1,646,667 beside a client report reading $1.65M, and its own
+ * toFixed(1) printed 1.2x where the client read 1.17 times. The advisor and
+ * the client are usually looking at their own screens in the same
+ * conversation.
+ */
 function fmtCurrency(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
+  return formatCurrency(round10k(n));
 }
 function fmtMultiple(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
-  return `${n.toFixed(1)}x`;
+  return `${n.toFixed(2)}x`;
 }
 function fmtScore(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "0";
   return Math.round(n).toString();
 }
+/* The shared range builder, which rounds to ten thousand the way the client's
+ * copy does. This file's own version used Math.round and produced a different
+ * pair of numbers from the same midpoint. */
 function fmtRange(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
-  const low = Math.round(n * 0.95);
-  const high = Math.round(n * 1.05);
-  return `${fmtCurrency(low)} – ${fmtCurrency(high)}`;
+  return formatValuationRange(n);
 }
 
 function ResultsPage() {
@@ -130,7 +133,10 @@ function ResultsPage() {
 
       const inputType =
         (subData.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
-      const amount = Number(subData.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
+      // No default amount. $1,500,000 used to be substituted here and printed
+      // as this client's own figure. See generate-submission-pdf for the full
+      // account; zero means the valuation block is omitted instead.
+      const amount = Number(subData.valuation_input_amount ?? 0);
       // No default: a target is the client's own goal, set by them on
       // /client/assessment. Zero makes targetAnalysis return null rather than
       // analysing a goal nobody gave us.
@@ -218,6 +224,13 @@ function ResultsPage() {
   }
 
   const advisoryComplete = sub.advisor_status === "submitted" || sub.advisor_status === "final";
+  /**
+   * Whether a ValScore exists at all. `advisoryComplete` is a status flag and
+   * can be set on a submission whose advisory half is still blank, which is the
+   * case `client.index.tsx:107` already guards against. What makes the ValScore
+   * leg meaningful is advisory answers, so that is what is tested here.
+   */
+  const hasAdvisoryAnswers = responsesList.some((r) => r.questionnaire_type === "advisory");
   const objSections = sections
     .filter((s) => s.questionnaire_type === "objective")
     .sort((a, b) => a.sort_order - b.sort_order);
@@ -232,7 +245,9 @@ function ResultsPage() {
     .reduce((acc, s) => acc + s.max_score, 0);
 
   const inputType = (sub.valuation_input_type as InputType | null) ?? DEFAULT_VALUATION_INPUT_TYPE;
-  const amount = Number(sub.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT);
+  const rawAmount = Number(sub.valuation_input_amount ?? 0);
+  const hasAmount = Number.isFinite(rawAmount) && rawAmount > 0;
+  const amount = hasAmount ? rawAmount : 0;
 
   return (
     <main className="min-h-screen pb-24">
@@ -315,23 +330,48 @@ function ResultsPage() {
 
         <section className="rounded-xl border border-border bg-card p-5">
           <h2 className="text-sm font-semibold mb-3">Valuation</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground border-b border-border">
-                  <th className="py-2 pr-3">Basis</th>
-                  <th className="py-2 pr-3">Market position</th>
-                  <th className="py-2 text-right">Estimated valuation</th>
-                </tr>
-              </thead>
-              <tbody>
-                <ValuationRow label="ValScore" leg={result.adjusted} highlight />
-              </tbody>
-            </table>
-          </div>
+          {!hasAmount ? (
+            <p className="text-sm text-muted-foreground">
+              No income figure is on file for this client, so no valuation is shown here or to them.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground border-b border-border">
+                    <th className="py-2 pr-3">Basis</th>
+                    <th className="py-2 pr-3">Market position</th>
+                    <th className="py-2 text-right">Estimated valuation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/*
+                   * The objective leg always, the ValScore leg only once the
+                   * advisory half exists. This row was `result.adjusted`
+                   * unconditionally until 2026-09-18, and `advisoryComplete`
+                   * gated nothing but the amber banner above. With no advisory
+                   * answers the ValScore equals the raw objective score out of
+                   * 60, which the adjusted leg then bands and prices against a
+                   * 0 to 100 scale: a 45 out of 60 read as a 45 out of 100,
+                   * roughly 40 per cent of the right valuation, on the screen
+                   * an advisor is most likely to have open while talking to
+                   * the client. See generate-submission-pdf for the same fix.
+                   */}
+                  <ValuationRow
+                    label="Objective only"
+                    leg={result.objective}
+                    highlight={!hasAdvisoryAnswers}
+                  />
+                  {hasAdvisoryAnswers ? (
+                    <ValuationRow label="ValScore" leg={result.adjusted} highlight />
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          )}
           <dl className="mt-4 grid grid-cols-3 gap-3 text-xs">
             <Meta label="Basis">{inputType === "ebitda" ? "EBITDA" : "Net Fee Income"}</Meta>
-            <Meta label="Amount">{fmtCurrency(amount)}</Meta>
+            <Meta label="Amount">{hasAmount ? fmtCurrency(amount) : "Not provided"}</Meta>
             <Meta label="ValScore">{fmtScore(result.valScore)}</Meta>
           </dl>
         </section>

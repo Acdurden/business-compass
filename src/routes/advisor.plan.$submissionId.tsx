@@ -35,6 +35,7 @@ import {
   displayScore,
   formatCurrency,
   formatValuationRange,
+  round10k,
   type Opportunity,
   type SectionMeta,
 } from "@/lib/score-display";
@@ -850,7 +851,10 @@ function ActionPlanWorkspace() {
                 {formatValuationRange(result.adjusted.estimatedValuation)}
               </div>
               <div className="mt-1 text-[12.5px] text-muted-foreground">
-                Midpoint {formatCurrency(Math.round(result.adjusted.estimatedValuation))} ·{" "}
+                {/* round10k, not Math.round. The client's copy of this same
+                    midpoint rounds to ten thousand, and the two of you read
+                    these numbers to each other. */}
+                Midpoint {formatCurrency(round10k(result.adjusted.estimatedValuation))} ·{" "}
                 {result.adjusted.multiple.toFixed(2)}× {BASIS_LABEL[inputType]}
               </div>
               <dl className="mt-3 space-y-1.5 text-[12.5px]">
