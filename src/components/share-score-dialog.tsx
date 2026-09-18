@@ -24,7 +24,7 @@
  * downloads. The button says so rather than implying it posts for them.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -161,13 +161,22 @@ export function ShareScoreDialog({
    *  rather than filled with today, which is a date nobody recorded. */
   completedOn: Date | null;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  /*
+   * A callback ref held in state, not a useRef.
+   *
+   * The dialog renders its contents through a portal, so on the render where
+   * `open` flips true the effect can fire before the canvas node is in the DOM
+   * and `ref.current` is still null. That is what shipped on 2026-09-18: the
+   * dialog opened correctly with every figure right and the card preview blank.
+   * Storing the node in state re-runs the draw the moment it actually attaches.
+   */
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [show, setShow] = useState<Options>({ company: true, value: true, date: true });
 
   useEffect(() => {
-    if (!open || !canvasRef.current) return;
-    drawCard(canvasRef.current, { variant, score, company, midpoint, completedOn, show });
-  }, [open, variant, score, company, midpoint, completedOn, show]);
+    if (!open || !canvas) return;
+    drawCard(canvas, { variant, score, company, midpoint, completedOn, show });
+  }, [open, canvas, variant, score, company, midpoint, completedOn, show]);
 
   const label = variant === "valscore" ? "ValScore" : "Objective Score";
 
@@ -180,7 +189,6 @@ export function ShareScoreDialog({
   }
 
   function downloadImage() {
-    const canvas = canvasRef.current;
     if (!canvas) return;
     const link = document.createElement("a");
     link.href = canvas.toDataURL("image/png");
@@ -212,7 +220,7 @@ export function ShareScoreDialog({
         </DialogHeader>
 
         <div className="overflow-hidden rounded-lg border border-border">
-          <canvas ref={canvasRef} className="block w-full" style={{ aspectRatio: "1200 / 630" }} />
+          <canvas ref={setCanvas} className="block w-full" style={{ aspectRatio: "1200 / 630" }} />
         </div>
 
         <div className="mt-1">

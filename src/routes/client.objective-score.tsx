@@ -449,7 +449,7 @@ function Submitted({
     <div className="space-y-6 text-center">
       <div>
         <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: BRAND.muted }}>
-          My assessment
+          Objective Score
         </p>
         <h1 className="mt-1.5 text-[26px] font-semibold" style={{ color: BRAND.ink }}>
           What your own answers describe
@@ -903,20 +903,44 @@ function TargetPlanner({
               ) : (
                 <>
                   <p className="text-[17px] leading-relaxed" style={{ color: BRAND.ink }}>
-                    To reach <b>{formatCurrency(target)}</b> you would need a score of{" "}
-                    <b style={{ color: BRAND.teal }}>{needDisplay}</b>. You are at{" "}
-                    <b>{displayScore(score)}</b>.
+                    {extraIncome > 0 ? (
+                      /*
+                       * The target is beyond what any score reaches on this
+                       * income. The engine caps `requiredMultiple` at the top of
+                       * the scale and reports the score that reaches THAT, which
+                       * is right. The old sentence read "to reach $6.00M you
+                       * would need a score of 100", which is not, because 100
+                       * does not reach it either. The amber note below corrected
+                       * it two lines later; better not to say it.
+                       */
+                      <>
+                        A perfect score of {needDisplay} on the {BASIS_WORD[basis]} of{" "}
+                        {formatCurrency(amount)} you entered reaches{" "}
+                        <b>
+                          {formatCurrency(round10k(amount * (analysis?.requiredMultiple ?? 0)))}
+                        </b>
+                        . Getting to <b>{formatCurrency(target)}</b> takes more than a score.
+                      </>
+                    ) : (
+                      <>
+                        To reach <b>{formatCurrency(target)}</b> you would need a score of{" "}
+                        <b style={{ color: BRAND.teal }}>{needDisplay}</b>. You are at{" "}
+                        <b>{displayScore(score)}</b>.
+                      </>
+                    )}
                   </p>
-                  <p
-                    className="mx-auto mt-3 max-w-[62ch] text-[14px] leading-relaxed"
-                    style={{ color: BRAND.muted }}
-                  >
-                    That is{" "}
-                    <b style={{ color: BRAND.ink }}>
-                      {Math.max(0, needDisplay - Math.round(score))} more points
-                    </b>
-                    , spread across the eight areas below.
-                  </p>
+                  {extraIncome > 0 ? null : (
+                    <p
+                      className="mx-auto mt-3 max-w-[62ch] text-[14px] leading-relaxed"
+                      style={{ color: BRAND.muted }}
+                    >
+                      That is{" "}
+                      <b style={{ color: BRAND.ink }}>
+                        {Math.max(0, needDisplay - Math.round(score))} more points
+                      </b>
+                      , spread across the eight areas below.
+                    </p>
+                  )}
                 </>
               )}
 
