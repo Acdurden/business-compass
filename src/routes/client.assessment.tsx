@@ -11,6 +11,13 @@
  * is the client's own view of their own business, and it stays reachable after
  * the review lands rather than going dead — the two are different artefacts.
  *
+ * THREE STATES, NOT TWO. `reviewed` alone is not enough to write copy against.
+ * An objective-only client has `reviewed` false forever and is not waiting for
+ * anything, so `awaitingReview` (full-service and not yet reviewed) is what
+ * every "your advisor is reviewing it now" sentence keys off. Until 2026-09-18
+ * this page told objective-only clients that a review was under way, which was
+ * never true of them.
+ *
  * ANCHORED TO A TARGET, NOT TO A PERFECT SCORE. A bare score reads as a grade,
  * and on this model a grade nobody can get: the scale barely reaches its upper
  * bands. So the client says what they want the business to be worth and the page
@@ -413,7 +420,9 @@ function Submitted({
         <p className="mt-2 max-w-[62ch] text-[15px] leading-relaxed" style={{ color: BRAND.muted }}>
           {reviewed
             ? "This is your side of the assessment, kept as a record. Your reviewed result sits alongside it and is the one to work from."
-            : "You have finished, and your advisor is reviewing it now. This is what you told us, and what it says about how a buyer would see the business today."}
+            : awaitingReview
+              ? "You have finished, and your advisor is reviewing it now. This is what you told us, and what it says about how a buyer would see the business today."
+              : "You have finished. This is what you told us, and what it says about how a buyer would see the business today."}
         </p>
         <span
           className="mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[12.5px]"
@@ -421,7 +430,9 @@ function Submitted({
         >
           {reviewed
             ? "Your view · your advisor's review is finished"
-            : "Provisional · this will change after your advisor's review"}
+            : awaitingReview
+              ? "Provisional · this will change after your advisor's review"
+              : "Your own answers · no advisor review on this assessment"}
         </span>
       </div>
 
@@ -456,6 +467,7 @@ function Submitted({
       <TargetPlanner
         score={score}
         objectiveMax={objectiveMax}
+        awaitingReview={awaitingReview}
         amount={amount}
         basis={basis}
         currentMidpoint={midpoint}
@@ -512,7 +524,7 @@ function Submitted({
 
       {reviewed ? (
         <Button onClick={onViewResults}>See your reviewed results</Button>
-      ) : (
+      ) : awaitingReview ? (
         <Card>
           <h3 className="text-[15.5px] font-semibold" style={{ color: BRAND.ink }}>
             What happens next
@@ -521,12 +533,26 @@ function Submitted({
             className="mt-3 space-y-2.5 text-[14px] leading-relaxed"
             style={{ color: BRAND.muted }}
           >
-            <li>
-              Your Kriterion BVI advisor is working through the same eight areas independently.
-            </li>
+            <li>Your advisor is working through the same eight areas independently.</li>
             <li>Your results are released, and the figures above will move in either direction.</li>
             <li>You talk it through. That is the conversation the assessment exists for.</li>
           </ol>
+        </Card>
+      ) : (
+        <Card>
+          <h3 className="text-[15.5px] font-semibold" style={{ color: BRAND.ink }}>
+            Where this stands
+          </h3>
+          <p
+            className="mt-3 max-w-[62ch] text-[14px] leading-relaxed"
+            style={{ color: BRAND.muted }}
+          >
+            Your assessment is complete and the figures above are final as they stand. They are
+            built from your own answers, which is the whole of what this assessment covers. An
+            advisor review is available later as an add-on: it tests the same eight areas against
+            what a buyer would conclude from the same facts, and it can move the score in either
+            direction.
+          </p>
         </Card>
       )}
 
@@ -539,8 +565,8 @@ function Submitted({
           style={{ color: BRAND.muted }}
         >
           This page is a record of what you told us, so if an answer does not match how you would
-          put it today, that matters. Contact your Kriterion BVI advisor and they can reopen your
-          assessment so you can change it.
+          put it today, that matters. Contact Kriterion and we can reopen your assessment so you can
+          change it.
         </p>
       </Card>
 
@@ -562,6 +588,7 @@ function Submitted({
 function TargetPlanner({
   score,
   objectiveMax,
+  awaitingReview,
   amount,
   basis,
   currentMidpoint,
@@ -573,6 +600,8 @@ function TargetPlanner({
 }: {
   score: number;
   objectiveMax: number;
+  /** True only where an advisor review is genuinely still to come. */
+  awaitingReview: boolean;
   amount: number;
   basis: InputType;
   currentMidpoint: number;
@@ -602,7 +631,7 @@ function TargetPlanner({
           style={{ color: BRAND.muted }}
         >
           We do not have an income figure for the business yet, so there is nothing to work
-          backwards from. Your Kriterion BVI advisor can add one.
+          backwards from. Contact Kriterion and we can add one.
         </p>
       </Card>
     );
@@ -704,8 +733,10 @@ function TargetPlanner({
                     <b style={{ color: BRAND.ink }}>
                       {Math.max(0, needDisplay - Math.round(score))} more points
                     </b>
-                    , spread across the eight areas below. Your advisor&apos;s review is the next
-                    thing that moves it, and after that the plan you work through together.
+                    , spread across the eight areas below.
+                    {awaitingReview
+                      ? " Your advisor's review is the next thing that moves it, and after that the plan you work through together."
+                      : ""}
                   </p>
                 </>
               )}
