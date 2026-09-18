@@ -9,7 +9,9 @@ import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
 
 export const Route = createFileRoute("/advisor/change-password")({
   ssr: false,
-  beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
+  // allowTempPassword: this is the page that clears it, so it must not bounce
+  // the very users it exists for.
+  beforeLoad: ({ location }) => requireAdvisorAuth(location.href, { allowTempPassword: true }),
   head: () => ({ meta: [{ title: "Set a new password" }] }),
   component: ChangePasswordPage,
 });

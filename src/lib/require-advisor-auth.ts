@@ -6,8 +6,18 @@ import { supabase } from "@/integrations/supabase/client";
  * Use inside `beforeLoad` on routes with `ssr: false`.
  * Redirects to /auth when no Supabase session exists, and to /client when
  * the signed-in user is a client (not an advisor).
+ *
+ * Also enforces the forced password change. Until 2026-09-18 that check lived
+ * only in the sign-in handler at `auth.tsx`, so an advisor created with a
+ * temporary password who navigated straight to /advisor or /admin/submissions
+ * was in the back office with that password still live and was never asked
+ * again. `allowTempPassword` exists for the change-password route itself,
+ * which would otherwise redirect to itself forever.
  */
-export async function requireAdvisorAuth(currentHref: string) {
+export async function requireAdvisorAuth(
+  currentHref: string,
+  opts?: { allowTempPassword?: boolean },
+) {
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
     throw redirect({
@@ -26,6 +36,9 @@ export async function requireAdvisorAuth(currentHref: string) {
     });
     if (isClient) throw redirect({ to: "/client" });
     throw redirect({ to: "/auth", search: { redirect: currentHref } });
+  }
+  if (!opts?.allowTempPassword && data.session.user.user_metadata?.must_change_password) {
+    throw redirect({ to: "/advisor/change-password" });
   }
   return { userId: data.session.user.id, email: data.session.user.email ?? "" };
 }

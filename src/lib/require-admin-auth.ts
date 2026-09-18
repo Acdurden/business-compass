@@ -37,5 +37,10 @@ export async function requireAdminAuth(currentHref: string) {
     if (isClient) throw redirect({ to: "/client" });
     throw redirect({ to: "/auth", search: { redirect: currentHref } });
   }
+  /* Same forced password change as `requireAdvisorAuth`. An admin is an
+     advisor with more rights, not one exempt from setting their own password. */
+  if (data.session.user.user_metadata?.must_change_password) {
+    throw redirect({ to: "/advisor/change-password" });
+  }
   return { userId, email: data.session.user.email ?? "" };
 }

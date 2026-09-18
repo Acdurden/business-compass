@@ -199,6 +199,37 @@ export const createAdvisor = createServerFn({ method: "POST" })
     return { ok: true, userId, email: data.email, tempPassword: password };
   });
 
+/**
+ * Is this invite link usable?
+ *
+ * Public on purpose, like `registerClientViaInvite` below: the code is the
+ * gate, and there is no auth yet because the visitor has no account. It returns
+ * only whether the link works, never the list of codes.
+ *
+ * Added 2026-09-18. Until then `/invite` validated nothing until the form was
+ * submitted, so someone holding a retired or mistyped link typed their email,
+ * chose a password, confirmed it, waited through the spinner, and got a toast.
+ * The filled-in form stayed on screen and a typo looked exactly like a retired
+ * link.
+ */
+export const checkInviteCode = createServerFn({ method: "POST" })
+  .inputValidator((input: { code: string }) => ({ code: String(input?.code ?? "").trim() }))
+  .handler(async ({ data }): Promise<{ valid: boolean }> => {
+    if (!data.code) return { valid: false };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("invite_codes")
+      .select("code")
+      .eq("code", data.code)
+      .eq("active", true)
+      .maybeSingle();
+    /* A lookup that failed is not a link that is invalid. Saying "invalid" on a
+       database hiccup would send a legitimate client back to their advisor for
+       a replacement they do not need. */
+    if (error) throw new Error("We could not check that link. Please try again.");
+    return { valid: Boolean(row) };
+  });
+
 // ---------------------------------------------------------------------------
 // Standalone client self-sign-up (reusable invite link).
 // A visitor lands on /invite?code=... , enters their own email + password, and

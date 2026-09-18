@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { KRITERION_LOGO } from "@/assets/kriterionLogo";
 import { supabase } from "@/integrations/supabase/client";
-import { registerClientViaInvite } from "@/lib/client-invites.functions";
+import { checkInviteCode, registerClientViaInvite } from "@/lib/client-invites.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,31 @@ function InvitePage() {
   const navigate = useNavigate();
   const { code } = Route.useSearch();
   const register = useServerFn(registerClientViaInvite);
+  const checkCode = useServerFn(checkInviteCode);
+
+  /*
+   * Validate before showing the form, not after it is submitted. "checking" is
+   * the first state a visitor sees and it is brief; "bad" means the link does
+   * not work and there is nothing to fill in.
+   */
+  const [linkState, setLinkState] = useState<"checking" | "ok" | "bad">(code ? "checking" : "bad");
+
+  useEffect(() => {
+    if (!code) return;
+    let cancelled = false;
+    void checkCode({ data: { code } })
+      .then((res) => {
+        if (!cancelled) setLinkState(res.valid ? "ok" : "bad");
+      })
+      .catch(() => {
+        /* A lookup we could not complete is not a link we know to be bad. Let
+           them try; the server checks again on submit and is the real gate. */
+        if (!cancelled) setLinkState("ok");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [code, checkCode]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -94,11 +119,19 @@ function InvitePage() {
             </p>
           </div>
 
-          {!code ? (
+          {linkState === "checking" ? (
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm text-center">
-              <p className="text-sm text-foreground font-medium">This link is incomplete.</p>
+              <p className="text-sm text-muted-foreground">Checking your link…</p>
+            </div>
+          ) : linkState === "bad" ? (
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm text-center">
+              <p className="text-sm text-foreground font-medium">
+                {code ? "This link is not active." : "This link is incomplete."}
+              </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Please use the full invite link your advisor sent you, or ask them to resend it.
+                {code
+                  ? "It may have been retired, or the address may have been copied incompletely. Ask us for a new one and we will send it straight over."
+                  : "Please use the full invite link your advisor sent you, or ask them to resend it."}
               </p>
             </div>
           ) : (

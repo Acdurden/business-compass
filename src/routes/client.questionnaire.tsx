@@ -13,6 +13,15 @@ export const Route = createFileRoute("/client/questionnaire")({
       _role: "client",
     });
     if (!isClient) throw redirect({ to: "/client/auth" });
+    /*
+     * The forced password change, which this route was missing until
+     * 2026-09-18 while its three sibling client routes all had it. A client
+     * bounced to set a password could type this URL and start the assessment
+     * on the temporary one.
+     */
+    if (data.session.user.user_metadata?.must_change_password) {
+      throw redirect({ to: "/client/change-password" });
+    }
   },
   head: () => ({ meta: [{ title: "Your assessment" }] }),
   component: ClientQuestionnaire,
