@@ -99,6 +99,37 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
   const finSectionRef = useRef<HTMLDivElement | null>(null);
   const questionRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
+  /*
+   * ANSWERED QUESTIONS SETTLE.
+   *
+   * Once a question is answered it shrinks to one line carrying the answer, so
+   * the page visibly shortens as the client works. Twenty-four full cards is a
+   * lot of unchanging furniture to scroll past, and a form that gets shorter as
+   * you go feels like it is going somewhere.
+   *
+   * Two pieces of state, and both exist for the same reason: nothing should
+   * disappear the instant it is touched.
+   *  - `justAnswered` keeps the question that was answered a moment ago open for
+   *    a beat, so the client sees their choice register before the card folds.
+   *    Collapsing on the click itself reads as the page snatching it away.
+   *  - `expanded` holds the questions the client has deliberately reopened with
+   *    Change, which stay open until they answer again.
+   *
+   * Client-side and editable only. Advisor mode and read-only review both show
+   * every answer at once on purpose, because there the point is to read them.
+   */
+  const [justAnswered, setJustAnswered] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    [],
+  );
+
+  const settling = !props.readOnly && props.mode === "client";
+
   // Stable identity for effect dependency
   const sourceKey =
     props.mode === "client" ? `client:${props.token}` : `advisor:${props.submissionId}`;
@@ -303,6 +334,17 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     }
 
     setResponses((prev) => ({ ...prev, [question.question_id]: option.id }));
+    /* Hold this one open for a beat, then let it settle. Re-answering a
+       reopened question closes it again. */
+    setExpanded((prev) => {
+      if (!prev[question.question_id]) return prev;
+      const next = { ...prev };
+      delete next[question.question_id];
+      return next;
+    });
+    setJustAnswered(question.question_id);
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => setJustAnswered(null), 900);
     setSaving(question.question_id);
     let error: unknown = null;
     if (props.mode === "client") {
@@ -513,6 +555,40 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
             const opts = optionsByQuestion[q.question_id] ?? [];
             const selected = responses[q.question_id];
             const isMissing = attemptedSubmit && !selected;
+
+            const isSettled =
+              settling && !!selected && !expanded[q.question_id] && justAnswered !== q.question_id;
+
+            if (isSettled) {
+              const answerText = opts.find((o) => o.id === selected)?.answer_text ?? "Answered";
+              return (
+                <li
+                  key={q.question_id}
+                  ref={(el) => {
+                    questionRefs.current[q.question_id] = el;
+                  }}
+                  className="rounded-xl border border-border bg-muted/40 px-4 py-2.5"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                      ✓
+                    </span>
+                    <p className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+                      {q.question_text}
+                    </p>
+                    <p className="shrink-0 text-[13px] font-semibold">{answerText}</p>
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((prev) => ({ ...prev, [q.question_id]: true }))}
+                      className="shrink-0 text-[12px] font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                </li>
+              );
+            }
+
             return (
               <li
                 key={q.question_id}
