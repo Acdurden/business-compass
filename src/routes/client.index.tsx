@@ -754,7 +754,7 @@ function AwaitingReview({
         <TimelineItem
           state="done"
           title="You submitted your assessment"
-          body="Every question answered across 8 value drivers."
+          body="Every question answered, across nine areas of the business."
         />
         <TimelineItem
           state="current"
