@@ -142,7 +142,6 @@ export const sendTestEmail = createServerFn({ method: "POST" })
       "{{advisor_name}}": template.fromName,
       "{{company}}": "[company name]",
       "{{valscore}}": "[score]",
-      "{{band}}": "[band]",
       "{{opportunity}}": "[points]",
       "{{top_area}}": "[largest gap]",
       "{{top_points}}": "[points]",

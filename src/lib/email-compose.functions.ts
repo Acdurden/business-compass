@@ -298,7 +298,12 @@ export const getEmailDraft = createServerFn({ method: "GET" })
         }
 
         values["{{valscore}}"] = String(Math.round(computed.valScore));
-        values["{{band}}"] = computed.adjusted.marketPosition.toLowerCase();
+        /*
+         * No {{band}}. Andrew, 2026-09-18: the band is internal for now and
+         * appears in nothing a client reads. It came out of /client/valscore,
+         * the client PDF and the share card that day, and this line was missed:
+         * the review-ready email was still posting it to them.
+         */
         values["{{opportunity}}"] = String(totalOpportunity(opportunities));
         if (opportunities.length > 0) {
           values["{{top_area}}"] = opportunities[0].name;

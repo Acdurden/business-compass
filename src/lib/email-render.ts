@@ -31,7 +31,15 @@ import {
 
 type BodyBlock = ReturnType<typeof splitBody>[number];
 
-const NAVY = "#1E395F";
+/*
+ * The brand navy, matching `BRAND.navy` in score-display, the share card and
+ * the PDF masthead. The email carried its own lighter navy until 2026-09-18,
+ * which meant the one place a client sees Kriterion before they see the product
+ * was the one place it was a different colour.
+ */
+const NAVY = "#0e1c2b";
+/** The tinted field the card sits on. */
+const PAGE = "#d9e1e8";
 const INK = "#243447";
 const MUTED = "#6b7a8d";
 const BORDER = "#e2e8f0";
@@ -136,7 +144,7 @@ export function renderEmail(
     .map((block) => {
       if (block.kind === "button") {
         return [
-          `<tr><td style="padding:6px 0 22px 0;">`,
+          `<tr><td align="center" style="padding:10px 0 24px 0;text-align:center;">`,
           `<a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:${NAVY};color:#ffffff;`,
           `text-decoration:none;padding:13px 26px;border-radius:6px;font-size:15px;font-weight:600;">`,
           `${escapeHtml(ctaLabel)}</a></td></tr>`,
@@ -151,11 +159,21 @@ export function renderEmail(
     `<!doctype html><html><head><meta charset="utf-8" />`,
     `<meta name="viewport" content="width=device-width,initial-scale=1" />`,
     `<title>${escapeHtml(subject)}</title></head>`,
-    `<body style="margin:0;padding:0;background:#f1f4f8;">`,
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f4f8;padding:24px 12px;">`,
+    `<body style="margin:0;padding:0;background:${PAGE};">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${PAGE};padding:28px 12px;">`,
     `<tr><td align="center">`,
     `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid ${BORDER};border-radius:8px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">`,
-    `<tr><td style="background:${NAVY};padding:22px 28px;color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.16em;">KRITERION</td></tr>`,
+    /*
+     * The ruled field. `background-image` carries fine diagonals over a solid
+     * `background-color`, in that order deliberately: Outlook on Windows drops
+     * the gradient and renders the flat navy underneath, which is the plain
+     * header this replaced rather than a broken one. Same motif as the share
+     * card, drawn the same way.
+     */
+    `<tr><td style="background-color:${NAVY};background-image:repeating-linear-gradient(115deg,rgba(255,255,255,0.075) 0 1px,transparent 1px 13px);padding:24px 28px 26px 28px;">`,
+    `<div style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.16em;">KRITERION</div>`,
+    `<div style="margin-top:7px;color:#9fc4c2;font-size:11px;letter-spacing:0.06em;">BUSINESS VALUE INTELLIGENCE</div>`,
+    `</td></tr>`,
     `<tr><td style="padding:28px 28px 6px 28px;">`,
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${htmlBlocks}</table>`,
     `</td></tr>`,

@@ -39,7 +39,7 @@ import {
   type EmailTemplate,
   type EmailTemplateKey,
 } from "@/lib/email-templates";
-import { rendersAsPersonalMail } from "@/lib/email-render";
+import { renderEmail, rendersAsPersonalMail } from "@/lib/email-render";
 import { buildConfig, computeValuation, type ScoringConfig } from "@/lib/valscore_calc";
 import { buildOpportunities, totalOpportunity, type SectionMeta } from "@/lib/score-display";
 import { getActiveInviteCodes } from "@/lib/client-invites.functions";
@@ -361,7 +361,7 @@ function EmailTemplatesPage() {
 
         values["{{company}}"] = reviewed.company_name;
         values["{{valscore}}"] = String(Math.round(computed.valScore));
-        values["{{band}}"] = computed.adjusted.marketPosition.toLowerCase();
+        /* No {{band}}: internal for now. See email-compose.functions.ts. */
         values["{{opportunity}}"] = String(totalOpportunity(opportunities));
         if (opportunities.length > 0) {
           values["{{top_area}}"] = opportunities[0].name;
@@ -445,6 +445,19 @@ function EmailTemplatesPage() {
    */
   const previewCtaUrl =
     typeof window === "undefined" ? "/invite?code=…" : `${window.location.origin}/invite?code=…`;
+
+  /*
+   * The message itself, rendered by the send path's own renderer. `showTags`
+   * decides whether the tags are filled in, which is the one thing the preview
+   * does that a real send does not.
+   */
+  const rendered = renderEmail(
+    { ...draft, fromEmail: effectiveFrom ?? null },
+    showTags ? {} : previewValues,
+    draft.key === "password_reset" && typeof window !== "undefined"
+      ? `${window.location.origin}/reset-password`
+      : previewCtaUrl,
+  );
 
   return (
     <main className="min-h-screen">
@@ -762,59 +775,40 @@ function EmailTemplatesPage() {
               </button>
             </div>
 
+            {/*
+             * The real renderer, in an iframe.
+             *
+             * This panel used to rebuild the wordmark, the button, the link and
+             * the footer in JSX, while both file headers claimed the preview
+             * and the send path shared code so that what an admin signs off is
+             * what leaves the building. They did not, and on 2026-09-18 the
+             * email header changed and this replica would have gone on showing
+             * the old one. Now it renders the exact HTML `renderEmail`
+             * produces, which is the only version of this that cannot drift.
+             *
+             * Sandboxed with no permissions: it is our own markup, but it is
+             * markup an admin has typed into, and it has no reason to run
+             * anything.
+             */}
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-              {personal ? null : (
-                <div className="flex items-center gap-2 bg-primary px-5 py-3 text-primary-foreground">
-                  <Mail className="h-3.5 w-3.5" />
-                  <span className="text-[11px] font-bold tracking-[0.16em]">KRITERION</span>
-                </div>
-              )}
               <div className="border-b border-border px-5 pb-3 pt-4">
-                <p className="text-[15px] font-semibold tracking-tight">{fill(draft.subject)}</p>
+                <p className="text-[15px] font-semibold tracking-tight">{rendered.subject}</p>
                 <p className="mt-1 text-[11.5px] text-muted-foreground">
                   from {draft.fromName} &lt;{effectiveFrom ?? "address not set"}&gt;
                 </p>
               </div>
-              <div className="px-5 py-4">
-                {blocks.length === 0 && (
-                  <p className="text-[12.5px] text-destructive">
-                    The body is empty, so there is nothing to send.
-                  </p>
-                )}
-                {blocks.map((block, i) =>
-                  block.kind === "button" ? (
-                    personal ? (
-                      <p
-                        key={`link-${i}`}
-                        className="mb-3 break-all text-[13.5px] leading-relaxed text-[#1a4d8f] underline"
-                      >
-                        {previewCtaUrl}
-                      </p>
-                    ) : (
-                      <span
-                        key={`button-${i}`}
-                        className="mb-4 inline-block rounded-md bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground"
-                      >
-                        {fill(draft.ctaLabel)}
-                      </span>
-                    )
-                  ) : (
-                    <p
-                      key={`p-${i}`}
-                      className="mb-3 whitespace-pre-line text-[13.5px] leading-relaxed"
-                    >
-                      {fill(block.text)}
-                    </p>
-                  ),
-                )}
-                {personal ? null : (
-                  <p className="mt-4 border-t border-border pt-3 text-[11px] text-muted-foreground">
-                    Kriterion Business Value Intelligence · kriterionbvi.com
-                    <br />
-                    Reply to this message to reach your advisor directly.
-                  </p>
-                )}
-              </div>
+              {blocks.length === 0 ? (
+                <p className="px-5 py-4 text-[12.5px] text-destructive">
+                  The body is empty, so there is nothing to send.
+                </p>
+              ) : (
+                <iframe
+                  title="Email preview"
+                  sandbox=""
+                  srcDoc={rendered.html}
+                  className="block h-[520px] w-full border-0 bg-white"
+                />
+              )}
             </div>
 
             <div className="rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] text-muted-foreground shadow-sm">

@@ -88,7 +88,6 @@ export const EMAIL_TEMPLATE_META: Record<EmailTemplateKey, EmailTemplateMeta> = 
     tags: [
       { tag: "{{company}}", describes: "their company name" },
       { tag: "{{valscore}}", describes: "their ValScore" },
-      { tag: "{{band}}", describes: "where that score places them" },
       { tag: "{{opportunity}}", describes: "points of value not yet credited" },
       { tag: "{{top_area}}", describes: "their largest single gap" },
       { tag: "{{top_points}}", describes: "how many points that gap is worth" },
@@ -157,7 +156,7 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
     ctaLabel: "Open your results",
     body: [
       "I have finished reviewing {{company}} and your results are ready.",
-      "Your ValScore is {{valscore}}, which places you at the {{band}}.",
+      "Your ValScore is {{valscore}}.",
       "The score is worth less than what sits behind it. There are {{opportunity}} points of value your business is not currently being credited for, and {{top_area}} alone accounts for {{top_points}} of them, the largest single gap by a wide margin.",
       "Your plan sets out what to do about it, in order.",
       BUTTON_MARKER,
