@@ -106,31 +106,30 @@ function ClientSummary() {
     );
   }
 
-  // Objective-only clients have no review to wait for, so their results unlock
-  // the moment they finish answering.
-  if (report.isObjectivePlan && !report.clientSubmitted) {
+  /*
+   * One gate, and it is finishing the questionnaire. Everyone who submits has an
+   * Objective Score, and this page renders it.
+   *
+   * Until 2026-09-18 a full-service client was refused here until their review
+   * landed, on the grounds that a ValScore made of the objective half alone is
+   * confidently wrong. That reasoning held while the two were one number. They
+   * are two products now: the Objective Score is finished on submission and a
+   * ValScore is a separate assessment, so refusing the first until the second
+   * exists was withholding something the client had already completed.
+   *
+   * What made the old guard necessary still holds and is handled upstream:
+   * `reviewed` in `client-report.ts` requires advisory answers to actually
+   * exist, not merely a status flag, so a submission marked reviewed with a
+   * blank advisory half renders as the Objective Score rather than as a
+   * collapsed ValScore. Everything advisor-written, the findings, the plan and
+   * the verdict, is gated on that same flag.
+   */
+  if (!report.clientSubmitted) {
     return (
       <Shell onSignOut={signOut} company={report.companyName}>
         <Blocked
           title="Finish your assessment first"
           body="Your score and valuation appear here as soon as you complete every question."
-          onBack={() => navigate({ to: "/client" })}
-        />
-      </Shell>
-    );
-  }
-
-  /*
-   * Full service: refuse to render while the review is outstanding. Without
-   * this guard a submission flagged as reviewed with blank advisory answers
-   * would report a huge downward restatement, which is confidently wrong.
-   */
-  if (!report.isObjectivePlan && !report.reviewed) {
-    return (
-      <Shell onSignOut={signOut} company={report.companyName}>
-        <Blocked
-          title="Your review is in progress"
-          body="Your assessment is with your advisor. Your results unlock as soon as their review is complete, and we will let you know the moment it is ready."
           onBack={() => navigate({ to: "/client" })}
         />
       </Shell>
@@ -439,24 +438,47 @@ function ReportView({ report }: { report: ClientReport }) {
 
       <ValuationDisclaimer hasRange={hasMoney} />
 
-      {/* CTA */}
+      {/*
+       * Three states, because this page now serves two products. A reviewed
+       * client has findings to talk through. A full-service client still waiting
+       * has a ValScore coming and nothing to book yet. An objective-only client
+       * has a finished product and an upsell, not a pending appointment.
+       */}
       <div
         className="mt-[18px] flex flex-wrap items-center gap-4 rounded-[14px] p-[22px]"
         style={{ background: BRAND.navy }}
       >
         <div className="min-w-[16rem] flex-1">
-          <p className="text-[16px] font-semibold text-white">Talk it through with your advisor</p>
+          <p className="text-[16px] font-semibold text-white">
+            {report.reviewed
+              ? "Talk it through with your advisor"
+              : report.isObjectivePlan
+                ? "Add a ValScore"
+                : "Your ValScore is being prepared"}
+          </p>
           <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "#c3d2df" }}>
-            Forty-five minutes on the findings above, what a buyer would actually do with them, and
-            which one to take on first.
+            {report.reviewed
+              ? "Forty-five minutes on the findings above, what a buyer would actually do with them, and which one to take on first."
+              : report.isObjectivePlan
+                ? "An advisor works the same eight areas against what a buyer would conclude from the same facts, and produces a second, independent result with a plan against it."
+                : "An advisor is working the same eight areas independently. Your Objective Score above is finished and does not change; the ValScore arrives as a separate result."}
           </p>
         </div>
-        <Button
-          className="shrink-0 bg-white text-[#0e1c2b] hover:bg-white/90"
-          onClick={() => toastBook()}
-        >
-          Book the conversation
-        </Button>
+        {report.reviewed ? (
+          <Button
+            className="shrink-0 bg-white text-[#0e1c2b] hover:bg-white/90"
+            onClick={() => toastBook()}
+          >
+            Book the conversation
+          </Button>
+        ) : report.isObjectivePlan ? (
+          <Button
+            className="shrink-0 bg-white text-[#0e1c2b] hover:bg-white/90"
+            onClick={() => toastUpgrade()}
+          >
+            Talk to us about it
+          </Button>
+        ) : null}
       </div>
     </>
   );
@@ -470,6 +492,13 @@ function ReportView({ report }: { report: ClientReport }) {
 function toastBook() {
   import("sonner").then(({ toast }) => {
     toast.info("Your advisor will be in touch to arrange this.");
+  });
+}
+
+/** Same reasoning as `toastBook`. The upsell is a conversation, not a checkout. */
+function toastUpgrade() {
+  import("sonner").then(({ toast }) => {
+    toast.info("We'll be in touch about adding a ValScore.");
   });
 }
 

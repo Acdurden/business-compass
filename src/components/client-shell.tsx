@@ -40,7 +40,15 @@ function navItems(
   onSignOut: () => void,
 ): NavItem[] {
   const done = stage === "complete";
-  const soon = "Available when your results are ready";
+  /*
+   * Results unlock on submission, not on review. Everyone who finishes the
+   * questionnaire has an Objective Score, which is a finished product in its own
+   * right; a ValScore is a separate assessment that arrives later for
+   * full-service clients. This item was gated on `done` until 2026-09-18, which
+   * locked a full-service client out of a result they had already completed.
+   */
+  const hasResults = stage === "complete" || stage === "awaiting";
+  const soon = "Available when you finish your assessment";
   /*
    * Opportunities, Documents and Account used to sit here as permanently locked
    * items reading "Coming soon". Removed 2026-09-18 at Andrew's instruction: a
@@ -66,7 +74,7 @@ function navItems(
       label: "Score & valuation",
       to: "/client/summary",
       active: active === "/client/summary",
-      locked: !done,
+      locked: !hasResults,
       reason: soon,
     },
     ...(plan === "objective" && done

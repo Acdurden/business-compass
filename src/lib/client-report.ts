@@ -16,7 +16,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { buildConfig, computeValuation, type ValuationResult } from "@/lib/valscore_calc";
-import { bandFor, buildOpportunities, grossObjective, type SectionMeta } from "@/lib/score-display";
+import {
+  CLIENT_SCALE_MAX,
+  bandFor,
+  buildOpportunities,
+  grossObjective,
+  type SectionMeta,
+} from "@/lib/score-display";
 import {
   advisoryDriverContext,
   buildPlanItems,
@@ -217,16 +223,45 @@ export async function loadClientReport(submissionId?: string): Promise<ClientRep
    * section, which is why the eight of them sum to 100. Without a review the
    * advisory half is unassessed rather than available, so the area is the
    * objective section alone.
+   *
+   * SCALE. A reviewed submission is already native 0-100, objective 60 plus
+   * advisory 40, so it needs no scaling. An Objective Score is raw /60 and the
+   * headline above has been grossed to 0-100, so the areas have to be grossed
+   * with it. Until 2026-09-18 they were not: a client read a score of 88 beside
+   * "7 points still available", which adds to 95, while `/client/assessment`
+   * grossed the same figure and said 12. One client, one submission, two
+   * arithmetics on two pages.
+   */
+  const areaScale = reviewed ? 1 : objectiveMax > 0 ? CLIENT_SCALE_MAX / objectiveMax : 0;
+
+  /*
+   * ROUNDING IS ANCHORED ON `available`, not on earned.
+   *
+   * Scaling three numbers and rounding each independently lets them disagree:
+   * Strategic Positioning at 4 of 5 scales to 6.67 of 8.33, which rounds to 7 of
+   * 8 and reports 1 point available where the honest answer is 2. Eight areas
+   * doing that is how a column of availables comes to 11 under a total row
+   * saying 12, on the same screen.
+   *
+   * `available` is the figure that matters: it is what the total row sums, what
+   * a finding quotes, and what `/client/assessment` prints for the same area. So
+   * it is rounded from the scaled gap, and `earned` is derived from it, which
+   * costs at most a point of precision on a ratio nobody adds up.
    */
   const areas: ReportArea[] = opportunities.map((o) => {
     const [objId, advId] = o.key.split("-");
     const obj = scoreBySection.get(objId ?? "");
     const adv = advId ? scoreBySection.get(advId) : undefined;
-    const total = (obj?.max_score ?? 0) + (reviewed ? (adv?.max_score ?? 0) : 0);
-    const earned = (obj?.actual_score ?? 0) + (reviewed ? (adv?.actual_score ?? 0) : 0);
-    return { key: o.key, name: o.name, earned, total, available: Math.max(0, total - earned) };
+    const rawTotal = (obj?.max_score ?? 0) + (reviewed ? (adv?.max_score ?? 0) : 0);
+    const rawEarned = (obj?.actual_score ?? 0) + (reviewed ? (adv?.actual_score ?? 0) : 0);
+    const total = Math.round(rawTotal * areaScale);
+    const available = Math.min(total, Math.round(Math.max(0, rawTotal - rawEarned) * areaScale));
+    return { key: o.key, name: o.name, earned: total - available, total, available };
   });
 
+  /*
+   * The sum of what the page actually prints, so the column and the total agree.
+   */
   const totalAvailable = areas.reduce((sum, a) => sum + a.available, 0);
 
   /*
@@ -341,5 +376,5 @@ export function verdictOrStandIn(report: ClientReport): string {
   if (report.verdict) return report.verdict;
   return report.reviewed
     ? "Your advisor has reviewed this business against the same eight areas you answered on. The findings below are what they would put in front of a buyer first."
-    : "This is built from your own answers across eight areas. An advisor review is the next thing that would move it.";
+    : "This is built from your own answers across eight areas of the business, and it is finished. A ValScore is a separate assessment: an advisor works the same eight areas against what a buyer would conclude from the same facts, and produces an independent result.";
 }

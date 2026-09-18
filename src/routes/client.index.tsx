@@ -273,7 +273,11 @@ function ClientHome() {
           onContinue={() => navigate({ to: "/client/questionnaire" })}
         />
       ) : stage === "awaiting" ? (
-        <AwaitingReview companyName={sub?.company_name ?? ""} scoreData={scoreData} />
+        <AwaitingReview
+          companyName={sub?.company_name ?? ""}
+          scoreData={scoreData}
+          onViewResults={() => navigate({ to: "/client/summary" })}
+        />
       ) : (
         <Complete
           plan={plan}
@@ -708,9 +712,11 @@ function TimelineItem({
 function AwaitingReview({
   companyName,
   scoreData,
+  onViewResults,
 }: {
   companyName: string;
   scoreData: ScoreData | null;
+  onViewResults: () => void;
 }) {
   /*
    * The objective half, grossed onto 0 to 100. Identical arithmetic to
@@ -747,6 +753,9 @@ function AwaitingReview({
           >
             Final · your ValScore is a separate assessment, in progress
           </span>
+          <div className="mt-4">
+            <Button onClick={onViewResults}>See your full result</Button>
+          </div>
         </Card>
       ) : null}
 
@@ -769,7 +778,7 @@ function AwaitingReview({
         <TimelineItem
           state="todo"
           title="Your summary and action plan unlock"
-          body="Your ValScore valuation and a prioritised plan, right here, no action needed from you."
+          body="Your ValScore valuation and a prioritised plan, alongside the Objective Score you already have."
           last
         />
       </Card>
