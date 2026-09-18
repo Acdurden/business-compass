@@ -173,7 +173,10 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(MUTED);
-  doc.text("VALSCORE", sx, y + 26, { align: "right", charSpace: 1.1 });
+  doc.text(report.reviewed ? "VALSCORE" : "OBJECTIVE SCORE", sx, y + 26, {
+    align: "right",
+    charSpace: 1.1,
+  });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(34);

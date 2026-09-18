@@ -291,7 +291,7 @@ function ReportView({ report }: { report: ClientReport }) {
               className="mt-2 text-[11px] uppercase tracking-[0.16em]"
               style={{ color: BRAND.muted }}
             >
-              ValScore
+              {report.reviewed ? "ValScore" : "Objective Score"}
             </div>
             {/*
              * The band label is deliberately absent. Andrew, 2026-09-18: the band

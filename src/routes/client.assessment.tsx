@@ -447,21 +447,18 @@ function Submitted({
           className="mx-auto mt-2 max-w-[62ch] text-[15px] leading-relaxed"
           style={{ color: BRAND.muted }}
         >
-          {reviewed
-            ? "This is your side of the assessment, kept as a record. Your reviewed result sits alongside it and is the one to work from."
-            : awaitingReview
-              ? "You have finished, and your advisor is reviewing it now. This is what you told us, and what it says about how a buyer would see the business today."
-              : "You have finished. This is what you told us, and what it says about how a buyer would see the business today."}
+          This is what you told us, and what it says about how a buyer would see the business today.
+          It is finished and it does not change.
         </p>
         <span
           className="mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[12.5px]"
           style={{ borderColor: BRAND.rail, color: BRAND.muted, background: "#ffffff" }}
         >
           {reviewed
-            ? "Your view · your advisor's review is finished"
+            ? "Final · your ValScore is a separate assessment, now ready"
             : awaitingReview
-              ? "Provisional · this will change after your advisor's review"
-              : "Your own answers · no advisor review on this assessment"}
+              ? "Final · your ValScore is a separate assessment, in progress"
+              : "Final · this score does not change"}
         </span>
       </div>
 
@@ -477,7 +474,7 @@ function Submitted({
         <div className="flex flex-wrap justify-center gap-x-12 gap-y-5">
           <div>
             <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: BRAND.muted }}>
-              ValScore
+              Objective Score
             </p>
             <p className="mt-1.5 text-[42px] font-bold leading-none" style={{ color: BRAND.teal }}>
               {displayScore(score)}
@@ -619,9 +616,10 @@ function Submitted({
             What happens next
           </h3>
           <p className="mt-3 text-[14px] leading-relaxed" style={{ color: BRAND.muted }}>
-            Your advisor is working through the same eight areas now, against what a buyer would
-            conclude from the same facts. That review is the only thing that moves your ValScore
-            before the two of you speak, and it can move it in either direction.
+            Your Objective Score above is finished. Separately, your advisor is working through the
+            same eight areas against what a buyer would conclude from the same facts, and that
+            produces your ValScore. The two are different assessments rather than one number being
+            revised, and they are built from different evidence, so they will not match.
           </p>
           <p className="mt-3 text-[14px] leading-relaxed" style={{ color: BRAND.muted }}>
             Two things worth doing while you wait. Look at the areas above where points are still
@@ -636,11 +634,10 @@ function Submitted({
             Where this stands
           </h3>
           <p className="mt-3 text-[14px] leading-relaxed" style={{ color: BRAND.muted }}>
-            Your assessment is complete and the figures above are final as they stand. They are
-            built from your own answers, which is the whole of what this assessment covers. An
-            advisor review is available later as an add-on: it tests the same eight areas against
-            what a buyer would conclude from the same facts, and it can move the score in either
-            direction.
+            Your Objective Score is finished. It is built from your own answers, which is the whole
+            of what this assessment covers, and it does not change. A ValScore is a separate
+            assessment you can add later: an advisor works the same eight areas against what a buyer
+            would conclude from the same facts and produces a second, independent result.
           </p>
         </Card>
       )}
@@ -656,8 +653,14 @@ function Submitted({
         </p>
       </Card>
 
+      {/*
+       * provisional={false}, always. The Objective Score and the range built from
+       * it are a finished product in their own right. A ValScore is a separate
+       * assessment, not a revision of this one, so nothing on this page is
+       * waiting to be corrected.
+       */}
       <div className="text-left">
-        <ValuationDisclaimer provisional={awaitingReview} hasRange={hasAmount} />
+        <ValuationDisclaimer hasRange={hasAmount} />
       </div>
     </div>
   );
@@ -825,9 +828,6 @@ function TargetPlanner({
                       {Math.max(0, needDisplay - Math.round(score))} more points
                     </b>
                     , spread across the eight areas below.
-                    {awaitingReview
-                      ? " Your advisor's review is the next thing that moves it, and after that the plan you work through together."
-                      : ""}
                   </p>
                 </>
               )}

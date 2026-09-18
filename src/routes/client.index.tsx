@@ -188,12 +188,12 @@ function ClientHome() {
        * A half-finished assessment must not produce a partial score.
        *
        * "awaiting" now qualifies as well, added 2026-09-18 at Andrew's
-       * instruction. A full-service client who has submitted has a real
-       * objective score, and hiding it until an advisor gets to them left the
-       * longest stretch of the journey with nothing on it. What is shown is the
-       * objective half grossed onto 0 to 100, the same number and the same word
-       * ("Provisional") that /client/assessment already uses, so the two pages
-       * cannot disagree.
+       * instruction. The Objective Score is a finished product in its own right:
+       * everyone who submits gets one, it is built from their own answers, and
+       * it does not change. A ValScore is a SEPARATE assessment that full-service
+       * clients also receive, not a later revision of this number. So there is
+       * nothing provisional to withhold here, and the same figure /client/assessment
+       * shows is shown here.
        */
       const derived = deriveStage(row, extraData?.advisor_status ?? null, rowPlan, advisoryAnswers);
       if (derived === "complete" || derived === "awaiting") {
@@ -721,7 +721,7 @@ function AwaitingReview({
     scoreData?.result.sectionScores
       .filter((s) => s.questionnaire_type === "objective")
       .reduce((sum, s) => sum + s.max_score, 0) ?? 0;
-  const provisional = scoreData
+  const objectiveScore = scoreData
     ? grossObjective(scoreData.result.objectiveScore, objectiveMax)
     : null;
 
@@ -729,23 +729,23 @@ function AwaitingReview({
     <>
       <PageHead
         eyebrow="Submitted"
-        title="Your assessment is in review"
+        title="Your Objective Score is ready"
         sub={`${companyName} · here's where things stand.`}
       />
 
-      {provisional != null ? (
+      {objectiveScore != null ? (
         <Card className="text-center">
           <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: BRAND.muted }}>
-            ValScore
+            Objective Score
           </p>
           <p className="mt-1.5 text-[42px] font-bold leading-none" style={{ color: BRAND.teal }}>
-            {displayScore(provisional)}
+            {displayScore(objectiveScore)}
           </p>
           <span
             className="mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[12.5px]"
             style={{ borderColor: "#e4e9ef", color: BRAND.muted, background: "#ffffff" }}
           >
-            Provisional · this will change after your advisor&apos;s review
+            Final · your ValScore is a separate assessment, in progress
           </span>
         </Card>
       ) : null}
@@ -758,18 +758,18 @@ function AwaitingReview({
         />
         <TimelineItem
           state="current"
-          title="Your advisor is reviewing it"
-          body="They're working through the things a questionnaire can't capture: customer retention, staff tenure, how transferable your earnings really are. They will restate your ValScore based on what they find."
+          title="Your advisor is building your ValScore"
+          body="They're working the same eight areas against the things a questionnaire can't capture: customer retention, staff tenure, how transferable your earnings really are."
         />
         <TimelineItem
           state="todo"
-          title="Your ValScore is restated"
-          body="Your self-assessment becomes your ValScore. It can move up or down."
+          title="Your ValScore arrives"
+          body="A second, independent result. It is built from different evidence than the score above, so the two will not match."
         />
         <TimelineItem
           state="todo"
           title="Your summary and action plan unlock"
-          body="Including your advisor-adjusted valuation and a prioritised plan, right here, no action needed from you."
+          body="Your ValScore valuation and a prioritised plan, right here, no action needed from you."
           last
         />
       </Card>
@@ -1022,7 +1022,7 @@ function Complete({
           label="Assessment"
           value="Complete"
           valueClass="text-[20px]"
-          note={isObjective ? "All 8 drivers scored" : "Reviewed by your advisor"}
+          note={isObjective ? "All nine areas answered" : "Reviewed by your advisor"}
         />
       </div>
 
@@ -1047,7 +1047,7 @@ function Complete({
                     style={{ color: BRAND.muted }}
                   >
                     {isObjective
-                      ? "Total available across all 8 drivers"
+                      ? "Total available across all eight areas"
                       : "Total ValScore still available"}
                   </span>
                   <span className="text-[16px]" style={{ color: BRAND.tealDark }}>
@@ -1061,7 +1061,7 @@ function Complete({
               style={{ borderColor: "#eef2f6", color: BRAND.muted }}
             >
               {isObjective
-                ? "These areas hold the most unclaimed points. Improving them raises your ValScore and the valuation that comes with it. An advisor review turns this into a concrete plan."
+                ? "These areas hold the most unclaimed points. Improving them raises your Objective Score and the valuation that comes with it. A ValScore turns this into a concrete plan."
                 : "Your advisor flagged these as the priorities. Each one is broken down driver by driver in your summary."}
             </p>
           </Card>
@@ -1070,7 +1070,7 @@ function Complete({
         <div>
           <Card title="Your results">
             <p className="text-[14px] font-bold">
-              {isObjective ? "Your objective results are ready" : "Your ValScore summary is ready"}
+              {isObjective ? "Your Objective Score is ready" : "Your ValScore summary is ready"}
             </p>
             <p className="mt-1 text-[12.5px] leading-[1.55]" style={{ color: BRAND.muted }}>
               {isObjective

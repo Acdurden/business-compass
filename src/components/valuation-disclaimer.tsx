@@ -6,9 +6,11 @@
  * assessed result at `/client/summary`. Wording approved 2026-08-27 — it lives
  * here and only here, so changing it changes it everywhere at once.
  *
- * `provisional` adds the pre-review caveat and must be true ONLY where an
- * advisor review is genuinely still to come. An objective-only client never
- * gets one, so they are not waiting and must not be told they are.
+ * `provisional` adds the pre-review caveat. As of 2026-09-18 nothing passes it.
+ * The Objective Score and the range built from it are a finished product that
+ * everyone who submits receives; a ValScore is a separate assessment rather than
+ * a revision of that one, so no client is looking at figures waiting to be
+ * corrected. The prop stays for the day something genuinely is provisional.
  *
  * `hasRange` is false where no income figure is on file and the screen is
  * therefore showing a score but no money. It drops the ±5% mechanics, which
