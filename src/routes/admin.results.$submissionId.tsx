@@ -138,7 +138,7 @@ function ResultsPage() {
       // account; zero means the valuation block is omitted instead.
       const amount = Number(subData.valuation_input_amount ?? 0);
       // No default: a target is the client's own goal, set by them on
-      // /client/assessment. Zero makes targetAnalysis return null rather than
+      // /client/objective-score. Zero makes targetAnalysis return null rather than
       // analysing a goal nobody gave us.
       const target = Number(subData.target_valuation ?? 0);
 

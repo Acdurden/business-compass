@@ -2,8 +2,8 @@
  * The client-facing valuation disclaimer.
  *
  * Every screen that shows a client a dollar figure carries this: the dashboard
- * at `/client`, the self-assessment record at `/client/assessment`, and the
- * assessed result at `/client/summary`. Wording approved 2026-08-27 — it lives
+ * at `/client`, the Objective Score at `/client/objective-score`, and the
+ * ValScore at `/client/valscore`. Wording approved 2026-08-27 — it lives
  * here and only here, so changing it changes it everywhere at once.
  *
  * `provisional` adds the pre-review caveat. As of 2026-09-18 nothing passes it.

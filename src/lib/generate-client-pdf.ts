@@ -1,12 +1,17 @@
 /**
  * The client report, rendered to PDF.
  *
- * This is the same report the client reads on `/client/summary`, in the same
- * order, saying the same things. Both take a `ClientReport` from
- * `client-report.ts` and neither decides anything about its content. That is
- * deliberate: the two were built independently once and drifted within three
- * weeks, the PDF carrying a self-versus-advisor comparison the page had
+ * TWO DOCUMENTS, ONE BUILDER. The Objective Score and the ValScore are separate
+ * products, so each has its own document, and `variant` decides which. They
+ * share this file rather than being written twice, because the last time two
+ * renderings of one report were built independently they drifted within three
+ * weeks: the PDF carried a self-versus-advisor comparison the page had
  * deliberately dropped.
+ *
+ * Both take a `ClientReport` from `client-report.ts` and neither decides
+ * anything about its content. The Objective Score document reads
+ * `report.objective`, never the top-level figures, which on a reviewed
+ * submission are the ValScore.
  *
  * This is NOT `generate-submission-pdf.ts`. That one is the advisor's working
  * file, headed "KRITERION VALUATION REPORT" with the submission id and the raw
@@ -38,7 +43,30 @@ function formatLongDate(d: Date): string {
 
 /* ------------------------------------------------------------------ */
 
-export function buildClientPdf(report: ClientReport): jsPDF {
+/**
+ * Which of the two products this document is.
+ *
+ * "objective" is the Objective Score: the client's own answers, finished on
+ * submission, and every client has one. "valscore" is the advisor's assessment
+ * and only exists once a review does. They are separate documents because they
+ * are separate products, and a client holding both must not find the first one
+ * repeated inside the second.
+ */
+export type PdfVariant = "objective" | "valscore";
+
+export function buildClientPdf(report: ClientReport, variant: PdfVariant = "valscore"): jsPDF {
+  const isValScore = variant === "valscore";
+  /* The Objective Score document is built from the objective block, never from
+     the top-level figures, which on a reviewed submission are the ValScore. */
+  const view = isValScore
+    ? {
+        score: report.score,
+        multiple: report.multiple,
+        midpoint: report.midpoint,
+        areas: report.areas,
+        totalAvailable: report.totalAvailable,
+      }
+    : report.objective;
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   let y = 0;
 
@@ -86,7 +114,7 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(MUTED);
-  doc.text("Value Readiness Assessment", PAGE_W - M, y, { align: "right" });
+  doc.text(isValScore ? "ValScore" : "Objective Score", PAGE_W - M, y, { align: "right" });
 
   y += 12;
   rule(y, NAVY, 1.2);
@@ -114,7 +142,7 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   doc.setTextColor(MUTED);
   doc.text(
     `Completed ${formatLongDate(report.completedOn)}${
-      report.reviewed ? " · Reviewed by your Kriterion advisor" : ""
+      isValScore ? " · Reviewed by your Kriterion advisor" : ""
     }`,
     M,
     y,
@@ -144,14 +172,14 @@ export function buildClientPdf(report: ClientReport): jsPDF {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(24);
     doc.setTextColor(NAVY);
-    doc.text(formatValuationRange(report.midpoint), bx, by);
+    doc.text(formatValuationRange(view.midpoint), bx, by);
     by += 20;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
     doc.setTextColor(MUTED);
     doc.text(
-      `Midpoint ${formatCurrency(round10k(report.midpoint))} · ${report.multiple.toFixed(2)} times ${report.basisLabel} of ${formatCurrency(report.basisAmount ?? 0)}`,
+      `Midpoint ${formatCurrency(round10k(view.midpoint))} · ${view.multiple.toFixed(2)} times ${report.basisLabel} of ${formatCurrency(report.basisAmount ?? 0)}`,
       bx,
       by,
     );
@@ -173,7 +201,7 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(MUTED);
-  doc.text(report.reviewed ? "VALSCORE" : "OBJECTIVE SCORE", sx, y + 26, {
+  doc.text(isValScore ? "VALSCORE" : "OBJECTIVE SCORE", sx, y + 26, {
     align: "right",
     charSpace: 1.1,
   });
@@ -181,7 +209,7 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(34);
   doc.setTextColor(TEAL);
-  doc.text(String(Math.round(report.score)), sx, y + 62, { align: "right" });
+  doc.text(String(Math.round(view.score)), sx, y + 62, { align: "right" });
 
   /*
    * No band label. Andrew, 2026-09-18: the band stays internal for now and
@@ -197,13 +225,15 @@ export function buildClientPdf(report: ClientReport): jsPDF {
    * Always rendered, so the report keeps its shape whether or not an advisor
    * has written a verdict. The stand-in makes no claim about this business.
    */
-  eyebrow("What a buyer would conclude");
-  paragraph(verdictOrStandIn(report), 11.5, INK, CONTENT_W - 40);
-  y += 12;
+  if (isValScore) {
+    eyebrow("What a buyer would conclude");
+    paragraph(verdictOrStandIn(report), 11.5, INK, CONTENT_W - 40);
+    y += 12;
+  }
 
   /* ---------------- findings ---------------- */
 
-  if (report.findings.length > 0) {
+  if (isValScore && report.findings.length > 0) {
     need(120);
     eyebrow("The things a buyer raises first");
 
@@ -248,9 +278,9 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   need(140);
   eyebrow("Where your points are, and where they are not");
   paragraph(
-    report.reviewed
-      ? "Eight areas carry the score. For each one, how many points your answers and your advisor's review have earned between them, and how many are still on the table."
-      : "Eight areas carry the score. For each one, how many points your answers have earned and how many are still on the table.",
+    isValScore
+      ? "Eight areas carry the ValScore. For each one, how many points your answers and your advisor's review have earned between them, and how many are still on the table."
+      : "Eight areas carry the Objective Score. For each one, how many points your answers have earned and how many are still on the table.",
   );
   y += 8;
 
@@ -268,7 +298,7 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   rule(y, NAVY, 1);
   y += 16;
 
-  report.areas
+  view.areas
     .slice()
     .sort((a, b) => b.available - a.available)
     .forEach((area) => {
@@ -301,12 +331,12 @@ export function buildClientPdf(report: ClientReport): jsPDF {
   doc.setTextColor(INK);
   doc.text("Still available across all eight areas", colArea, y);
   doc.setTextColor(TEAL);
-  doc.text(`${report.totalAvailable} points`, colGap, y, { align: "right" });
+  doc.text(`${view.totalAvailable} points`, colGap, y, { align: "right" });
   y += 26;
 
   /* ---------------- plan ---------------- */
 
-  if (report.actions.length > 0) {
+  if (isValScore && report.actions.length > 0) {
     need(140);
     y += 10;
     eyebrow("Your plan, in the order that moves the number most");
@@ -404,13 +434,27 @@ export function buildClientPdf(report: ClientReport): jsPDF {
  * same submission the result page shows for the same signed-in client.
  */
 export async function generateClientPdf(submissionId?: string): Promise<void> {
+  await generatePdf("valscore", submissionId);
+}
+
+/**
+ * The Objective Score document. Every client who has submitted can take one,
+ * whether or not they have bought a ValScore.
+ */
+export async function generateObjectivePdf(submissionId?: string): Promise<void> {
+  await generatePdf("objective", submissionId);
+}
+
+async function generatePdf(variant: PdfVariant, submissionId?: string): Promise<void> {
   const { loadClientReport } = await import("@/lib/client-report");
   const report = await loadClientReport(submissionId);
-  const doc = buildClientPdf(report);
+  const doc = buildClientPdf(report, variant);
 
   const safeName = report.companyName
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
-  doc.save(`${safeName || "assessment"}-value-readiness.pdf`);
+  doc.save(
+    `${safeName || "assessment"}-${variant === "valscore" ? "valscore" : "objective-score"}.pdf`,
+  );
 }

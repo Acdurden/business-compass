@@ -219,7 +219,7 @@ function ActionPlanWorkspace() {
               subData.valuation_input_amount ?? DEFAULT_VALUATION_INPUT_AMOUNT,
             ),
             // No default: the target is the client's own goal, set on
-            // /client/assessment. Zero makes targetAnalysis return null rather
+            // /client/objective-score. Zero makes targetAnalysis return null rather
             // than analysing a goal nobody gave us.
             targetValuation: Number(subData.target_valuation ?? 0),
           },

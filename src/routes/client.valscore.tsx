@@ -1,5 +1,5 @@
 /**
- * The client result page.
+ * ValScore — the advisor's assessment.
  *
  * Rebuilt 2026-09-17 to the approved mock. It decides nothing about its own
  * content: `loadClientReport` assembles the report and this file renders it, so
@@ -18,7 +18,13 @@
  *  - No self-versus-advisor comparison. It reads as marking the owner down on
  *    their own business.
  *  - The target planner is gone from here. It set a target almost nobody
- *    reaches. `/client/assessment` keeps its own.
+ *    reaches. `/client/objective-score` keeps its own.
+ *
+ * ONE OF TWO PRODUCTS, 2026-09-18. This page holds the advisor's work and
+ * nothing else: their number, the valuation that follows from it, what a buyer
+ * would conclude, the findings and the plan. The client's own answers and what
+ * those are worth live on `/client/objective-score`, which is a finished
+ * product needing no review. Nothing appears on both.
  */
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
@@ -38,7 +44,7 @@ import {
   type ReportFinding,
 } from "@/lib/client-report";
 
-export const Route = createFileRoute("/client/summary")({
+export const Route = createFileRoute("/client/valscore")({
   ssr: false,
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
@@ -52,7 +58,7 @@ export const Route = createFileRoute("/client/summary")({
       throw redirect({ to: "/client/change-password" });
     }
   },
-  head: () => ({ meta: [{ title: "Your results" }] }),
+  head: () => ({ meta: [{ title: "ValScore" }] }),
   component: ClientSummary,
 });
 
@@ -107,30 +113,32 @@ function ClientSummary() {
   }
 
   /*
-   * One gate, and it is finishing the questionnaire. Everyone who submits has an
-   * Objective Score, and this page renders it.
+   * This page is the ValScore and nothing else. It holds the advisor's work:
+   * their number, the valuation that follows from it, what a buyer would
+   * conclude, the findings and the plan. Everything the client's own answers
+   * produce lives on `/client/objective-score`, which is a finished product in
+   * its own right and needs no review to exist.
    *
-   * Until 2026-09-18 a full-service client was refused here until their review
-   * landed, on the grounds that a ValScore made of the objective half alone is
-   * confidently wrong. That reasoning held while the two were one number. They
-   * are two products now: the Objective Score is finished on submission and a
-   * ValScore is a separate assessment, so refusing the first until the second
-   * exists was withholding something the client had already completed.
-   *
-   * What made the old guard necessary still holds and is handled upstream:
-   * `reviewed` in `client-report.ts` requires advisory answers to actually
-   * exist, not merely a status flag, so a submission marked reviewed with a
-   * blank advisory half renders as the Objective Score rather than as a
-   * collapsed ValScore. Everything advisor-written, the findings, the plan and
-   * the verdict, is gated on that same flag.
+   * So there is nothing to render until a review does. `reviewed` in
+   * `client-report.ts` requires advisory answers to actually exist rather than
+   * trusting a status flag, so a submission marked reviewed with a blank
+   * advisory half lands here rather than reporting a collapsed ValScore.
    */
-  if (!report.clientSubmitted) {
+  if (!report.reviewed) {
     return (
       <Shell onSignOut={signOut} company={report.companyName}>
         <Blocked
-          title="Finish your assessment first"
-          body="Your score and valuation appear here as soon as you complete every question."
-          onBack={() => navigate({ to: "/client" })}
+          title={
+            report.isObjectivePlan
+              ? "A ValScore is not part of your assessment"
+              : "Your ValScore is being prepared"
+          }
+          body={
+            report.isObjectivePlan
+              ? "Your Objective Score is finished and available now. A ValScore is a separate assessment: an advisor works the same eight areas against what a buyer would conclude from the same facts. Ask us about adding one."
+              : "An advisor is working the same eight areas independently. Your Objective Score is finished and available now, and your ValScore arrives as a separate result."
+          }
+          onBack={() => navigate({ to: "/client/objective-score" })}
         />
       </Shell>
     );
@@ -290,7 +298,7 @@ function ReportView({ report }: { report: ClientReport }) {
               className="mt-2 text-[11px] uppercase tracking-[0.16em]"
               style={{ color: BRAND.muted }}
             >
-              {report.reviewed ? "ValScore" : "Objective Score"}
+              ValScore
             </div>
             {/*
              * The band label is deliberately absent. Andrew, 2026-09-18: the band
@@ -301,9 +309,9 @@ function ReportView({ report }: { report: ClientReport }) {
           </div>
           <div className="min-w-[15rem] flex-1">
             <p className="text-[14.5px] leading-relaxed" style={{ color: BRAND.ink }}>
-              {report.reviewed
-                ? "Built from your own answers across eight areas, then reviewed by a Kriterion BVI advisor against what a buyer would conclude from the same facts."
-                : "Built from your own answers across eight areas."}
+              Your own answers across eight areas, reviewed by a Kriterion advisor against what a
+              buyer would conclude from the same facts. This is a separate assessment from your
+              Objective Score, built from different evidence, so the two will not match.
             </p>
             <p className="mt-2 text-[13px] leading-relaxed" style={{ color: BRAND.muted }}>
               As we assess more agencies this will also show where you sit against them. Today the
@@ -449,36 +457,18 @@ function ReportView({ report }: { report: ClientReport }) {
         style={{ background: BRAND.navy }}
       >
         <div className="min-w-[16rem] flex-1">
-          <p className="text-[16px] font-semibold text-white">
-            {report.reviewed
-              ? "Talk it through with your advisor"
-              : report.isObjectivePlan
-                ? "Add a ValScore"
-                : "Your ValScore is being prepared"}
-          </p>
+          <p className="text-[16px] font-semibold text-white">Talk it through with your advisor</p>
           <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "#c3d2df" }}>
-            {report.reviewed
-              ? "Forty-five minutes on the findings above, what a buyer would actually do with them, and which one to take on first."
-              : report.isObjectivePlan
-                ? "An advisor works the same eight areas against what a buyer would conclude from the same facts, and produces a second, independent result with a plan against it."
-                : "An advisor is working the same eight areas independently. Your Objective Score above is finished and does not change; the ValScore arrives as a separate result."}
+            Forty-five minutes on the findings above, what a buyer would actually do with them, and
+            which one to take on first.
           </p>
         </div>
-        {report.reviewed ? (
-          <Button
-            className="shrink-0 bg-white text-[#0e1c2b] hover:bg-white/90"
-            onClick={() => toastBook()}
-          >
-            Book the conversation
-          </Button>
-        ) : report.isObjectivePlan ? (
-          <Button
-            className="shrink-0 bg-white text-[#0e1c2b] hover:bg-white/90"
-            onClick={() => toastUpgrade()}
-          >
-            Talk to us about it
-          </Button>
-        ) : null}
+        <Button
+          className="shrink-0 bg-white text-[#0e1c2b] hover:bg-white/90"
+          onClick={() => toastBook()}
+        >
+          Book the conversation
+        </Button>
       </div>
     </>
   );
@@ -492,13 +482,6 @@ function ReportView({ report }: { report: ClientReport }) {
 function toastBook() {
   import("sonner").then(({ toast }) => {
     toast.info("Your advisor will be in touch to arrange this.");
-  });
-}
-
-/** Same reasoning as `toastBook`. The upsell is a conversation, not a checkout. */
-function toastUpgrade() {
-  import("sonner").then(({ toast }) => {
-    toast.info("We'll be in touch about adding a ValScore.");
   });
 }
 

@@ -284,7 +284,7 @@ export const getEmailDraft = createServerFn({ method: "GET" })
           warning = "This client has already finished their assessment. A nudge would be odd.";
         }
       } else {
-        ctaUrl = `${origin}/client/summary`;
+        ctaUrl = `${origin}/client/valscore`;
         const reviewIn =
           submission.advisor_status === "submitted" || submission.advisor_status === "final";
 

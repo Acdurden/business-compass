@@ -1,7 +1,7 @@
 /**
  * The client report, assembled once.
  *
- * There is exactly one report. `/client/summary` renders it to the screen and
+ * There is exactly one report. `/client/valscore` renders it to the screen and
  * `generate-client-pdf.ts` renders it to a PDF, and neither of them decides
  * anything about its content. Before this module the two were built
  * independently and had already drifted: the PDF carried a self-versus-advisor
@@ -64,6 +64,19 @@ export type ReportAction = {
   action: string;
 };
 
+/**
+ * One product's figures. The Objective Score and the ValScore are separate
+ * assessments of the same business, so each carries its own score, its own
+ * valuation and its own breakdown of the eight areas.
+ */
+export type ProductView = {
+  score: number;
+  multiple: number;
+  midpoint: number;
+  areas: ReportArea[];
+  totalAvailable: number;
+};
+
 export type ClientReport = {
   submissionId: string;
   companyName: string;
@@ -85,6 +98,15 @@ export type ClientReport = {
   midpoint: number;
   areas: ReportArea[];
   totalAvailable: number;
+  /**
+   * The Objective Score product, always present, built from the client's own
+   * answers alone. The fields above describe whichever product this report is
+   * for: on a reviewed submission they are the ValScore, and this block is the
+   * Objective Score the same client also holds. Two products, so a reviewed
+   * client has both, and the Objective Score document must not be built from
+   * ValScore figures.
+   */
+  objective: ProductView;
   findings: ReportFinding[];
   actions: ReportAction[];
   /** Areas holding points with nothing prescribed against them. */
@@ -118,7 +140,7 @@ const SUB_COLUMNS =
  *
  * `submissionId` is optional. Omitted, it picks the signed-in client's own
  * submission ordered `created_at` ASC, which is what `/client` and
- * `/client/summary` both do. Changing that ordering in one place and not the
+ * `/client/valscore` both do. Changing that ordering in one place and not the
  * other is a bug this project has already had once.
  */
 export async function loadClientReport(submissionId?: string): Promise<ClientReport> {
@@ -184,7 +206,7 @@ export async function loadClientReport(submissionId?: string): Promise<ClientRep
        * row with a null type and a non-null amount priced the business against
        * the EBITDA anchors, roughly two to four times the NFI anchors, and then
        * labelled the result "Net Fee Income" two hundred lines further down. The
-       * same client saw a different valuation on /client than on /client/summary.
+       * same client saw a different valuation on /client than on /client/valscore.
        */
       valuationInputType: (sub.valuation_input_type as InputType | null) ?? "netfeeincome",
       valuationInputAmount: hasAmount ? rawAmount : 0,
@@ -228,41 +250,63 @@ export async function loadClientReport(submissionId?: string): Promise<ClientRep
    * advisory 40, so it needs no scaling. An Objective Score is raw /60 and the
    * headline above has been grossed to 0-100, so the areas have to be grossed
    * with it. Until 2026-09-18 they were not: a client read a score of 88 beside
-   * "7 points still available", which adds to 95, while `/client/assessment`
+   * "7 points still available", which adds to 95, while `/client/objective-score`
    * grossed the same figure and said 12. One client, one submission, two
    * arithmetics on two pages.
    */
-  const areaScale = reviewed ? 1 : objectiveMax > 0 ? CLIENT_SCALE_MAX / objectiveMax : 0;
-
   /*
-   * ROUNDING IS ANCHORED ON `available`, not on earned.
+   * Areas, for one product.
    *
-   * Scaling three numbers and rounding each independently lets them disagree:
-   * Strategic Positioning at 4 of 5 scales to 6.67 of 8.33, which rounds to 7 of
-   * 8 and reports 1 point available where the honest answer is 2. Eight areas
-   * doing that is how a column of availables comes to 11 under a total row
-   * saying 12, on the same screen.
+   * SCALE. A reviewed submission is already native 0-100, objective 60 plus
+   * advisory 40, so it needs no scaling. An Objective Score is raw /60 and its
+   * headline has been grossed to 0-100, so its areas have to be grossed with it.
+   * Until 2026-09-18 they were not: a client read a score of 88 beside "7 points
+   * still available", which adds to 95, while `/client/objective-score` grossed
+   * the same figure and said 12.
    *
-   * `available` is the figure that matters: it is what the total row sums, what
-   * a finding quotes, and what `/client/assessment` prints for the same area. So
-   * it is rounded from the scaled gap, and `earned` is derived from it, which
-   * costs at most a point of precision on a ratio nobody adds up.
+   * ROUNDING IS ANCHORED ON `available`, not on earned. Scaling three numbers and
+   * rounding each independently lets them disagree: Strategic Positioning at 4 of
+   * 5 scales to 6.67 of 8.33, which rounds to 7 of 8 and reports 1 point
+   * available where the honest answer is 2. Eight areas doing that is how a
+   * column of availables comes to 11 under a total row saying 12.
    */
-  const areas: ReportArea[] = opportunities.map((o) => {
-    const [objId, advId] = o.key.split("-");
-    const obj = scoreBySection.get(objId ?? "");
-    const adv = advId ? scoreBySection.get(advId) : undefined;
-    const rawTotal = (obj?.max_score ?? 0) + (reviewed ? (adv?.max_score ?? 0) : 0);
-    const rawEarned = (obj?.actual_score ?? 0) + (reviewed ? (adv?.actual_score ?? 0) : 0);
-    const total = Math.round(rawTotal * areaScale);
-    const available = Math.min(total, Math.round(Math.max(0, rawTotal - rawEarned) * areaScale));
-    return { key: o.key, name: o.name, earned: total - available, total, available };
-  });
+  function buildAreas(withAdvisory: boolean): ReportArea[] {
+    const scale = withAdvisory ? 1 : objectiveMax > 0 ? CLIENT_SCALE_MAX / objectiveMax : 0;
+    const source = buildOpportunities(
+      sections,
+      result.sectionScores,
+      withAdvisory ? "full" : "objective",
+    );
+    return source.map((o) => {
+      const [objId, advId] = o.key.split("-");
+      const obj = scoreBySection.get(objId ?? "");
+      const adv = advId ? scoreBySection.get(advId) : undefined;
+      const rawTotal = (obj?.max_score ?? 0) + (withAdvisory ? (adv?.max_score ?? 0) : 0);
+      const rawEarned = (obj?.actual_score ?? 0) + (withAdvisory ? (adv?.actual_score ?? 0) : 0);
+      const total = Math.round(rawTotal * scale);
+      const available = Math.min(total, Math.round(Math.max(0, rawTotal - rawEarned) * scale));
+      return { key: o.key, name: o.name, earned: total - available, total, available };
+    });
+  }
 
-  /*
-   * The sum of what the page actually prints, so the column and the total agree.
-   */
+  const areas = buildAreas(reviewed);
+  /* Summed from what the page actually prints, so the column and the total agree. */
   const totalAvailable = areas.reduce((sum, a) => sum + a.available, 0);
+
+  /*
+   * The Objective Score product. On an unreviewed submission this is the same
+   * arithmetic as the block above; on a reviewed one it is the second product
+   * the same client holds, and it is what the Objective Score document is built
+   * from.
+   */
+  const objectiveAreas = reviewed ? buildAreas(false) : areas;
+  const objectiveView: ProductView = {
+    score: grossObjective(result.objectiveScore, objectiveMax),
+    multiple: result.objective.multiple,
+    midpoint: result.objective.estimatedValuation,
+    areas: objectiveAreas,
+    totalAvailable: objectiveAreas.reduce((sum, a) => sum + a.available, 0),
+  };
 
   /*
    * The client's own answers, grouped by the objective section they belong to,
@@ -357,6 +401,7 @@ export async function loadClientReport(submissionId?: string): Promise<ClientRep
     midpoint: leg.estimatedValuation,
     areas,
     totalAvailable,
+    objective: objectiveView,
     findings,
     actions,
     uncoveredAreas,

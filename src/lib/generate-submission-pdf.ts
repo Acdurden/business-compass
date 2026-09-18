@@ -101,7 +101,7 @@ export async function generateSubmissionPdf(submissionId: string): Promise<void>
    * in the product collected one, so falling back to a shared constant produced
    * a target analysis for a goal nobody had set. Zero makes `targetAnalysis`
    * return null, which is the truthful answer. Clients set this themselves on
-   * `/client/assessment`.
+   * `/client/objective-score`.
    *
    * `renderTargetBlock` below is currently unreferenced, so none of this reaches
    * the page today — but it would have the moment anyone wired it up.

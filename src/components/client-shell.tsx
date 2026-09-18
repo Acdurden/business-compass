@@ -19,7 +19,7 @@ export type ClientPlan = "objective" | "full";
 export type ClientStage = "new" | "progress" | "awaiting" | "complete";
 
 export type NavTarget =
-  "/client" | "/client/assessment" | "/client/questionnaire" | "/client/summary";
+  "/client" | "/client/objective-score" | "/client/questionnaire" | "/client/valscore";
 
 type NavItem = {
   label: string;
@@ -48,7 +48,6 @@ function navItems(
    * locked a full-service client out of a result they had already completed.
    */
   const hasResults = stage === "complete" || stage === "awaiting";
-  const soon = "Available when you finish your assessment";
   /*
    * Opportunities, Documents and Account used to sit here as permanently locked
    * items reading "Coming soon". Removed 2026-09-18 at Andrew's instruction: a
@@ -59,23 +58,36 @@ function navItems(
   return [
     { label: "Dashboard", to: "/client", active: active === "/client" },
     {
-      /**
-       * Points at the assessment page rather than straight into the
-       * questionnaire. The page is the permanent record of what the client
-       * said, and it carries the route back into the questionnaire itself.
+      /*
+       * The nav is named after the two products, 2026-09-18. It used to read
+       * "My assessment" and "Score & valuation", which described the screens
+       * rather than what the client has.
+       *
+       * This page is the Objective Score: what the client's own answers
+       * produce, finished on submission. It also carries the record of those
+       * answers and the route back into the questionnaire, so it opens as soon
+       * as they start rather than when they finish.
        */
-      label: "My assessment",
-      to: "/client/assessment",
-      active: active === "/client/assessment",
+      label: "Objective Score",
+      to: "/client/objective-score",
+      active: active === "/client/objective-score",
       locked: !hasSubmission,
       reason: "Starts when you begin your assessment",
     },
     {
-      label: "Score & valuation",
-      to: "/client/summary",
-      active: active === "/client/summary",
-      locked: !hasResults,
-      reason: soon,
+      /*
+       * The ValScore is the advisor's product and holds nothing the Objective
+       * Score page already shows. It exists only once a review does, so it is
+       * locked rather than empty for everyone else.
+       */
+      label: "ValScore",
+      to: "/client/valscore",
+      active: active === "/client/valscore",
+      locked: !done || plan === "objective",
+      reason:
+        plan === "objective"
+          ? "Not part of your assessment. Ask us about adding one."
+          : "Available when your advisor's review is complete",
     },
     ...(plan === "objective" && done
       ? [

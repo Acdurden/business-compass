@@ -1,5 +1,5 @@
 /**
- * My Assessment — the permanent record of what the client said.
+ * Objective Score — the client's own answers, and what they are worth.
  *
  * The gap this closes: a full-service client is told their self-assessment
  * becomes their ValScore and can move after review, and is then never shown the
@@ -7,9 +7,12 @@
  * four-step timeline and nothing else, which is the longest and least designed
  * stretch of the journey.
  *
- * This is NOT the results page. `/client/summary` is the assessed result. This
- * is the client's own view of their own business, and it stays reachable after
- * the review lands rather than going dead — the two are different artefacts.
+ * ONE OF TWO PRODUCTS. This page is the Objective Score: built from what the
+ * client told us, finished the moment they submit, and it never changes. Every
+ * client has one. `/client/valscore` is the other product, the advisor's
+ * independent assessment, and it holds nothing this page already shows. The two
+ * are separate assessments rather than one number being revised, so this page
+ * stays live after a review lands rather than going dead.
  *
  * THREE STATES, NOT TWO. `reviewed` alone is not enough to write copy against.
  * An objective-only client has `reviewed` false forever and is not waiting for
@@ -31,6 +34,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Download } from "lucide-react";
+import { generateObjectivePdf } from "@/lib/generate-client-pdf";
 import {
   ClientShell,
   type ClientPlan,
@@ -56,7 +61,7 @@ import {
   type SectionMeta,
 } from "@/lib/score-display";
 
-export const Route = createFileRoute("/client/assessment")({
+export const Route = createFileRoute("/client/objective-score")({
   ssr: false,
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
@@ -71,7 +76,7 @@ export const Route = createFileRoute("/client/assessment")({
     }
     return { email: data.session.user.email ?? "" };
   },
-  head: () => ({ meta: [{ title: "My assessment" }] }),
+  head: () => ({ meta: [{ title: "Objective Score" }] }),
   component: MyAssessment,
 });
 
@@ -256,7 +261,7 @@ function MyAssessment() {
       stage={stage}
       plan={plan}
       hasSubmission={sub !== null}
-      active="/client/assessment"
+      active="/client/objective-score"
       onSignOut={signOut}
       onNavigate={(to: NavTarget) => navigate({ to })}
     >
@@ -284,7 +289,7 @@ function MyAssessment() {
           setTarget={setTarget}
           savingTarget={savingTarget}
           onSaveTarget={saveTarget}
-          onViewResults={() => navigate({ to: "/client/summary" })}
+          onViewResults={() => navigate({ to: "/client/valscore" })}
         />
       ) : (
         <p className="text-sm" style={{ color: BRAND.muted }}>
@@ -501,6 +506,9 @@ function Submitted({
             </div>
           ) : null}
         </div>
+        <div className="mt-5">
+          <DownloadObjectivePdf />
+        </div>
       </Card>
 
       <TargetPlanner
@@ -667,6 +675,35 @@ function Submitted({
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * The Objective Score, as a file they can keep.
+ *
+ * A separate document from the ValScore, because they are separate products.
+ * Every client who has submitted can take this one, which is the point of the
+ * Objective Score being finished on submission rather than on review.
+ */
+function DownloadObjectivePdf() {
+  const [busy, setBusy] = useState(false);
+
+  async function download() {
+    setBusy(true);
+    try {
+      await generateObjectivePdf();
+    } catch {
+      toast.error("We couldn't build your PDF. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Button variant="outline" onClick={() => void download()} disabled={busy}>
+      <Download className="mr-1.5 h-3.5 w-3.5" />
+      {busy ? "Preparing…" : "Download your Objective Score"}
+    </Button>
+  );
+}
 
 /**
  * The target planner.

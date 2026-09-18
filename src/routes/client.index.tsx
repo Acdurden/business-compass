@@ -108,7 +108,7 @@ function deriveStage(
   /**
    * A submission can be flagged as reviewed while the advisory answers are
    * still blank. Treating that as complete would show a ValScore made of the
-   * objective half only — confidently wrong. `/client/summary` already refuses
+   * objective half only — confidently wrong. `/client/valscore` already refuses
    * to render in that case; keep this page in step with it.
    */
   if (reviewed && advisoryAnswers === 0) return "awaiting";
@@ -192,7 +192,7 @@ function ClientHome() {
        * everyone who submits gets one, it is built from their own answers, and
        * it does not change. A ValScore is a SEPARATE assessment that full-service
        * clients also receive, not a later revision of this number. So there is
-       * nothing provisional to withhold here, and the same figure /client/assessment
+       * nothing provisional to withhold here, and the same figure /client/objective-score
        * shows is shown here.
        */
       const derived = deriveStage(row, extraData?.advisor_status ?? null, rowPlan, advisoryAnswers);
@@ -276,7 +276,7 @@ function ClientHome() {
         <AwaitingReview
           companyName={sub?.company_name ?? ""}
           scoreData={scoreData}
-          onViewResults={() => navigate({ to: "/client/summary" })}
+          onViewResults={() => navigate({ to: "/client/objective-score" })}
         />
       ) : (
         <Complete
@@ -285,7 +285,16 @@ function ClientHome() {
           submissionId={sub?.submission_id ?? ""}
           extras={extras}
           data={scoreData}
-          onViewSummary={() => navigate({ to: "/client/summary" })}
+          /*
+           * Two products, two destinations. A reviewed client's result is the
+           * ValScore; an objective-only client's result is the Objective Score,
+           * and the ValScore page holds nothing for them.
+           */
+          onViewSummary={() =>
+            navigate({
+              to: plan === "objective" ? "/client/objective-score" : "/client/valscore",
+            })
+          }
         />
       )}
     </ClientShell>
@@ -293,7 +302,7 @@ function ClientHome() {
 }
 
 /**
- * Load the same rows `/client/summary` loads, so the two pages can never show
+ * Load the same rows `/client/valscore` loads, so the two pages can never show
  * different numbers for the same submission.
  */
 async function loadScoreData(
@@ -720,7 +729,7 @@ function AwaitingReview({
 }) {
   /*
    * The objective half, grossed onto 0 to 100. Identical arithmetic to
-   * `/client/assessment`, deliberately: the same client must not read two
+   * `/client/objective-score`, deliberately: the same client must not read two
    * different numbers on two pages of the same portal.
    */
   const objectiveMax =
