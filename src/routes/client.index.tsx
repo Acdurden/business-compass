@@ -29,11 +29,12 @@ import {
   BRAND,
   bandFor,
   buildOpportunities,
+  displayGap,
   displayScore,
   formatCurrency,
   formatValuationRange,
-  round10k,
   grossObjective,
+  round10k,
   totalOpportunity,
   type Opportunity,
   type SectionMeta,
@@ -866,7 +867,7 @@ function Tile({
 
 function OpportunityRow({ o }: { o: Opportunity }) {
   const pct = Math.round(o.capturedPct);
-  const points = Math.round(o.totalGap);
+  const points = displayGap(o);
   return (
     <div
       className="border-b py-[11px] last:border-b-0 md:grid md:grid-cols-[minmax(0,1fr)_118px_60px] md:items-center md:gap-3"

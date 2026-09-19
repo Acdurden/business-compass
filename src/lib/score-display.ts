@@ -438,9 +438,29 @@ export function buildOpportunities(
     .sort(byOpportunity);
 }
 
-/** Everything still on the table, on the same scale the score is shown on. */
+/**
+ * What one driver is SHOWN as. Rounded once, here.
+ *
+ * Every surface that prints a driver's available points prints this, and every
+ * total is built by adding these up. One definition, the same way `round10k` is
+ * the one definition of money rounding, and for the same reason.
+ */
+export function displayGap(o: Opportunity): number {
+  return Math.round(o.totalGap);
+}
+
+/**
+ * Everything still on the table, on the same scale the score is shown on.
+ *
+ * Summed from what the rows actually print, not from the underlying floats.
+ * Rounding the sum instead produced a table whose eight rows added to 51 under
+ * a total saying 52: true of the exact figures, visibly wrong on the page. On
+ * an objective submission the scaling is 100/60, so any real gap lands on a
+ * fraction, and whether the two methods agree is luck. They agreed on a 29-of-60
+ * submission's neighbour and not on the submission itself.
+ */
 export function totalOpportunity(opportunities: Opportunity[]): number {
-  return Math.round(opportunities.reduce((sum, o) => sum + o.totalGap, 0));
+  return opportunities.reduce((sum, o) => sum + displayGap(o), 0);
 }
 
 /** Drivers with the most advisory points still available, biggest first. */

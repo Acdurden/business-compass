@@ -54,11 +54,13 @@ import {
 import {
   BRAND,
   buildOpportunities,
+  displayGap,
   displayScore,
   formatCurrency,
   formatValuationRange,
   grossObjective,
   round10k,
+  totalOpportunity,
   type Opportunity,
   type SectionMeta,
 } from "@/lib/score-display";
@@ -438,12 +440,13 @@ function Submitted({
     result.sectionScores,
     "objective",
   );
-  /**
-   * Sum the raw gaps and round once. Rounding each driver and adding the results
-   * gains a point on some submissions, which would put the headline and the list
-   * visibly out of step.
+  /*
+   * Summed from what the rows print, via the shared helper. This file had its
+   * own copy that rounded the sum instead, which is the opposite of what the
+   * comment here used to claim and produced a table adding to 51 under a total
+   * of 52.
    */
-  const totalGap = Math.round(opportunities.reduce((sum, o) => sum + o.totalGap, 0));
+  const totalGap = totalOpportunity(opportunities);
 
   return (
     <div className="space-y-6 text-center">
@@ -582,7 +585,8 @@ function Submitted({
         >
           {opportunities.map((o) => {
             const captured = Math.max(0, Math.min(100, o.capturedPct));
-            const open = o.totalGap >= 1;
+            const shown = displayGap(o);
+            const open = shown >= 1;
             return (
               <div
                 key={o.key}
@@ -605,7 +609,7 @@ function Submitted({
                   className="text-right text-[14px] font-semibold tabular-nums"
                   style={{ color: open ? BRAND.teal : BRAND.muted }}
                 >
-                  {open ? `+${Math.round(o.totalGap)}` : "full"}
+                  {open ? `+${shown}` : "full"}
                 </span>
               </div>
             );
