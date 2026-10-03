@@ -1,0 +1,369 @@
+{
+ "note": "Published sale multiples, hand-entered with sources. None is a record of closed sales. Sizes are yearly EBITDA in dollars; null size_max means 'and up'.",
+ "margin_presets_pct": [
+  15,
+  20,
+  25
+ ],
+ "margin_presets_source": "FE International (May 2026): below 15% EBITDA margin signals margin risk to acquirers; above 20% is the threshold buyers target; above 25% indicates operating leverage.",
+ "bands": [
+  {
+   "source_key": "fe_international_2026",
+   "source_name": "FE International",
+   "published": "2026-05-20",
+   "url": "https://www.feinternational.com/blog/digital-marketing-agency-valuation",
+   "segment": "Agencies",
+   "rows": [
+    {
+     "size_min": 0,
+     "size_max": 500000,
+     "multiple_low": 2.5,
+     "multiple_high": 4.0,
+     "note": "Usually valued on SDE at this size"
+    },
+    {
+     "size_min": 500000,
+     "size_max": 1000000,
+     "multiple_low": 3.0,
+     "multiple_high": 5.0
+    },
+    {
+     "size_min": 1000000,
+     "size_max": 2500000,
+     "multiple_low": 4.0,
+     "multiple_high": 6.5
+    },
+    {
+     "size_min": 2500000,
+     "size_max": 5000000,
+     "multiple_low": 5.5,
+     "multiple_high": 8.5
+    },
+    {
+     "size_min": 5000000,
+     "size_max": null,
+     "multiple_low": 7.0,
+     "multiple_high": 12.0
+    }
+   ]
+  },
+  {
+   "source_key": "palmer_axial_2025",
+   "source_name": "Palmer M&A Advisors, via Axial",
+   "published": "2025-11-12",
+   "url": "https://www.axial.net/forum/digital-marketing-agency-valuation-multiples/",
+   "segment": "Agencies",
+   "rows": [
+    {
+     "size_min": 0,
+     "size_max": 1000000,
+     "multiple_low": 2.5,
+     "multiple_high": 3.9
+    },
+    {
+     "size_min": 1000000,
+     "size_max": 2000000,
+     "multiple_low": 3.5,
+     "multiple_high": 5.0,
+     "note": "Published as '$1 million plus'"
+    },
+    {
+     "size_min": 2000000,
+     "size_max": 5000000,
+     "multiple_low": 4.0,
+     "multiple_high": 7.0,
+     "note": "Published as '$2 million plus'"
+    },
+    {
+     "size_min": 5000000,
+     "size_max": null,
+     "multiple_low": 8.0,
+     "multiple_high": 10.0
+    }
+   ]
+  },
+  {
+   "source_key": "pepperdine_2026",
+   "source_name": "Pepperdine Private Capital Markets Report 2026, Table 31 (p. 65), investment banker survey fielded January 2026",
+   "published": "2026",
+   "url": "https://digitalcommons.pepperdine.edu/gsbm_pcm_pcmr/",
+   "segment": "Business services (median)",
+   "rows": [
+    {
+     "size_min": 0,
+     "size_max": 1000000,
+     "multiple_mid": 4.8
+    },
+    {
+     "size_min": 1000000,
+     "size_max": 5000000,
+     "multiple_mid": 6.2
+    },
+    {
+     "size_min": 5000000,
+     "size_max": 10000000,
+     "multiple_mid": 6.5
+    },
+    {
+     "size_min": 10000000,
+     "size_max": 25000000,
+     "multiple_mid": 7.5
+    },
+    {
+     "size_min": 25000000,
+     "size_max": null,
+     "multiple_mid": 7.0
+    }
+   ]
+  },
+  {
+   "source_key": "pepperdine_2025",
+   "source_name": "Pepperdine Private Capital Markets Report 2025, Table 27 (p. 62), survey fielded January 2025",
+   "published": "2025",
+   "url": "https://digitalcommons.pepperdine.edu/gsbm_pcm_pcmr/",
+   "segment": "Business services (median)",
+   "rows": [
+    {
+     "size_min": 0,
+     "size_max": 1000000,
+     "multiple_mid": 4.5
+    },
+    {
+     "size_min": 1000000,
+     "size_max": 5000000,
+     "multiple_mid": 6.2
+    },
+    {
+     "size_min": 5000000,
+     "size_max": 10000000,
+     "multiple_mid": 7.5
+    },
+    {
+     "size_min": 10000000,
+     "size_max": 25000000,
+     "multiple_mid": 7.0
+    },
+    {
+     "size_min": 25000000,
+     "size_max": null,
+     "multiple_mid": 6.5
+    }
+   ]
+  }
+ ],
+ "points": [
+  {
+   "source_name": "TobinLeff M&A Advisors, via Axial",
+   "published": "2025-11-12",
+   "url": "https://www.axial.net/forum/digital-marketing-agency-valuation-multiples/",
+   "segment": "Agencies",
+   "ebitda": 500000,
+   "multiple": 3.33,
+   "note": "Average for agencies with about $500,000 of adjusted EBITDA"
+  },
+  {
+   "source_name": "TobinLeff M&A Advisors, via Axial",
+   "published": "2025-11-12",
+   "url": "https://www.axial.net/forum/digital-marketing-agency-valuation-multiples/",
+   "segment": "Agencies",
+   "ebitda": 2400000,
+   "multiple": 6.46,
+   "note": "Average for agencies with about $2.4M of adjusted EBITDA"
+  }
+ ],
+ "by_agency_type": {
+  "source_name": "First Page Sage, compiled from M&A advisor reports, as of Q1 2025",
+  "published": "2025-01-22",
+  "url": "https://firstpagesage.com/business/marketing-agency-valuation-multiples-and-valuations/",
+  "ebitda_bands": [
+   [
+    1000000,
+    3000000
+   ],
+   [
+    3000000,
+    5000000
+   ],
+   [
+    5000000,
+    10000000
+   ]
+  ],
+  "rows": {
+   "Advertising": [
+    5.5,
+    7.6,
+    9.5
+   ],
+   "Digital Marketing": [
+    4.9,
+    6.1,
+    9
+   ],
+   "Growth Marketing": [
+    5.2,
+    7,
+    10.2
+   ],
+   "Performance Marketing": [
+    5,
+    6.5,
+    9.3
+   ],
+   "Creative Marketing": [
+    4.6,
+    6.9,
+    8.1
+   ],
+   "Social Media Marketing": [
+    5.3,
+    7.1,
+    9.2
+   ],
+   "Account-Based Marketing": [
+    5.5,
+    7.6,
+    10.6
+   ],
+   "Personal Reputation": [
+    4.5,
+    6.6,
+    8.2
+   ],
+   "Branding": [
+    4.7,
+    6.5,
+    8.9
+   ],
+   "Traditional Marketing": [
+    5.2,
+    8.2,
+    10.4
+   ]
+  }
+ },
+ "small_deals_by_industry": {
+  "source_name": "BizBuySell industry valuation multiples, businesses sold Q3 2021 to Q2 2026. Earnings are seller's discretionary earnings (SDE).",
+  "url": "https://www.bizbuysell.com/learning-center/industry-valuation-multiples/",
+  "rows": [
+   [
+    "Insurance agencies",
+    1.52,
+    2.87,
+    500000
+   ],
+   [
+    "Accounting and tax practices",
+    1.08,
+    2.27,
+    450000
+   ],
+   [
+    "IT and software services",
+    1.08,
+    3.22,
+    726800
+   ],
+   [
+    "Service businesses overall",
+    0.83,
+    2.61,
+    350000
+   ],
+   [
+    "Legal services and law firms",
+    0.77,
+    1.97,
+    500000
+   ],
+   [
+    "Architecture and engineering",
+    0.76,
+    2.63,
+    794000
+   ],
+   [
+    "All industries",
+    0.67,
+    2.58,
+    340000
+   ]
+  ],
+  "columns": [
+   "industry",
+   "price_to_revenue",
+   "price_to_sde",
+   "median_sale_price"
+  ]
+ },
+ "market_figures_history": [
+  {
+   "metric": "BizBuySell small-business price to cash flow",
+   "unit": "x",
+   "url": "https://www.bizbuysell.com/insight-report/",
+   "observations": [
+    [
+     "Q1 2026",
+     "2026-03-31",
+     2.7
+    ],
+    [
+     "Q2 2026",
+     "2026-06-30",
+     2.7
+    ]
+   ]
+  },
+  {
+   "metric": "BizBuySell small-business median sale price",
+   "unit": "$",
+   "url": "https://www.bizbuysell.com/insight-report/",
+   "observations": [
+    [
+     "Q3 2025",
+     "2025-09-30",
+     320044
+    ],
+    [
+     "Q1 2026",
+     "2026-03-31",
+     350000
+    ],
+    [
+     "Q2 2026",
+     "2026-06-30",
+     349250
+    ]
+   ]
+  },
+  {
+   "metric": "BizBuySell small businesses sold in the quarter",
+   "unit": "count",
+   "url": "https://www.bizbuysell.com/insight-report/",
+   "observations": [
+    [
+     "Q3 2025",
+     "2025-09-30",
+     2599
+    ],
+    [
+     "Q1 2026",
+     "2026-03-31",
+     2345
+    ],
+    [
+     "Q2 2026",
+     "2026-06-30",
+     2117
+    ]
+   ]
+  },
+  {
+   "metric": "IBBA and M&A Source Market Pulse, $2M to $5M deals (EBITDA multiple)",
+   "unit": "x",
+   "url": "https://www.ibba.org/resource-center/industry-research/",
+   "observations": [],
+   "note": "Deliberately empty. The free report prints these as chart images that could not be read reliably. Enter by hand from the PDF."
+  }
+ ]
+}

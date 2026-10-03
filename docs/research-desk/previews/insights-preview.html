@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>[hidden]{display:none!important}body{margin:0}</style></head><body>
+<title>Kriterion Insights Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f3f5f7;--surface:#ffffff;--ink:#132238;--muted:#566272;--faint:#8b95a1;--line:#dfe4ea;
+  --navy:#1b3358;--navy-soft:#e3e9f2;--brass:#8f6b1f;--brass-soft:rgba(154,116,38,.15);
+  --good:#2f6b4a;--good-bg:#e4f1e9;--warn:#8a5a00;--warn-bg:#fbf1dc;--bad:#9b2f2f;--bad-bg:#f8e3e1;
+  --sans:"Public Sans",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){color-scheme:dark;
+    --bg:#0e141c;--surface:#151e29;--ink:#e5eaf0;--muted:#a2adb9;--faint:#76828f;--line:#27323f;
+    --navy:#8fb0e0;--navy-soft:#1c2a3d;--brass:#d6b15f;--brass-soft:rgba(214,177,95,.17);
+    --good:#7cc79c;--good-bg:#17301f;--warn:#e2b25a;--warn-bg:#2d2412;--bad:#ec8f86;--bad-bg:#351a18;}
+}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#0e141c;--surface:#151e29;--ink:#e5eaf0;--muted:#a2adb9;--faint:#76828f;--line:#27323f;
+  --navy:#8fb0e0;--navy-soft:#1c2a3d;--brass:#d6b15f;--brass-soft:rgba(214,177,95,.17);
+  --good:#7cc79c;--good-bg:#17301f;--warn:#e2b25a;--warn-bg:#2d2412;--bad:#ec8f86;--bad-bg:#351a18;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.5;margin:0}
+.preview-bar{background:var(--warn-bg);color:var(--warn);font-size:13px;padding-block:8px;padding-inline:16px;text-align:center;border-bottom:1px solid var(--line)}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1120px;margin:0 auto;padding-inline:20px;padding-block:12px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.brand{font-weight:700;letter-spacing:.14em;font-size:13px;color:var(--navy)}
+.appnav{display:flex;gap:4px;flex-wrap:wrap}
+.appnav span{font-size:13.5px;padding:6px 10px;border-radius:6px;color:var(--muted)}
+.appnav span.on{background:var(--navy-soft);color:var(--navy);font-weight:600}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:20px;padding-block:24px 64px;display:grid;gap:20px}
+h1{font-size:24px;margin:0;letter-spacing:-.01em}
+h2{font-size:17px;margin:0}
+h3{font-size:14.5px;margin:0}
+p{margin:0}
+.sub{color:var(--muted);max-width:72ch}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs button{font:600 14px var(--sans);color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;padding:10px 12px;cursor:pointer;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--navy);border-bottom-color:var(--navy)}
+.tabs button:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:12px;align-content:start}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+.tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:520px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:4px}
+.tile .v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.tile .l{font-size:12.5px;color:var(--muted)}
+.banner{border-radius:8px;padding:10px 14px;font-size:13.5px;background:var(--warn-bg);color:var(--ink);border:1px solid var(--line)}
+.banner b{color:var(--warn)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.good{background:var(--good-bg);color:var(--good)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.neutral{background:var(--navy-soft);color:var(--navy)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.muted{color:var(--muted)}
+.small{font-size:12.5px;color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.btn{font:600 13.5px var(--sans);border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:var(--surface)}
+.btn.ghost{background:var(--surface);color:var(--navy);border-color:var(--line)}
+.btn:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media (max-width:820px){.metrics{grid-template-columns:1fr}}
+.metric .big{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.metric .hist{font-size:12.5px;color:var(--muted)}
+.chart svg text{font-family:var(--sans)}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;line-height:1.4;padding:7px 10px;border-radius:6px;max-width:260px;z-index:9}
+form{display:grid;gap:12px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:600px){.f2{grid-template-columns:1fr}}
+label{font-size:13px;font-weight:600;display:grid;gap:5px}
+input,select{font:500 14px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%}
+input:focus,select:focus{outline:2px solid var(--navy-soft);border-color:var(--navy)}
+.drawer{border:1px dashed var(--navy);border-radius:10px;padding:16px;background:var(--surface)}
+.scale{position:relative;height:74px;margin-top:6px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.sw{width:14px;height:10px;border-radius:3px;display:inline-block}
+ol.build{margin:0;padding-left:20px;display:grid;gap:8px}
+ol.build li{padding-left:4px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13.5px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="preview-bar">Preview only. Built from the live database on 25 September 2026. Nothing you type or click here is saved.</div>
+<div class="topbar"><div class="topbar-in">
+  <span class="brand">KRITERION</span>
+  <nav class="appnav" aria-label="Advisor app"><span>Queue</span><span>Clients</span><span class="on">Insights</span><span>Questionnaire</span><span>Emails</span></nav>
+</div></div>
+
+<main class="wrap">
+  <div style="display:grid;gap:6px">
+    <h1>Insights</h1>
+    <p class="sub">A new section for advisors and admins. It keeps a running history of every assessment and of the published market figures you enter, and puts each client next to the market.</p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Insights views">
+    <button role="tab" id="t-book" aria-controls="p-book" aria-selected="true">Our assessments</button>
+    <button role="tab" id="t-market" aria-controls="p-market" aria-selected="false">Market figures</button>
+    <button role="tab" id="t-client" aria-controls="p-client" aria-selected="false">In a client file</button>
+    <button role="tab" id="t-build" aria-controls="p-build" aria-selected="false">What gets built</button>
+  </div>
+
+  <!-- ================= OUR ASSESSMENTS ================= -->
+  <section id="p-book" role="tabpanel" aria-labelledby="t-book" style="display:grid;gap:16px">
+    <div class="banner"><b>All 9 assessments in the app today are tests.</b> The app has no way to mark a test, so every figure below counts them. The build adds a "test" switch so real metrics start clean with the first pilot client.</div>
+    <div class="row">
+      <div class="small" id="book-range"></div>
+      <label style="display:flex;gap:8px;align-items:center;font-weight:500;grid-template-columns:none"><input type="checkbox" id="incl-tests" checked style="width:auto"> Include test assessments</label>
+    </div>
+    <div class="tiles" id="book-tiles"></div>
+    <div class="grid2">
+      <div class="panel">
+        <h2>New assessments by week</h2>
+        <p class="small">Counted on the day the assessment was started.</p>
+        <div class="chart" id="weekChart"></div>
+      </div>
+      <div class="panel">
+        <h2>Where points are lost</h2>
+        <p class="small">Average points not earned per assessment, owner questionnaire only. Longest bar is the biggest opportunity across the book.</p>
+        <div class="chart" id="lostChart"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="row"><h2>Every assessment</h2><span class="small">Proposed grade uses the scale from today's rating memo. Objective-only grades are provisional and capped at A.</span></div>
+      <div class="tbl" id="bookTable"></div>
+    </div>
+  </section>
+
+  <!-- ================= MARKET ================= -->
+  <section id="p-market" role="tabpanel" aria-labelledby="t-market" hidden style="display:grid;gap:16px">
+    <div class="row">
+      <p class="sub">Each figure is entered once per release and kept. New releases add a point to the history; nothing is overwritten. A correction is saved as a new entry with a note.</p>
+      <button class="btn" id="add-open" type="button">Add figures</button>
+    </div>
+    <div class="drawer" id="add-drawer" hidden>
+      <form id="add-form">
+        <h2>Add a published figure</h2>
+        <div class="f2">
+          <label for="f-metric">Figure<select id="f-metric"></select></label>
+          <label for="f-period">Period it covers<input id="f-period" placeholder="e.g. Q3 2026"></label>
+          <label for="f-date">Period end date<input id="f-date" type="date" value="2026-09-30"></label>
+          <label for="f-value">Value<input id="f-value" inputmode="decimal" placeholder="e.g. 2.8"></label>
+          <label for="f-link">Link to the report<input id="f-link" placeholder="https://"></label>
+          <label for="f-note">Note (optional)<input id="f-note" placeholder="e.g. read from chart on page 2"></label>
+        </div>
+        <div class="row"><span class="small" id="f-msg">Entered by is filled in automatically from who is signed in.</span><div style="display:flex;gap:8px"><button type="button" class="btn ghost" id="add-cancel">Cancel</button><button class="btn" type="submit">Add to history</button></div></div>
+      </form>
+    </div>
+    <div class="metrics" id="metrics"></div>
+  </section>
+
+  <!-- ================= CLIENT ================= -->
+  <section id="p-client" role="tabpanel" aria-labelledby="t-client" hidden style="display:grid;gap:16px">
+    <p class="sub">A card on each client's advisor page. It places the client's Kriterion valuation beside the market figures for a business of the same size, using whichever market figures are current on the day. Advisors only; clients never see it.</p>
+    <div class="row">
+      <label for="c-pick" style="max-width:360px">Show the card for<select id="c-pick"></select></label>
+    </div>
+    <div class="panel" id="clientCard"></div>
+  </section>
+
+  <!-- ================= BUILD ================= -->
+  <section id="p-build" role="tabpanel" aria-labelledby="t-build" hidden style="display:grid;gap:16px">
+    <div class="panel">
+      <h2>What gets built, in order</h2>
+      <ol class="build">
+        <li><b>A "test" switch on each assessment.</b> Admin-only. Tests stay in the app but drop out of every metric. Needed first, or the pilot numbers start polluted.</li>
+        <li><b>A place to keep market figures.</b> One new list in the database: which figure, which period, the value, the link, who entered it and when. Rows are only ever added.</li>
+        <li><b>The "Add figures" form</b> on the Market figures tab, admin-only, with the eight figures above set up and today's history already loaded.</li>
+        <li><b>The Insights page</b> with the Our assessments and Market figures tabs, advisor and admin only.</li>
+        <li><b>The market card on each client's advisor page.</b> Reads the latest market figures at the moment it is opened.</li>
+      </ol>
+      <p class="small">Nothing here changes a score, a section total, a multiple or anything a client sees. The assessment metrics are read from data the app already stores.</p>
+    </div>
+    <div class="panel">
+      <h2>Decisions for you</h2>
+      <ol class="build">
+        <li>Which assessments are tests. Today all nine; the first real pilot client is the first one that counts.</li>
+        <li>Who can add market figures: admins only, or any advisor.</li>
+        <li>Whether the grade column appears before the rating scale is approved, or waits for that decision.</li>
+        <li>Whether the client-file card should also flag when a client's valuation sits below the whole market range for their size. Today it would flag 5 of the 6 tests that entered EBITDA, because the model's multiples mostly run below the published agency range for the same size. That is the size problem from this morning's memo, showing up in the product.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+(function(){
+var SUBS=[
+ {id:"0E642B6562",name:"Test",date:"2026-08-13",plan:"full",status:"submitted",adv:"final",basis:"netfeeincome",amt:750000,obj:28,advPts:19,product:"ValScore",score:47,mult:0.47,val:350000,test:true},
+ {id:"99D8191B25",name:"Test Company 1",date:"2026-08-21",plan:"full",status:"submitted",adv:"submitted",basis:"netfeeincome",amt:750000,obj:39,advPts:30,product:"ValScore",score:69,mult:0.97,val:730000,test:true},
+ {id:"6E5C855517",name:"Durden Test 2",date:"2026-08-27",plan:"full",status:"submitted",adv:"submitted",basis:"ebitda",amt:650000,obj:43,advPts:32,product:"ValScore",score:75,mult:2.67,val:1730000,test:true},
+ {id:"8F91E06504",name:"test 3",date:"2026-08-28",plan:"full",status:"submitted",adv:"submitted",basis:"ebitda",amt:500000,obj:23,advPts:22,product:"ValScore",score:45,mult:1.8,val:900000,test:true},
+ {id:"B2E230B02C",name:"Adam TEST 1",date:"2026-08-29",plan:"objective",status:"inprogress",adv:"notstarted",basis:null,amt:null,obj:25,advPts:null,product:"Objective Score",score:42,mult:null,val:null,test:true},
+ {id:"DA2A42524B",name:"GO thyme",date:"2026-09-18",plan:"full",status:"submitted",adv:"notstarted",basis:"ebitda",amt:1250000,obj:53,advPts:null,product:"Objective Score",score:88,mult:3.18,val:3970000,test:true},
+ {id:"D30632AC53",name:"GO thyme 2",date:"2026-09-19",plan:"objective",status:"submitted",adv:"notstarted",basis:"ebitda",amt:750000,obj:29,advPts:null,product:"Objective Score",score:48,mult:1.93,val:1450000,test:true},
+ {id:"13E6CAD1C5",name:"Test Company 4",date:"2026-09-25",plan:"full",status:"submitted",adv:"notstarted",basis:"ebitda",amt:750000,obj:21,advPts:null,product:"Objective Score",score:35,mult:1.4,val:1050000,test:true},
+ {id:"034798971A",name:"test company 5",date:"2026-09-25",plan:"objective",status:"submitted",adv:"notstarted",basis:"ebitda",amt:850000,obj:13,advPts:null,product:"Objective Score",score:22,mult:0.87,val:740000,test:true}
+];
+var SEC=[["Financial Quality",18,{"034798971A":2,"0E642B6562":8,"13E6CAD1C5":6,"6E5C855517":11,"8F91E06504":7,"99D8191B25":8,"B2E230B02C":7,"D30632AC53":10,"DA2A42524B":17}],
+ ["Growth Trajectory",5,{"034798971A":1,"0E642B6562":2,"13E6CAD1C5":2,"6E5C855517":4,"8F91E06504":2,"99D8191B25":2,"B2E230B02C":2,"D30632AC53":2,"DA2A42524B":5}],
+ ["Client Concentration & Revenue Risk",12,{"034798971A":4,"0E642B6562":5,"13E6CAD1C5":5,"6E5C855517":9,"8F91E06504":2,"99D8191B25":10,"B2E230B02C":4,"D30632AC53":6,"DA2A42524B":10}],
+ ["Leadership & Founder Independence",9,{"034798971A":2,"0E642B6562":6,"13E6CAD1C5":3,"6E5C855517":7,"8F91E06504":2,"99D8191B25":8,"B2E230B02C":3,"D30632AC53":5,"DA2A42524B":8}],
+ ["Operational Maturity",4,{"034798971A":1,"0E642B6562":2,"13E6CAD1C5":2,"6E5C855517":3,"8F91E06504":0,"99D8191B25":3,"B2E230B02C":2,"D30632AC53":2,"DA2A42524B":4}],
+ ["Documentation & Reporting Credibility",3,{"034798971A":0,"0E642B6562":1,"13E6CAD1C5":0,"6E5C855517":1,"8F91E06504":1,"99D8191B25":1,"B2E230B02C":1,"D30632AC53":0,"DA2A42524B":1}],
+ ["Strategic Positioning",5,{"034798971A":2,"0E642B6562":3,"13E6CAD1C5":1,"6E5C855517":4,"8F91E06504":5,"99D8191B25":4,"B2E230B02C":3,"D30632AC53":3,"DA2A42524B":4}],
+ ["AI Readiness & Leverage",4,{"034798971A":1,"0E642B6562":1,"13E6CAD1C5":2,"6E5C855517":4,"8F91E06504":4,"99D8191B25":3,"B2E230B02C":3,"D30632AC53":1,"DA2A42524B":4}]];
+var METRICS=[
+ {key:"agency_lt1m",name:"Agency sale multiple, EBITDA under $1M",unit:"x",kind:"range",src:"Palmer M&A via Axial",cadence:"Irregular",link:"https://www.axial.net/forum/digital-marketing-agency-valuation-multiples/",
+  obs:[{p:"Nov 2025",d:"2025-11-12",v:[2.5,3.9]}]},
+ {key:"pep_bs_lt1m",name:"Business services median, EBITDA under $1M",unit:"x",src:"Pepperdine Private Capital Markets Report",cadence:"Yearly, surveyed each January",link:"https://digitalcommons.pepperdine.edu/gsbm_pcm_pcmr/",
+  obs:[{p:"2025 report",d:"2025-01-31",v:4.5},{p:"2026 report",d:"2026-01-31",v:4.8}]},
+ {key:"pep_bs_1to5",name:"Business services median, EBITDA $1M to $4.99M",unit:"x",src:"Pepperdine Private Capital Markets Report",cadence:"Yearly, surveyed each January",link:"https://digitalcommons.pepperdine.edu/gsbm_pcm_pcmr/",
+  obs:[{p:"2025 report",d:"2025-01-31",v:6.2},{p:"2026 report",d:"2026-01-31",v:6.2}]},
+ {key:"sba_ceiling",name:"Most an SBA-financed buyer can pay",unit:"x",src:"Calculated from prime rate and SBA rules",cadence:"Recalculated when either changes",link:"https://fred.stlouisfed.org/series/PRIME",
+  obs:[["2022-01-01",7.17],["2022-03-17",7.09],["2022-05-05",6.93],["2022-06-16",6.71],["2022-07-28",6.49],["2022-09-22",6.29],["2022-11-03",6.09],["2022-12-15",5.97],["2023-02-02",5.91],["2023-03-23",5.85],["2023-05-04",5.79],["2023-07-27",5.73],["2024-09-19",5.85],["2024-11-08",5.91],["2024-12-20",5.97],["2025-09-17",6.03],["2025-10-30",6.09],["2025-12-11",6.16],["2026-10-01",5.66]].map(function(a){return {p:new Date(a[0]+"T12:00:00").toLocaleDateString("en-US",{month:"short",year:"numeric"}),d:a[0],v:a[1]};})},
+ {key:"prime",name:"Prime rate",unit:"%",src:"Federal Reserve (FRED)",cadence:"Changes with Fed decisions",link:"https://fred.stlouisfed.org/series/PRIME",
+  obs:[["2022-01-01",3.25],["2022-03-17",3.5],["2022-05-05",4.0],["2022-06-16",4.75],["2022-07-28",5.5],["2022-09-22",6.25],["2022-11-03",7.0],["2022-12-15",7.5],["2023-02-02",7.75],["2023-03-23",8.0],["2023-05-04",8.25],["2023-07-27",8.5],["2024-09-19",8.0],["2024-11-08",7.75],["2024-12-20",7.5],["2025-09-17",7.25],["2025-10-30",7.0],["2025-12-11",6.75]].map(function(a){return {p:new Date(a[0]+"T12:00:00").toLocaleDateString("en-US",{month:"short",year:"numeric"}),d:a[0],v:a[1]};})},
+ {key:"bbs_mult",name:"Small-business price to cash flow",unit:"x",src:"BizBuySell Insight Report",cadence:"Quarterly",link:"https://www.bizbuysell.com/insight-report/",
+  obs:[{p:"Q1 2026",d:"2026-03-31",v:2.7},{p:"Q2 2026",d:"2026-06-30",v:2.7}]},
+ {key:"bbs_price",name:"Small-business median sale price",unit:"$",src:"BizBuySell Insight Report",cadence:"Quarterly",link:"https://www.bizbuysell.com/insight-report/",
+  obs:[{p:"Q3 2025",d:"2025-09-30",v:320044},{p:"Q1 2026",d:"2026-03-31",v:350000},{p:"Q2 2026",d:"2026-06-30",v:349250}]},
+ {key:"bbs_deals",name:"Small businesses sold in the quarter",unit:"#",src:"BizBuySell Insight Report",cadence:"Quarterly",link:"https://www.bizbuysell.com/insight-report/",
+  obs:[{p:"Q3 2025",d:"2025-09-30",v:2599},{p:"Q1 2026",d:"2026-03-31",v:2345},{p:"Q2 2026",d:"2026-06-30",v:2117}]},
+ {key:"ibba_2to5",name:"Broker-reported multiple, $2M to $5M deals (EBITDA)",unit:"x",src:"IBBA and M&A Source Market Pulse",cadence:"Quarterly",link:"https://www.ibba.org/resource-center/industry-research/",obs:[]}
+];
+var TODAY=new Date("2026-09-25T12:00:00");
+var css=function(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();};
+var tip=document.getElementById("tip");
+function showTip(e,h){tip.innerHTML=h;tip.hidden=false;var x=e.clientX+14,y=e.clientY+14;if(x+tip.offsetWidth>innerWidth-8)x=e.clientX-tip.offsetWidth-14;if(y+tip.offsetHeight>innerHeight-8)y=e.clientY-tip.offsetHeight-14;tip.style.left=x+"px";tip.style.top=y+"px";}
+function hideTip(){tip.hidden=true;}
+function el(n,a,p){var e=document.createElementNS("http://www.w3.org/2000/svg",n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function txt(p,x,y,s,a){var t=el("text",Object.assign({x:x,y:y,"font-size":11.5,fill:css("--muted")},a||{}),p);t.textContent=s;return t;}
+function money(n){if(n==null)return "not entered";if(n>=1e6)return "$"+(n/1e6).toFixed(2)+"M";return "$"+Math.round(n/1e3)+"K";}
+function grade(s,prod){var g=s>=85?"AAA":s>=70?"AA":s>=60?"A":s>=50?"BBB":s>=40?"BB":"B";if(prod==="Objective Score"){if(g==="AAA"||g==="AA")g="A";return g+" (p)";}return g;}
+function fmtV(m,v){if(v==null)return "";if(m.kind==="range")return v[0]+"x to "+v[1]+"x";if(m.unit==="x")return v.toFixed(2).replace(/0$/,"")+"x";if(m.unit==="%")return v.toFixed(2)+"%";if(m.unit==="$")return "$"+Math.round(v).toLocaleString("en-US");return Math.round(v).toLocaleString("en-US");}
+function fmtDate(d){return new Date(d+"T12:00:00").toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric"});}
+
+/* tabs */
+var tabs=[["t-book","p-book"],["t-market","p-market"],["t-client","p-client"],["t-build","p-build"]];
+tabs.forEach(function(t){document.getElementById(t[0]).addEventListener("click",function(){tabs.forEach(function(u){document.getElementById(u[0]).setAttribute("aria-selected",u[0]===t[0]);document.getElementById(u[1]).hidden=u[0]!==t[0];});drawAll();});});
+
+/* ---------- our assessments ---------- */
+var inclTests=document.getElementById("incl-tests");
+inclTests.addEventListener("change",drawBook);
+function drawBook(){
+  var S=SUBS.filter(function(s){return inclTests.checked||!s.test;});
+  document.getElementById("book-range").textContent=S.length?("From "+fmtDate(S[0].date)+" to "+fmtDate(S[S.length-1].date)):"No real assessments yet";
+  var submitted=S.filter(function(s){return s.status==="submitted";});
+  var reviewed=S.filter(function(s){return s.advPts!=null;});
+  var waiting=S.filter(function(s){return s.plan==="full"&&s.status==="submitted"&&s.advPts==null;});
+  var objScores=submitted.map(function(s){return Math.round(s.obj*100/60);});
+  var avg=objScores.length?Math.round(objScores.reduce(function(a,b){return a+b;},0)/objScores.length):null;
+  var eb=submitted.filter(function(s){return s.basis==="ebitda";}).map(function(s){return s.amt;}).sort(function(a,b){return a-b;});
+  var med=eb.length?(eb.length%2?eb[(eb.length-1)/2]:(eb[eb.length/2-1]+eb[eb.length/2])/2):null;
+  var T=[["Assessments started",S.length],["Submitted by the owner",submitted.length],["Advisor reviews done",reviewed.length],["Waiting for an advisor",waiting.length],["Average Objective Score",avg==null?"none":avg]];
+  document.getElementById("book-tiles").innerHTML=T.map(function(t){return '<div class="tile"><div class="v">'+t[1]+'</div><div class="l">'+t[0]+'</div></div>';}).join("")+
+    '<div class="tile" style="grid-column:span 1"><div class="v">'+(med==null?"none":money(med))+'</div><div class="l">Median EBITDA entered</div></div>';
+  var tl=document.getElementById("book-tiles");tl.style.gridTemplateColumns="";
+  drawWeeks(S);drawLost(S);drawTable(S);
+}
+function mondayOf(d){var x=new Date(d+"T12:00:00");var day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x;}
+function drawWeeks(S){
+  var box=document.getElementById("weekChart");box.innerHTML="";
+  var start=mondayOf("2026-08-10"),weeks=[];for(var i=0;i<7;i++){var w=new Date(start);w.setDate(w.getDate()+7*i);weeks.push({w:w,n:0,names:[]});}
+  S.forEach(function(s){var m=mondayOf(s.date);weeks.forEach(function(w){if(w.w.getTime()===m.getTime()){w.n++;w.names.push(s.name);}});});
+  var W=Math.max(box.clientWidth,300),H=200,L=28,R=8,T=12,B=34,maxN=Math.max(3,Math.max.apply(null,weeks.map(function(w){return w.n;})));
+  var s=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img","aria-label":"New assessments by week"},box);
+  var bw=(W-L-R)/weeks.length;
+  for(var g=0;g<=maxN;g++){var y=T+(H-T-B)*(1-g/maxN);el("line",{x1:L,x2:W-R,y1:y,y2:y,stroke:css("--line")},s);txt(s,L-8,y+4,g,{"text-anchor":"end"});}
+  weeks.forEach(function(w,i){var h=(H-T-B)*w.n/maxN,x=L+i*bw+bw*.22,y=H-B-h;
+    if(w.n){var r=el("rect",{x:x,y:y,width:bw*.56,height:h,rx:4,fill:css("--navy")},s);
+      r.addEventListener("mousemove",function(e){showTip(e,"<b>Week of "+w.w.toLocaleDateString("en-US",{month:"short",day:"numeric"})+"</b><br>"+w.n+" started: "+w.names.join(", "));});r.addEventListener("mouseleave",hideTip);}
+    txt(s,L+i*bw+bw/2,H-B+16,w.w.toLocaleDateString("en-US",{month:"short",day:"numeric"}),{"text-anchor":"middle","font-size":11});});
+}
+function drawLost(S){
+  var box=document.getElementById("lostChart");box.innerHTML="";
+  var ids=S.map(function(s){return s.id;});
+  var rows=SEC.map(function(c){var vals=ids.map(function(id){return c[2][id];}).filter(function(v){return v!=null;});var a=vals.length?vals.reduce(function(x,y){return x+y;},0)/vals.length:0;return {n:c[0],max:c[1],avg:a,lost:vals.length?c[1]-a:0};}).sort(function(a,b){return b.lost-a.lost;});
+  var W=Math.max(box.clientWidth,300),rh=26,T=4,L=Math.min(250,W*.5),R=40,H=T+rows.length*rh+4;
+  var s=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img","aria-label":"Average points lost by category"},box);
+  var mx=Math.max.apply(null,rows.map(function(r){return r.lost;}))||1;
+  rows.forEach(function(r,i){var y=T+i*rh;
+    txt(s,L-10,y+16,r.n,{"text-anchor":"end",fill:css("--ink"),"font-size":12});
+    var w=(W-L-R)*r.lost/mx;var b=el("rect",{x:L,y:y+6,width:Math.max(w,2),height:14,rx:4,fill:i===0?css("--navy"):css("--faint")},s);
+    txt(s,L+w+6,y+17,r.lost.toFixed(1),{fill:css("--ink"),"font-weight":600});
+    b.addEventListener("mousemove",function(e){showTip(e,"<b>"+r.n+"</b><br>Average "+r.avg.toFixed(1)+" of "+r.max+" points earned<br>"+r.lost.toFixed(1)+" points left on the table");});b.addEventListener("mouseleave",hideTip);});
+}
+function drawTable(S){
+  var h='<table><thead><tr><th>Company</th><th>Started</th><th>Plan</th><th>Status</th><th>Result shown</th><th class="n">Score</th><th>Proposed grade</th><th class="n">Income entered</th><th class="n">Valuation midpoint</th></tr></thead><tbody>';
+  S.slice().reverse().forEach(function(s){
+    var st=s.status!=="submitted"?'<span class="chip warn">Owner in progress</span>':s.advPts!=null?'<span class="chip good">Reviewed</span>':s.plan==="full"?'<span class="chip bad">Needs advisor</span>':'<span class="chip neutral">Objective only</span>';
+    h+='<tr><td><b>'+s.name+'</b>'+(s.test?' <span class="chip neutral">Test</span>':'')+'<div class="small">'+s.id+'</div></td><td>'+fmtDate(s.date)+'</td><td>'+(s.plan==="full"?"Full service":"Objective only")+'</td><td>'+st+'</td><td>'+s.product+'</td><td class="n">'+s.score+'</td><td>'+grade(s.score,s.product)+'</td><td class="n">'+(s.amt?money(s.amt)+'<div class="small">'+(s.basis==="ebitda"?"EBITDA":"Net fee income")+'</div>':'<span class="muted">not entered</span>')+'</td><td class="n">'+money(s.val)+'</td></tr>';});
+  document.getElementById("bookTable").innerHTML=h+'</tbody></table>';
+}
+
+/* ---------- market ---------- */
+function status(m){
+  if(!m.obs.length)return {c:"bad",t:"No figures yet"};
+  var last=m.obs[m.obs.length-1];var age=(TODAY-new Date(last.d+"T12:00:00"))/864e5;
+  if(m.cadence==="Quarterly")return age>100?{c:"warn",t:"Next quarter due"}:{c:"good",t:"Current"};
+  if(m.cadence.indexOf("Yearly")===0)return age>400?{c:"warn",t:"New edition due"}:{c:"good",t:"Current"};
+  return {c:"good",t:"Current"};
+}
+function drawMetrics(){
+  var box=document.getElementById("metrics");box.innerHTML="";
+  METRICS.forEach(function(m){
+    var st=status(m),last=m.obs[m.obs.length-1];
+    var card=document.createElement("div");card.className="panel metric";
+    card.innerHTML='<div class="row"><h3>'+m.name+'</h3><span class="chip '+st.c+'">'+st.t+'</span></div>'+
+      '<div class="row" style="align-items:baseline"><span class="big">'+(last?fmtV(m,last.v):"None")+'</span><span class="small">'+(last?"Latest: "+last.p:"Enter the first figure with Add figures")+'</span></div>'+
+      '<div class="chart"></div>'+
+      '<div class="small">'+m.src+' · '+m.cadence+' · <a href="'+m.link+'" target="_blank" rel="noopener" style="color:var(--navy)">Source</a> · '+m.obs.length+' '+(m.obs.length===1?"entry":"entries")+'</div>';
+    box.appendChild(card);
+    drawSpark(card.querySelector(".chart"),m);
+  });
+}
+function drawSpark(box,m){
+  var W=Math.max(box.clientWidth,260),H=110,L=44,R=12,T=10,B=22;
+  var s=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img","aria-label":m.name+" history"},box);
+  if(!m.obs.length){el("rect",{x:0,y:0,width:W,height:H-4,rx:8,fill:css("--bg")},s);txt(s,W/2,H/2,"History starts with the first entry",{"text-anchor":"middle"});return;}
+  var vals=[];m.obs.forEach(function(o){if(Array.isArray(o.v))vals.push(o.v[0],o.v[1]);else vals.push(o.v);});
+  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);var pad=(hi-lo)*.2||Math.abs(hi)*.1||1;lo-=pad;hi+=pad;if(m.unit!=="%"&&lo<0)lo=0;
+  var ts=m.obs.map(function(o){return Date.parse(o.d);});var t0=Math.min.apply(null,ts),t1=Math.max.apply(null,ts);if(t1===t0){t0-=864e5*180;t1+=864e5*180;}
+  var x=function(t){return L+(t-t0)/(t1-t0)*(W-L-R);},y=function(v){return T+(hi-v)/(hi-lo)*(H-T-B);};
+  [lo,(lo+hi)/2,hi].forEach(function(g){el("line",{x1:L,x2:W-R,y1:y(g),y2:y(g),stroke:css("--line")},s);txt(s,L-6,y(g)+4,m.unit==="$"?"$"+Math.round(g/1000)+"K":m.unit==="#"?Math.round(g).toLocaleString("en-US"):g.toFixed(1)+(m.unit==="%"?"%":"x"),{"text-anchor":"end","font-size":10.5});});
+  txt(s,L,H-4,m.obs[0].p,{"font-size":10.5});if(m.obs.length>1)txt(s,W-R,H-4,m.obs[m.obs.length-1].p,{"text-anchor":"end","font-size":10.5});
+  if(m.kind==="range"){m.obs.forEach(function(o){var cx=x(Date.parse(o.d));el("rect",{x:cx-14,y:y(o.v[1]),width:28,height:y(o.v[0])-y(o.v[1]),rx:4,fill:css("--brass-soft"),stroke:css("--brass")},s);});}
+  else{
+    var step=m.key==="prime"||m.key==="sba_ceiling";var d="";
+    m.obs.forEach(function(o,i){var px=x(Date.parse(o.d)),py=y(o.v);if(i===0)d+="M"+px+","+py;else if(step)d+=" L"+px+","+y(m.obs[i-1].v)+" L"+px+","+py;else d+=" L"+px+","+py;});
+    el("path",{d:d,fill:"none",stroke:css("--navy"),"stroke-width":2},s);
+    m.obs.forEach(function(o,i){var c=el("circle",{cx:x(Date.parse(o.d)),cy:y(o.v),r:i===m.obs.length-1?5:3.5,fill:css("--navy"),stroke:css("--surface"),"stroke-width":2},s);
+      var hit=el("circle",{cx:x(Date.parse(o.d)),cy:y(o.v),r:12,fill:"transparent"},s);
+      hit.addEventListener("mousemove",function(e){showTip(e,"<b>"+o.p+"</b><br>"+fmtV(m,o.v)+(o.note?"<br>"+o.note:"")+(o.by?"<br>Entered by "+o.by:""));});hit.addEventListener("mouseleave",hideTip);});
+  }
+}
+var sel=document.getElementById("f-metric");METRICS.forEach(function(m){if(m.kind!=="range"&&m.key!=="sba_ceiling"){var o=document.createElement("option");o.value=m.key;o.textContent=m.name;sel.appendChild(o);}});
+sel.value="ibba_2to5";
+document.getElementById("add-open").addEventListener("click",function(){document.getElementById("add-drawer").hidden=false;document.getElementById("f-period").focus();});
+document.getElementById("add-cancel").addEventListener("click",function(){document.getElementById("add-drawer").hidden=true;});
+document.getElementById("add-form").addEventListener("submit",function(e){e.preventDefault();
+  var msg=document.getElementById("f-msg");var m=METRICS.filter(function(x){return x.key===sel.value;})[0];
+  var p=document.getElementById("f-period").value.trim(),d=document.getElementById("f-date").value,v=parseFloat(document.getElementById("f-value").value.replace(/[^0-9.]/g,""));
+  if(!p||!d||!isFinite(v)){msg.textContent="Fill in the period, the end date and a number for the value.";msg.style.color=css("--bad");return;}
+  m.obs.push({p:p,d:d,v:v,note:document.getElementById("f-note").value.trim(),by:"Andrew (preview)"});m.obs.sort(function(a,b){return a.d<b.d?-1:1;});
+  msg.textContent="Added to "+m.name+" in this preview. The real app would save it.";msg.style.color=css("--good");
+  document.getElementById("f-value").value="";drawMetrics();});
+
+/* ---------- client card ---------- */
+var pick=document.getElementById("c-pick");
+SUBS.filter(function(s){return s.basis==="ebitda"&&s.val;}).forEach(function(s){var o=document.createElement("option");o.value=s.id;o.textContent=s.name+" ("+s.product+", EBITDA "+money(s.amt)+")";pick.appendChild(o);});
+pick.value="6E5C855517";pick.addEventListener("change",drawClient);
+function agency(e){if(e<1e6)return {r:[2.5,3.9],l:"under $1M"};if(e<2e6)return {r:[3.5,5.0],l:"$1M to $2M"};if(e<5e6)return {r:[4.0,7.0],l:"$2M to $5M"};return {r:[8.0,10.0],l:"over $5M"};}
+function pep(e){if(e<1e6)return {m:4.8,l:"under $1M"};if(e<5e6)return {m:6.2,l:"$1M to $4.99M"};return {m:6.5,l:"$5M to $9.99M"};}
+function drawClient(){
+  var s=SUBS.filter(function(x){return x.id===pick.value;})[0],e=s.amt,a=agency(e),p=pep(e),ceil=5.66;
+  var below=s.mult<a.r[0];
+  var card=document.getElementById("clientCard");
+  card.innerHTML='<div class="row"><h2>Market context</h2><span class="chip neutral">Advisor only</span></div>'+
+   '<dl class="kv"><dt>Kriterion '+s.product+'</dt><dd>'+s.score+' · '+s.mult.toFixed(2)+'x · '+money(s.val)+'</dd>'+
+   '<dt>Agencies with EBITDA '+a.l+'</dt><dd>'+a.r[0]+'x to '+a.r[1]+'x · '+money(e*a.r[0])+' to '+money(e*a.r[1])+'</dd>'+
+   '<dt>Business services median, '+p.l+'</dt><dd>'+p.m+'x · '+money(e*p.m)+'</dd>'+
+   '<dt>Most an SBA-financed buyer can pay</dt><dd>5.7x · '+money(Math.min(e*ceil,5e6/0.9))+'</dd></dl>'+
+   '<div class="legend"><span><i class="sw" style="background:var(--brass-soft);border:1px solid var(--brass)"></i>Agency range</span><span><i class="sw" style="background:var(--navy)"></i>This client</span><span><i class="sw" style="background:var(--muted)"></i>Market reference</span></div>'+
+   '<div class="chart" id="cScale"></div>'+
+   (below?'<div class="banner"><b>Below the agency range for this size.</b> The Kriterion multiple ('+s.mult.toFixed(2)+'x) sits under the lowest published agency figure ('+a.r[0]+'x). Expect the client to have seen higher numbers elsewhere.</div>':'')+
+   '<p class="small">Market figures as of their latest entries on the Market figures tab. EBITDA as entered by the owner, not verified.</p>';
+  var box=document.getElementById("cScale");var W=Math.max(box.clientWidth,300),H=86,L=10,R=10,mx=Math.max(8,a.r[1]+1);
+  var svg=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img","aria-label":"Client multiple against market"},box);
+  var x=function(m){return L+m/mx*(W-L-R);};
+  for(var i=0;i<=mx;i++){el("line",{x1:x(i),x2:x(i),y1:26,y2:56,stroke:css("--line")},svg);txt(svg,x(i),72,i+"x",{"text-anchor":"middle","font-size":10.5});}
+  el("rect",{x:x(a.r[0]),y:32,width:x(a.r[1])-x(a.r[0]),height:18,rx:5,fill:css("--brass-soft"),stroke:css("--brass")},svg);
+  [[p.m,"Median"],[5.66,"SBA limit"]].forEach(function(q){el("line",{x1:x(q[0]),x2:x(q[0]),y1:28,y2:54,stroke:css("--muted"),"stroke-width":2},svg);txt(svg,x(q[0]),22,q[1],{"text-anchor":"middle","font-size":10.5});});
+  el("circle",{cx:x(s.mult),cy:41,r:7,fill:css("--navy"),stroke:css("--surface"),"stroke-width":2},svg);
+  txt(svg,x(s.mult),12,"This client "+s.mult.toFixed(2)+"x",{"text-anchor":"middle","font-size":11,"font-weight":600,fill:css("--ink")});
+}
+
+function drawAll(){drawBook();drawMetrics();drawClient();}
+drawAll();
+var rt;addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(drawAll,120);});
+if(window.matchMedia)matchMedia("(prefers-color-scheme: dark)").addEventListener("change",drawAll);
+new MutationObserver(drawAll).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+})();
+</script>
+
+</body></html>
