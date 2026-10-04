@@ -6,7 +6,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  // The research desk previews are approved reference designs carrying about 1 MB of
+  // generated data in .js files, not app code. Linting them hangs `eslint .`.
+  { ignores: ["dist", ".output", ".vinxi", "docs/research-desk/previews"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

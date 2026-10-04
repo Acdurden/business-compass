@@ -352,6 +352,282 @@ export type Database = {
         };
         Relationships: [];
       };
+      market_acquisitions: {
+        Row: {
+          approval_date: string;
+          approval_fy: number;
+          borrower_city: string | null;
+          borrower_name: string;
+          borrower_state: string | null;
+          has_revolver: boolean;
+          id: number;
+          industry_group: string;
+          initial_rate: number | null;
+          jobs_supported: number | null;
+          lender: string | null;
+          loaded_at: string;
+          loan_amount: number;
+          loan_count: number;
+          naics_code: string;
+          naics_description: string | null;
+          sba_express: boolean;
+          source_as_of: string;
+          status: string;
+          term_months: number | null;
+        };
+        Insert: {
+          approval_date: string;
+          approval_fy: number;
+          borrower_city?: string | null;
+          borrower_name: string;
+          borrower_state?: string | null;
+          has_revolver?: boolean;
+          id?: never;
+          industry_group: string;
+          initial_rate?: number | null;
+          jobs_supported?: number | null;
+          lender?: string | null;
+          loaded_at?: string;
+          loan_amount: number;
+          loan_count?: number;
+          naics_code: string;
+          naics_description?: string | null;
+          sba_express?: boolean;
+          source_as_of: string;
+          status: string;
+          term_months?: number | null;
+        };
+        Update: {
+          approval_date?: string;
+          approval_fy?: number;
+          borrower_city?: string | null;
+          borrower_name?: string;
+          borrower_state?: string | null;
+          has_revolver?: boolean;
+          id?: never;
+          industry_group?: string;
+          initial_rate?: number | null;
+          jobs_supported?: number | null;
+          lender?: string | null;
+          loaded_at?: string;
+          loan_amount?: number;
+          loan_count?: number;
+          naics_code?: string;
+          naics_description?: string | null;
+          sba_express?: boolean;
+          source_as_of?: string;
+          status?: string;
+          term_months?: number | null;
+        };
+        Relationships: [];
+      };
+      market_acquisitions_all_industry: {
+        Row: {
+          acquisitions: number;
+          approval_fy: number;
+          loaded_at: string;
+          median_loan: number;
+          source_as_of: string;
+        };
+        Insert: {
+          acquisitions: number;
+          approval_fy: number;
+          loaded_at?: string;
+          median_loan: number;
+          source_as_of: string;
+        };
+        Update: {
+          acquisitions?: number;
+          approval_fy?: number;
+          loaded_at?: string;
+          median_loan?: number;
+          source_as_of?: string;
+        };
+        Relationships: [];
+      };
+      market_figures: {
+        Row: {
+          entered_at: string;
+          entered_by: string | null;
+          id: number;
+          metric_key: string;
+          metric_name: string;
+          note: string | null;
+          period_end: string;
+          period_label: string;
+          source_name: string;
+          source_url: string | null;
+          unit: string;
+          value: number;
+        };
+        Insert: {
+          entered_at?: string;
+          entered_by?: string | null;
+          id?: never;
+          metric_key: string;
+          metric_name: string;
+          note?: string | null;
+          period_end: string;
+          period_label: string;
+          source_name: string;
+          source_url?: string | null;
+          unit: string;
+          value: number;
+        };
+        Update: {
+          entered_at?: string;
+          entered_by?: string | null;
+          id?: never;
+          metric_key?: string;
+          metric_name?: string;
+          note?: string | null;
+          period_end?: string;
+          period_label?: string;
+          source_name?: string;
+          source_url?: string | null;
+          unit?: string;
+          value?: number;
+        };
+        Relationships: [];
+      };
+      market_multiple_bands: {
+        Row: {
+          entered_at: string;
+          entered_by: string | null;
+          id: number;
+          multiple_high: number | null;
+          multiple_low: number | null;
+          multiple_mid: number | null;
+          note: string | null;
+          published: string | null;
+          segment: string;
+          size_basis: string;
+          size_max: number | null;
+          size_min: number;
+          source_key: string;
+          source_name: string;
+          source_url: string | null;
+        };
+        Insert: {
+          entered_at?: string;
+          entered_by?: string | null;
+          id?: never;
+          multiple_high?: number | null;
+          multiple_low?: number | null;
+          multiple_mid?: number | null;
+          note?: string | null;
+          published?: string | null;
+          segment: string;
+          size_basis?: string;
+          size_max?: number | null;
+          size_min: number;
+          source_key: string;
+          source_name: string;
+          source_url?: string | null;
+        };
+        Update: {
+          entered_at?: string;
+          entered_by?: string | null;
+          id?: never;
+          multiple_high?: number | null;
+          multiple_low?: number | null;
+          multiple_mid?: number | null;
+          note?: string | null;
+          published?: string | null;
+          segment?: string;
+          size_basis?: string;
+          size_max?: number | null;
+          size_min?: number;
+          source_key?: string;
+          source_name?: string;
+          source_url?: string | null;
+        };
+        Relationships: [];
+      };
+      market_owner_pay: {
+        Row: {
+          area_code: string;
+          area_name: string;
+          area_type: string;
+          employment: number | null;
+          industry_code: string;
+          industry_name: string | null;
+          loaded_at: string;
+          mean: number | null;
+          occupation_code: string;
+          occupation_name: string;
+          p10: number | null;
+          p25: number | null;
+          p50: number | null;
+          p75: number | null;
+          p90: number | null;
+          state_code: string | null;
+          survey_year: number;
+        };
+        Insert: {
+          area_code: string;
+          area_name: string;
+          area_type: string;
+          employment?: number | null;
+          industry_code: string;
+          industry_name?: string | null;
+          loaded_at?: string;
+          mean?: number | null;
+          occupation_code: string;
+          occupation_name: string;
+          p10?: number | null;
+          p25?: number | null;
+          p50?: number | null;
+          p75?: number | null;
+          p90?: number | null;
+          state_code?: string | null;
+          survey_year: number;
+        };
+        Update: {
+          area_code?: string;
+          area_name?: string;
+          area_type?: string;
+          employment?: number | null;
+          industry_code?: string;
+          industry_name?: string | null;
+          loaded_at?: string;
+          mean?: number | null;
+          occupation_code?: string;
+          occupation_name?: string;
+          p10?: number | null;
+          p25?: number | null;
+          p50?: number | null;
+          p75?: number | null;
+          p90?: number | null;
+          state_code?: string | null;
+          survey_year?: number;
+        };
+        Relationships: [];
+      };
+      market_rates: {
+        Row: {
+          effective_date: string;
+          loaded_at: string;
+          series: string;
+          source: string | null;
+          value: number;
+        };
+        Insert: {
+          effective_date: string;
+          loaded_at?: string;
+          series: string;
+          source?: string | null;
+          value: number;
+        };
+        Update: {
+          effective_date?: string;
+          loaded_at?: string;
+          series?: string;
+          source?: string | null;
+          value?: number;
+        };
+        Relationships: [];
+      };
       multiple_schedule: {
         Row: {
           adjusted_multiple: number | null;
@@ -675,6 +951,7 @@ export type Database = {
           client_token: string;
           company_name: string;
           created_at: string;
+          is_test: boolean;
           owner_user_id: string | null;
           plan: string;
           submission_id: string;
@@ -691,6 +968,7 @@ export type Database = {
           client_token?: string;
           company_name: string;
           created_at?: string;
+          is_test?: boolean;
           owner_user_id?: string | null;
           plan?: string;
           submission_id: string;
@@ -707,6 +985,7 @@ export type Database = {
           client_token?: string;
           company_name?: string;
           created_at?: string;
+          is_test?: boolean;
           owner_user_id?: string | null;
           plan?: string;
           submission_id?: string;

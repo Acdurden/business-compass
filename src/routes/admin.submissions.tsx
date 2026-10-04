@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   FileDown,
@@ -38,6 +39,8 @@ import {
   listAllSubmissions,
   setAdvisorStatus,
 } from "@/lib/advisor-submissions.functions";
+import { listTestSubmissionIds, setSubmissionTest } from "@/lib/research-desk.functions";
+import { useResearchDeskAccess } from "@/lib/use-research-desk-access";
 import { BackOfficeNav } from "@/components/back-office-nav";
 
 export const Route = createFileRoute("/admin/submissions")({
@@ -110,14 +113,14 @@ function derive(r: Row): { kind: PrimaryKind; next: string } {
   if (adv === "inprogress")
     return {
       kind: "do_advisory",
-      next: "Advisory in progress — resume when ready.",
+      next: "Advisory in progress. Resume when ready.",
     };
   if (adv === "submitted")
     return {
       kind: "mark_final",
-      next: "Advisory submitted — review & finalize.",
+      next: "Advisory submitted. Review and finalize.",
     };
-  return { kind: "view_results", next: "Complete — results ready to share." };
+  return { kind: "view_results", next: "Complete. Results ready to share." };
 }
 
 // Action-first ordering: rows that need the advisor float to the top.
@@ -210,10 +213,15 @@ function Pill({ label, value, tone }: { label: string; value: string; tone: Tone
 
 function SubmissionRow({
   r,
+  isTest,
+  onTestChange,
   onPatch,
   onDelete,
 }: {
   r: Row;
+  /** Null when this person may not see the test switch, or the flags did not load. */
+  isTest: boolean | null;
+  onTestChange: (next: boolean) => void;
   onPatch: (patch: Partial<Row>) => void;
   onDelete: () => void;
 }) {
@@ -221,6 +229,7 @@ function SubmissionRow({
   const setStatus = useServerFn(setAdvisorStatus);
   const resetPw = useServerFn(resetClientPassword);
   const del = useServerFn(deleteSubmission);
+  const setTest = useServerFn(setSubmissionTest);
 
   const [pending, setPending] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<null | "reset_client" | "reset_advisor" | "delete">(null);
@@ -283,7 +292,7 @@ function SubmissionRow({
       toast.error(error.message ?? "Could not unlock");
       return;
     }
-    toast.success("Unlocked — client can edit again");
+    toast.success("Unlocked. The client can edit again.");
     onPatch({ client_status: "inprogress" });
   }
 
@@ -329,6 +338,19 @@ function SubmissionRow({
       setPwOpen(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not reset password");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function toggleTest(next: boolean) {
+    setPending("test");
+    try {
+      const res = await setTest({ data: { submissionId: r.submission_id, isTest: next } });
+      onTestChange(res.isTest);
+      toast.success(res.isTest ? "Marked as a test" : "Marked as a real assessment");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not change the test setting");
     } finally {
       setPending(null);
     }
@@ -427,6 +449,22 @@ function SubmissionRow({
             </span>
           ) : null}
         </p>
+        {isTest !== null && (
+          <label
+            className="mt-1.5 inline-flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground"
+            title="A test stays in the app but is left out of every Insights figure. Admin only."
+          >
+            <Switch
+              checked={isTest}
+              disabled={pending === "test"}
+              onCheckedChange={(v) => void toggleTest(v)}
+              aria-label={`Mark ${r.company_name || "this assessment"} as a test`}
+            />
+            <span className={isTest ? "font-medium text-amber-700 dark:text-amber-300" : ""}>
+              Test
+            </span>
+          </label>
+        )}
       </div>
 
       {/* Progress track */}
@@ -649,6 +687,41 @@ function AdminSubmissionsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
 
+  /*
+   * Test flags come from their own admin-only call rather than the shared
+   * list, so an advisor who is not an admin never receives them. Null means
+   * "do not show the switch": still loading, not allowed, or the call failed.
+   * A failure is logged and otherwise ignored; the rest of the page does not
+   * depend on it.
+   */
+  const deskAccess = useResearchDeskAccess();
+  const listTests = useServerFn(listTestSubmissionIds);
+  const [testIds, setTestIds] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (deskAccess !== true) return;
+    let cancelled = false;
+    listTests()
+      .then((ids) => {
+        if (!cancelled) setTestIds(new Set(ids));
+      })
+      .catch((err) => {
+        console.warn("Test flags did not load", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [deskAccess, listTests]);
+
+  function setRowTest(submissionId: string, isTest: boolean) {
+    setTestIds((prev) => {
+      const next = new Set(prev ?? []);
+      if (isTest) next.add(submissionId);
+      else next.delete(submissionId);
+      return next;
+    });
+  }
+
   useEffect(() => {
     listAll()
       .then((data) => {
@@ -804,6 +877,8 @@ function AdminSubmissionsPage() {
                 <SubmissionRow
                   key={r.submission_id}
                   r={r}
+                  isTest={testIds ? testIds.has(r.submission_id) : null}
+                  onTestChange={(v) => setRowTest(r.submission_id, v)}
                   onPatch={(patch) => updateRow(r.submission_id, patch)}
                   onDelete={() => removeRow(r.submission_id)}
                 />
