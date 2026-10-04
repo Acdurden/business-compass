@@ -19,8 +19,7 @@ export const Route = createFileRoute("/invite")({
       { title: "Kriterion. Set up your account" },
       {
         name: "description",
-        content:
-          "Set up your Kriterion client account to begin your confidential business valuation assessment.",
+        content: "Set up your Kriterion account to begin the Founder Questionnaire.",
       },
     ],
   }),
@@ -38,14 +37,30 @@ function InvitePage() {
    * the first state a visitor sees and it is brief; "bad" means the link does
    * not work and there is nothing to fill in.
    */
-  const [linkState, setLinkState] = useState<"checking" | "ok" | "bad">(code ? "checking" : "bad");
+  const [email, setEmail] = useState("");
+  const [linkState, setLinkState] = useState<"checking" | "ok" | "bad" | "used">(
+    code ? "checking" : "bad",
+  );
+  /**
+   * Set when the link is one person's own invite. The account is created for
+   * the address the invite was issued to, so the form shows it and does not
+   * let it be changed.
+   */
+  const [personal, setPersonal] = useState<{ email: string; firstName: string } | null>(null);
 
   useEffect(() => {
     if (!code) return;
     let cancelled = false;
     void checkCode({ data: { code } })
       .then((res) => {
-        if (!cancelled) setLinkState(res.valid ? "ok" : "bad");
+        if (cancelled) return;
+        if (res.valid) {
+          setPersonal(res.personal);
+          if (res.personal) setEmail(res.personal.email);
+          setLinkState("ok");
+        } else {
+          setLinkState(res.reason === "used" ? "used" : "bad");
+        }
       })
       .catch(() => {
         /* A lookup we could not complete is not a link we know to be bad. Let
@@ -57,7 +72,6 @@ function InvitePage() {
     };
   }, [code, checkCode]);
 
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -84,7 +98,9 @@ function InvitePage() {
         return;
       }
       // Account created — sign them in and drop them into the portal.
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      // The address comes back from the server: for a personal link it is the
+      // invite's own, whatever the form held.
+      const { error } = await supabase.auth.signInWithPassword({ email: res.email, password });
       if (error) throw error;
       toast.success("Account created. Welcome to Kriterion.");
       navigate({ to: "/client" });
@@ -111,17 +127,30 @@ function InvitePage() {
               Client portal · set up your account
             </p>
             <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
-              Welcome to Kriterion
+              {personal?.firstName ? `Welcome, ${personal.firstName}` : "Welcome to Kriterion"}
             </h1>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              Create your account to begin your confidential business valuation assessment. You'll
-              use this email and password to sign back in anytime.
+              {personal
+                ? "Choose a password to begin the Founder Questionnaire. You'll use this email and password to sign back in anytime."
+                : "Create your account to begin the Founder Questionnaire. You'll use this email and password to sign back in anytime."}
             </p>
           </div>
 
           {linkState === "checking" ? (
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm text-center">
               <p className="text-sm text-muted-foreground">Checking your link…</p>
+            </div>
+          ) : linkState === "used" ? (
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm text-center">
+              <p className="text-sm text-foreground font-medium">
+                This link has already been used to set up an account.
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Sign in with the email and password you chose.
+              </p>
+              <Button asChild size="lg" className="mt-4 w-full">
+                <Link to="/client/auth">Go to client sign-in</Link>
+              </Button>
             </div>
           ) : linkState === "bad" ? (
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm text-center">
@@ -153,9 +182,15 @@ function InvitePage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  autoFocus
-                  className="mt-1.5"
+                  readOnly={Boolean(personal)}
+                  autoFocus={!personal}
+                  className={personal ? "mt-1.5 bg-muted text-muted-foreground" : "mt-1.5"}
                 />
+                {personal && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Your invite was sent to this address, so your account uses it.
+                  </p>
+                )}
               </div>
               <div>
                 <Label
@@ -172,6 +207,7 @@ function InvitePage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
+                  autoFocus={Boolean(personal)}
                   className="mt-1.5"
                 />
                 <p className="mt-1 text-[11px] text-muted-foreground">At least 8 characters.</p>

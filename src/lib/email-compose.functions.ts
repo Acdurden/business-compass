@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import {
+  dropEmptyGreeting,
   EMAIL_TEMPLATE_KEYS,
   fillTags,
   type EmailTemplate,
@@ -34,21 +35,33 @@ type AuthedContext = { supabase: SupabaseClient<Database>; userId: string };
 
 export type EmailDraft = {
   key: EmailTemplateKey;
-  /** Who it goes to. Null when the app cannot know yet — an invite. */
+  /** Who it goes to. Null only when the draft is blocked before it gets that far. */
   to: string | null;
+  /**
+   * True when the address is not the advisor's to change. An invite link works
+   * only for the address it was issued to, so sending it anywhere else would
+   * hand someone a link that creates another person's account.
+   */
+  toLocked: boolean;
   subject: string;
   /** Tags already resolved. What the advisor edits is what is sent. */
   body: string;
   /**
-   * The name the message appears to come from, as the template has it. Shown as
-   * an editable field so one message can go out under a person's name without
-   * changing the template for everyone.
+   * The name the message appears to come from. Shown as an editable field so
+   * one message can go out under a different name without changing the
+   * template for everyone.
    */
   fromName: string;
   /**
+   * Whose name that is. An invite speaks as the company and goes out under the
+   * template's name; everything else is an advisor writing to their own client
+   * and goes out under the advisor's first name.
+   */
+  fromNameKind: "company" | "advisor";
+  /**
    * True when no name is saved on the advisor's account and the template's name
    * is standing in. The compose window says so rather than implying the name
-   * came from the person sending it.
+   * came from the person sending it. Never true for a company-voiced email.
    */
   fromNameIsFallback: boolean;
   /** The sending address. Fixed, and shown only so the advisor can see it. */
@@ -79,8 +92,27 @@ async function loadTemplate(key: EmailTemplateKey): Promise<EmailTemplate> {
   return loadTemplateForSending(key);
 }
 
-function siteOrigin(): string {
-  return process.env.PUBLIC_SITE_ORIGIN ?? "https://kriterionbvi.com";
+/**
+ * One invite, as far as composing and sending need it. Null when the token
+ * matches nothing.
+ */
+async function loadInvite(token: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("client_invites")
+    .select("token, email, first_name, send_count, accepted_at, revoked_at")
+    .eq("token", token)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Why an invite cannot be emailed, in plain words. Null when it can. */
+function inviteBlock(invite: Awaited<ReturnType<typeof loadInvite>>): string | null {
+  if (!invite) return "That invite no longer exists. Create a new one from Invite a client.";
+  if (invite.revoked_at) return "This invite was revoked, so its link no longer works.";
+  if (invite.accepted_at) return "This person has already signed up with this invite.";
+  return null;
 }
 
 /**
@@ -175,18 +207,21 @@ async function ownerEmail(ownerUserId: string | null): Promise<string | null> {
  */
 export const getEmailDraft = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { key: string; submissionId?: string | null; plan?: string | null }) => {
-    const key = String(input?.key ?? "").trim();
-    if (!isTemplateKey(key)) throw new Error("Unknown template");
-    const submissionId = String(input?.submissionId ?? "").trim() || null;
-    const plan = String(input?.plan ?? "").trim() || null;
-    return { key, submissionId, plan };
-  })
+  .inputValidator(
+    (input: { key: string; submissionId?: string | null; inviteToken?: string | null }) => {
+      const key = String(input?.key ?? "").trim();
+      if (!isTemplateKey(key)) throw new Error("Unknown template");
+      const submissionId = String(input?.submissionId ?? "").trim() || null;
+      const inviteToken = String(input?.inviteToken ?? "").trim() || null;
+      return { key, submissionId, inviteToken };
+    },
+  )
   .handler(async ({ data, context }): Promise<EmailDraft> => {
     await ensureAdvisor(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const template = await loadTemplate(data.key);
+    const { siteOrigin } = await import("@/lib/email-store.server");
     const origin = siteOrigin();
 
     let blocked: string | null = null;
@@ -202,35 +237,53 @@ export const getEmailDraft = createServerFn({ method: "GET" })
     /**
      * Who this appears to come from.
      *
-     * The template's own name is the fallback, not the answer. An invite reads
-     * as a personal message, so it should carry the name of whoever is actually
-     * sending it. Only the first name is used: "Dan" is what a person signs,
-     * "Dan Santy" is what a company signs.
+     * An advisor-voiced email carries the first name of whoever is actually
+     * sending it, with the template's own name as the fallback. Only the first
+     * name is used: "Dan" is what a person signs, "Dan Santy" is what a company
+     * signs. `{{advisor_name}}` resolves to the same value, so the sign-off at
+     * the bottom of the message and the From line cannot disagree.
      *
-     * `{{advisor_name}}` resolves to the same value, so the sign-off at the
-     * bottom of the message and the From line cannot disagree.
+     * The invite is the exception. It is the first thing a prospect receives
+     * and it speaks and signs as Kriterion, so it goes out under the template's
+     * name. `{{advisor_name}}` still resolves to the advisor, for a wording that
+     * wants to name them.
      */
     const me = await supabaseAdmin.auth.admin.getUserById(context.userId);
     const savedName = String(me.data?.user?.user_metadata?.full_name ?? "").trim();
-    const fromName = savedName.split(/\s+/)[0] || template.fromName;
-    const fromNameIsFallback = savedName.length === 0;
+    const advisorName = savedName.split(/\s+/)[0] || template.fromName;
+    const fromNameKind: "company" | "advisor" = data.key === "invite" ? "company" : "advisor";
+    const fromName = fromNameKind === "company" ? template.fromName : advisorName;
+    const fromNameIsFallback = fromNameKind === "advisor" && savedName.length === 0;
 
-    const values: Record<string, string> = { "{{advisor_name}}": fromName };
+    const values: Record<string, string> = { "{{advisor_name}}": advisorName };
+    let toLocked = false;
     let to: string | null = null;
     let ctaUrl = origin;
 
     if (data.key === "invite") {
-      const wanted = data.plan === "objective" ? "objective" : "full";
-      const { data: codes } = await supabaseAdmin
-        .from("invite_codes")
-        .select("code, plan, active")
-        .eq("active", true);
-      const rows = (codes ?? []) as Array<{ code: string; plan: string }>;
-      const match = rows.find((c) => c.plan === wanted) ?? rows[0];
-      if (!match) {
-        blocked = blocked ?? "No active invite link is configured.";
+      /*
+       * An invite is always to one person. The link is their own token, the
+       * address is the one the token was issued to, and neither is editable in
+       * the compose window.
+       */
+      toLocked = true;
+      const invite = data.inviteToken ? await loadInvite(data.inviteToken) : null;
+      if (!data.inviteToken) {
+        blocked =
+          blocked ?? "Invites go to one person at a time. Start from Invite a client instead.";
       } else {
-        ctaUrl = `${origin}/invite?code=${match.code}`;
+        blocked = blocked ?? inviteBlock(invite);
+      }
+      if (invite) {
+        to = invite.email;
+        ctaUrl = `${origin}/invite?code=${invite.token}`;
+        values["{{first_name}}"] = (invite.first_name ?? "").trim();
+        if (invite.send_count > 0 && !blocked) {
+          warning =
+            invite.send_count === 1
+              ? "This invite has already been emailed once. Sending again uses the same link."
+              : `This invite has already been emailed ${invite.send_count} times. Sending again uses the same link.`;
+        }
       }
       values["{{link}}"] = ctaUrl;
     } else if (data.key === "nudge" || data.key === "review_ready") {
@@ -327,9 +380,12 @@ export const getEmailDraft = createServerFn({ method: "GET" })
     return {
       key: data.key,
       to,
+      toLocked,
       subject: fillTags(template.subject, values),
-      body: fillTags(template.body, values),
+      // A greeting with no name behind it is dropped before the tags are filled.
+      body: fillTags(dropEmptyGreeting(template.body, values), values),
       fromName,
+      fromNameKind,
       fromNameIsFallback,
       fromEmail: template.fromEmail,
       ctaLabel: template.ctaLabel,
@@ -356,9 +412,11 @@ export const sendComposedEmail = createServerFn({ method: "POST" })
       fromName: string;
       ctaLabel: string;
       ctaUrl: string;
+      inviteToken?: string | null;
     }) => {
       const key = String(input?.key ?? "").trim();
       if (!isTemplateKey(key)) throw new Error("Unknown template");
+      const inviteToken = String(input?.inviteToken ?? "").trim() || null;
 
       const to = String(input?.to ?? "")
         .trim()
@@ -383,7 +441,7 @@ export const sendComposedEmail = createServerFn({ method: "POST" })
       const ctaUrl = String(input?.ctaUrl ?? "").trim();
       if (!/^https?:\/\//.test(ctaUrl)) throw new Error("The button link is not a valid address");
 
-      return { key, to, subject, body, fromName, ctaLabel, ctaUrl };
+      return { key, to, subject, body, fromName, ctaLabel, ctaUrl, inviteToken };
     },
   )
   .handler(async ({ data, context }): Promise<{ to: string; detail: string }> => {
@@ -394,10 +452,39 @@ export const sendComposedEmail = createServerFn({ method: "POST" })
       throw new Error("This email has no sender address. Set one on the Emails screen first.");
     }
 
+    const { loadEmailLook, siteOrigin } = await import("@/lib/email-store.server");
+    const origin = siteOrigin();
+
+    /*
+     * An invite is rebuilt from its own record rather than trusted from the
+     * browser: the address it goes to and the link inside it both come from the
+     * invite row. Otherwise this function would send anyone's sign-up link to
+     * any address a caller named.
+     */
+    let to = data.to;
+    let ctaUrl = data.ctaUrl;
+    let inviteSendCount: number | null = null;
+    if (data.key === "invite") {
+      if (!data.inviteToken) {
+        throw new Error("Invites go to one person at a time. Start from Invite a client instead.");
+      }
+      const invite = await loadInvite(data.inviteToken);
+      const block = inviteBlock(invite);
+      if (block || !invite) throw new Error(block ?? "That invite no longer exists.");
+      to = invite.email;
+      ctaUrl = `${origin}/invite?code=${invite.token}`;
+      inviteSendCount = invite.send_count;
+    }
+
+    // Read at send time, so the switch on the Emails screen applies to the very
+    // next message.
+    const look = await loadEmailLook();
+
     const rendered = renderEmail(
       { ...template, subject: data.subject, body: data.body, ctaLabel: data.ctaLabel },
       {},
-      data.ctaUrl,
+      ctaUrl,
+      { look, assetOrigin: origin },
     );
 
     const { deliverEmail } = await import("@/lib/email-delivery.server");
@@ -406,11 +493,28 @@ export const sendComposedEmail = createServerFn({ method: "POST" })
       // the fallback, so a cleared field cannot send as a bare address.
       fromName: data.fromName || template.fromName,
       fromEmail: template.fromEmail,
-      to: data.to,
+      to,
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
     });
 
-    return { to: data.to, detail };
+    /*
+     * Record that the invite went out. This runs only after Cloudflare has
+     * confirmed the send, and a failure here is swallowed: the email has left,
+     * and telling the advisor it failed would get it sent twice.
+     */
+    if (data.key === "invite" && data.inviteToken && inviteSendCount !== null) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin
+          .from("client_invites")
+          .update({ sent_at: new Date().toISOString(), send_count: inviteSendCount + 1 })
+          .eq("token", data.inviteToken);
+      } catch {
+        /* The send stands. */
+      }
+    }
+
+    return { to, detail };
   });

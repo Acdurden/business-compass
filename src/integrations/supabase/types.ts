@@ -295,6 +295,69 @@ export type Database = {
           },
         ];
       };
+      app_settings: {
+        Row: {
+          key: string;
+          updated_at: string;
+          updated_by: string | null;
+          value: Json;
+        };
+        Insert: {
+          key: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          value: Json;
+        };
+        Update: {
+          key?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          value?: Json;
+        };
+        Relationships: [];
+      };
+      client_invites: {
+        Row: {
+          accepted_at: string | null;
+          accepted_user_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          email: string;
+          first_name: string | null;
+          plan: string;
+          revoked_at: string | null;
+          send_count: number;
+          sent_at: string | null;
+          token: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          accepted_user_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          email: string;
+          first_name?: string | null;
+          plan?: string;
+          revoked_at?: string | null;
+          send_count?: number;
+          sent_at?: string | null;
+          token: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          accepted_user_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          email?: string;
+          first_name?: string | null;
+          plan?: string;
+          revoked_at?: string | null;
+          send_count?: number;
+          sent_at?: string | null;
+          token?: string;
+        };
+        Relationships: [];
+      };
       email_templates: {
         Row: {
           body: string;

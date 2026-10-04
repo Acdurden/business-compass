@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { KRITERION_LOGO } from "@/assets/kriterionLogo";
 import {
   clearAdvisorResponse,
   getAdvisorSubmission,
@@ -40,6 +41,13 @@ export type QuestionnaireRunnerProps = (ClientSource | AdvisorSource) & {
   questionnaireType: "objective" | "advisory";
   statusField: "client_status" | "advisor_status";
   eyebrow: string;
+  /**
+   * The questionnaire's own name, as the person filling it in knows it. When
+   * set, the header carries the Kriterion logo and this name in place of the
+   * eyebrow. The header is sticky and shared by every step, so setting it once
+   * puts the brand and the name on every section.
+   */
+  questionnaireName?: string;
   finishLabel: string;
   exitTo: "/" | "/advisor" | "/client" | "/admin/submissions";
   notFoundTo: "/" | "/advisor" | "/client" | "/admin/submissions";
@@ -751,19 +759,34 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
     <main className="min-h-screen pb-32">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 backdrop-blur">
         <div className="mx-auto max-w-3xl px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                {eyebrow}
+          {props.questionnaireName ? (
+            <>
+              <div className="flex items-center justify-between gap-4">
+                <img src={KRITERION_LOGO} alt="Kriterion" className="h-[18px] w-auto shrink-0" />
+                <p className="shrink-0 text-xs text-muted-foreground">
+                  {answered} / {total} answered
+                </p>
+              </div>
+              <p className="mt-2.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
+                <span className="font-semibold">{props.questionnaireName}</span>
+                <span className="min-w-0 truncate text-muted-foreground">{companyName || "…"}</span>
               </p>
-              <p className="truncate text-sm font-medium">{companyName || "…"}</p>
+            </>
+          ) : (
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {eyebrow}
+                </p>
+                <p className="truncate text-sm font-medium">{companyName || "…"}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">
+                  {answered} / {total} answered
+                </p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">
-                {answered} / {total} answered
-              </p>
-            </div>
-          </div>
+          )}
           <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
             <div
               className="h-full bg-primary transition-all duration-500"

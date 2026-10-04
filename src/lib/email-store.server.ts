@@ -19,8 +19,11 @@
  */
 
 import {
+  DEFAULT_EMAIL_LOOK,
   EMAIL_TEMPLATE_DEFAULTS,
   EMAIL_TEMPLATE_KEYS,
+  normaliseLook,
+  type EmailLook,
   type EmailTemplate,
   type EmailTemplateKey,
 } from "@/lib/email-templates";
@@ -76,4 +79,35 @@ export async function loadTemplateForSending(key: EmailTemplateKey): Promise<Ema
   const mine = all.find((t) => t.key === key) ?? EMAIL_TEMPLATE_DEFAULTS[key];
   if (mine.fromEmail) return mine;
   return { ...mine, fromEmail: effectiveSender(all) };
+}
+
+/** The `app_settings` row that holds the two look switches. */
+export const EMAIL_LOOK_KEY = "email_look";
+
+/**
+ * How the emails look right now. Read on every send and every test, so a
+ * switch moved on the Emails screen applies to the very next message.
+ *
+ * A failed read answers with the default rather than throwing. The default is
+ * the look that went out before the switches existed, and an invite that sends
+ * in the old look is a far smaller problem than an invite that does not send.
+ */
+export async function loadEmailLook(): Promise<EmailLook> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("app_settings")
+      .select("value")
+      .eq("key", EMAIL_LOOK_KEY)
+      .maybeSingle();
+    if (error || !data) return DEFAULT_EMAIL_LOOK;
+    return normaliseLook(data.value);
+  } catch {
+    return DEFAULT_EMAIL_LOOK;
+  }
+}
+
+/** The public address of the site, which is also where the logo is served from. */
+export function siteOrigin(): string {
+  return process.env.PUBLIC_SITE_ORIGIN ?? "https://kriterionbvi.com";
 }

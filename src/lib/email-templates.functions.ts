@@ -5,6 +5,8 @@ import type { Database } from "@/integrations/supabase/types";
 import {
   EMAIL_TEMPLATE_DEFAULTS,
   EMAIL_TEMPLATE_KEYS,
+  normaliseLook,
+  type EmailLook,
   type EmailTemplate,
   type EmailTemplateKey,
 } from "@/lib/email-templates";
@@ -155,4 +157,43 @@ export const saveEmailTemplate = createServerFn({ method: "POST" })
       body: data.body,
       ctaLabel: data.ctaLabel,
     };
+  });
+
+/**
+ * How the emails look: plain or branded invite, band or logo header.
+ *
+ * Admin-only like the wording. An advisor never needs to read it, because the
+ * server applies it when it renders a send.
+ */
+export const getEmailLook = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<EmailLook> => {
+    await ensureAdmin(context);
+    const { loadEmailLook } = await import("@/lib/email-store.server");
+    return loadEmailLook();
+  });
+
+/**
+ * Move one or both switches. What is stored is the normalised pair, never what
+ * was sent, so nothing but the four known values can reach the renderer.
+ */
+export const saveEmailLook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { inviteStyle: string; headerStyle: string }) => normaliseLook(input))
+  .handler(async ({ data, context }): Promise<EmailLook> => {
+    await ensureAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { EMAIL_LOOK_KEY } = await import("@/lib/email-store.server");
+
+    const { error } = await supabaseAdmin.from("app_settings").upsert(
+      {
+        key: EMAIL_LOOK_KEY,
+        value: data,
+        updated_at: new Date().toISOString(),
+        updated_by: context.userId,
+      },
+      { onConflict: "key" },
+    );
+    if (error) throw new Error(error.message);
+    return data;
   });

@@ -35,7 +35,7 @@ export function SendEmailDialog({
   onOpenChange,
   templateKey,
   submissionId,
-  plan,
+  inviteToken,
   title,
   onSent,
 }: {
@@ -43,8 +43,8 @@ export function SendEmailDialog({
   onOpenChange: (open: boolean) => void;
   templateKey: EmailTemplateKey;
   submissionId?: string;
-  /** Which invite link to use. Only meaningful for the invite email. */
-  plan?: "full" | "objective";
+  /** Which person's invite this is. Required for the invite email, unused otherwise. */
+  inviteToken?: string;
   title: string;
   onSent?: () => void;
 }) {
@@ -56,7 +56,7 @@ export function SendEmailDialog({
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  /** Defaults to the advisor's own first name; editable for this one message. */
+  /** Defaults to the advisor's first name, or the company for an invite. Editable per message. */
   const [fromName, setFromName] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -66,7 +66,11 @@ export function SendEmailDialog({
     setDraft(null);
     setError(null);
     loadDraft({
-      data: { key: templateKey, submissionId: submissionId ?? null, plan: plan ?? null },
+      data: {
+        key: templateKey,
+        submissionId: submissionId ?? null,
+        inviteToken: inviteToken ?? null,
+      },
     })
       .then((d) => {
         if (cancelled) return;
@@ -82,7 +86,7 @@ export function SendEmailDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, templateKey, submissionId, plan, loadDraft]);
+  }, [open, templateKey, submissionId, inviteToken, loadDraft]);
 
   async function onSend() {
     if (!draft) return;
@@ -97,6 +101,7 @@ export function SendEmailDialog({
           fromName: fromName.trim(),
           ctaLabel: draft.ctaLabel,
           ctaUrl: draft.ctaUrl,
+          inviteToken: inviteToken ?? null,
         },
       });
       toast.success(`Sent to ${result.to}.`, {
@@ -117,12 +122,12 @@ export function SendEmailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Read it before it goes. Anything you change here applies to this one email only &mdash;
-            the standard wording lives on the Emails screen.
+            Read it before it goes. Anything you change here applies to this one email only. The
+            standard wording lives on the Emails screen.
           </DialogDescription>
         </DialogHeader>
 
@@ -176,6 +181,11 @@ export function SendEmailDialog({
                   Changed for this email only. The sign-off at the end of the message is separate,
                   so change that too if it should match.
                 </p>
+              ) : draft.fromNameKind === "company" ? (
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                  Invites go out under the company name, to match the sign-off. Change it here and
+                  only this email is affected.
+                </p>
               ) : draft.fromNameIsFallback ? (
                 <p className="mt-1.5 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-[11.5px] leading-relaxed text-amber-800 dark:text-amber-200">
                   No name is saved on your advisor account, so this is the standard wording standing
@@ -202,8 +212,14 @@ export function SendEmailDialog({
                 value={to}
                 placeholder="client@example.com"
                 onChange={(e) => setTo(e.target.value)}
-                disabled={Boolean(blocked)}
+                disabled={Boolean(blocked) || draft.toLocked}
               />
+              {draft.toLocked && (
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                  The link in this email works for this address only, so it cannot be sent anywhere
+                  else. To use a different address, create a new invite.
+                </p>
+              )}
             </div>
 
             <div>
@@ -237,8 +253,9 @@ export function SendEmailDialog({
                 disabled={Boolean(blocked)}
               />
               <p className="mt-1.5 text-[11px] text-muted-foreground">
-                The <code>[button]</code> line becomes a button pointing at{" "}
-                <span className="font-mono">{draft.ctaUrl}</span>.
+                The <code>[button]</code> line becomes the link to{" "}
+                <span className="break-all font-mono">{draft.ctaUrl}</span>. A line starting with{" "}
+                <code>#</code> is a heading, and words wrapped in <code>**</code> are bold.
               </p>
             </div>
           </div>

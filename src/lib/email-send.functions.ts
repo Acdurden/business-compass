@@ -131,7 +131,10 @@ export const sendTestEmail = createServerFn({ method: "POST" })
       );
     }
 
-    const origin = process.env.PUBLIC_SITE_ORIGIN ?? "https://kriterionbvi.com";
+    const { loadEmailLook, siteOrigin } = await import("@/lib/email-store.server");
+    const origin = siteOrigin();
+    // The look is read at send time, so a test always shows the current switches.
+    const look = await loadEmailLook();
 
     /**
      * Values are deliberately obvious placeholders rather than a real client's.
@@ -140,6 +143,7 @@ export const sendTestEmail = createServerFn({ method: "POST" })
      */
     const values: Record<string, string> = {
       "{{advisor_name}}": template.fromName,
+      "{{first_name}}": "[first name]",
       "{{company}}": "[company name]",
       "{{valscore}}": "[score]",
       "{{opportunity}}": "[points]",
@@ -153,7 +157,7 @@ export const sendTestEmail = createServerFn({ method: "POST" })
     };
 
     const { deliverEmail } = await import("@/lib/email-delivery.server");
-    const rendered = renderEmail(template, values, origin);
+    const rendered = renderEmail(template, values, origin, { look, assetOrigin: origin });
     const detail = await deliverEmail({
       fromName: template.fromName,
       fromEmail: template.fromEmail,

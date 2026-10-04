@@ -515,7 +515,7 @@ function NotStarted({
       <PageHead
         eyebrow="Welcome"
         title="Let's get started"
-        sub="You haven't started your assessment yet."
+        sub="You haven't started your Founder Questionnaire yet."
         plan={plan}
       />
       <Card className="text-center">
@@ -559,7 +559,7 @@ function NotStarted({
               </span>
             </p>
             <Button size="lg" className="mt-4" onClick={onContinue}>
-              Begin your assessment
+              Begin your Founder Questionnaire
             </Button>
           </div>
         ) : (
@@ -575,7 +575,7 @@ function NotStarted({
               className="mt-2"
             />
             <Button type="submit" size="lg" className="mt-5" disabled={busy || !companyName.trim()}>
-              {busy ? "Starting…" : "Begin your assessment"}
+              {busy ? "Starting…" : "Begin your Founder Questionnaire"}
             </Button>
           </form>
         )}

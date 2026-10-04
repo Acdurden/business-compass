@@ -7,8 +7,8 @@
  * which is why the editor can never be opened onto a blank screen and why
  * "revert" is a write of the constant below rather than a delete.
  *
- * Everything in this module is pure. The send path (not yet built) renders with
- * the same `splitBody` / `fillTags` pair the editor previews with, so what an
+ * Everything in this module is pure. The send path renders with the same
+ * `splitBody` / `fillTags` pair the editor previews with, so what an
  * admin approves on screen is what leaves the building.
  */
 
@@ -26,6 +26,36 @@ export const EMAIL_TEMPLATE_KEYS: EmailTemplateKey[] = [
  * button silently lands in the wrong place the moment a paragraph is added.
  */
 export const BUTTON_MARKER = "[button]";
+
+/**
+ * How the emails look, as opposed to what they say. Two switches, both set on
+ * the Emails screen and stored once for the whole app.
+ *
+ * `inviteStyle` exists because the choice is a real trade. A branded invite is
+ * what a prospect should see; a plain one is what Gmail reliably files under
+ * Primary. Both are built so the decision can be made by sending each to a
+ * fresh inbox rather than by argument.
+ *
+ * `headerStyle` applies to every branded email, so the four of them can never
+ * wear two different headers.
+ *
+ * The defaults are what went out before the switches existed, so shipping this
+ * changes nothing until somebody moves one.
+ */
+export type InviteStyle = "plain" | "branded";
+export type HeaderStyle = "band" | "logo";
+export type EmailLook = { inviteStyle: InviteStyle; headerStyle: HeaderStyle };
+
+export const DEFAULT_EMAIL_LOOK: EmailLook = { inviteStyle: "plain", headerStyle: "band" };
+
+/** Anything unrecognised falls back to the default for that switch alone. */
+export function normaliseLook(raw: unknown): EmailLook {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    inviteStyle: value.inviteStyle === "branded" ? "branded" : DEFAULT_EMAIL_LOOK.inviteStyle,
+    headerStyle: value.headerStyle === "logo" ? "logo" : DEFAULT_EMAIL_LOOK.headerStyle,
+  };
+}
 
 export type TemplateTag = {
   /** Written exactly as it appears in the body, braces included. */
@@ -62,10 +92,11 @@ export const EMAIL_TEMPLATE_META: Record<EmailTemplateKey, EmailTemplateMeta> = 
     name: "Invite a client",
     when: "sent when you invite someone",
     tags: [
-      { tag: "{{advisor_name}}", describes: "the sender name set above" },
+      { tag: "{{first_name}}", describes: "the first name typed on the invite form" },
+      { tag: "{{advisor_name}}", describes: "the first name of whoever is sending it" },
       { tag: "{{link}}", describes: "their personal sign-up link" },
     ],
-    note: "At the moment you invite someone, the only thing Kriterion knows about them is their email address. There is no name to greet them with and no company to mention. Adding a name box to the invite dialog would change that.",
+    note: "The first name and the link both come from the invite itself: each person is invited by name and gets a link that works once, for their address only. If no first name was typed, a greeting line that holds nothing but the name is left out. The preview shows your own first name.",
   },
   nudge: {
     key: "nudge",
@@ -120,18 +151,25 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
     key: "invite",
     fromName: "Kriterion",
     fromEmail: null,
-    subject: "Your Kriterion assessment",
-    ctaLabel: "Begin the assessment",
+    /*
+     * Adam and Dan's wording, 2026-10-04. It is the first thing a prospect
+     * reads from Kriterion, so it speaks as the company and signs as the
+     * company. "Your personal link" is true because every invite now carries a
+     * link of its own (see `client_invites`).
+     */
+    subject: "Your Kriterion Founder Questionnaire",
+    ctaLabel: "Begin Your Founder Questionnaire",
     body: [
-      "Here is your Kriterion assessment. It takes about twenty minutes and covers nine areas of the business, from the quality of your financials to how much of the operation still runs through you.",
-      "It is not a valuation calculator. The questions are the ones a buyer works through before they make an offer, and the score you get is the one we then sit down and talk about.",
-      // The invite is sent as plain person-to-person mail, so the marker becomes
-      // a bare web address rather than a button. The line above it has to
-      // introduce that address, because nothing else will.
-      "Here is your link:",
+      "{{first_name}},",
+      "# Welcome to Kriterion.",
+      "Kriterion is a Business Value Intelligence platform designed to help owners of small to mid-sized independent advertising, media and marketing agencies better understand what drives, limits and ultimately creates value in their business through the lens of a sophisticated buyer.",
+      "**Your first step is the Founder Questionnaire.**",
+      "It takes approximately 20 minutes and looks across nine areas of your business that can influence how a sophisticated buyer evaluates what you\u2019ve built.",
+      "This isn\u2019t a valuation calculator. The purpose is to help surface the strengths, risks and questions that may matter when your business is viewed from the other side of the table.",
       BUTTON_MARKER,
-      "The link is yours and does not expire. If you would rather walk through the first few questions together, reply and we will find twenty minutes.",
-      "{{advisor_name}}",
+      "Your personal link will take you directly into Kriterion. You can complete the questionnaire on your own time and return to it if needed.",
+      "We look forward to showing you what your responses reveal.",
+      "**Kriterion**\nBusiness Value Intelligence",
     ].join("\n\n"),
   },
   nudge: {
@@ -178,11 +216,22 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplateKey, EmailTemplate> = 
   },
 };
 
-export type EmailBlock = { kind: "paragraph"; text: string } | { kind: "button" };
+const TAG_PATTERN = /\{\{[a-z_]+\}\}/g;
+
+export type EmailBlock =
+  { kind: "paragraph"; text: string } | { kind: "heading"; text: string } | { kind: "button" };
+
+/** A paragraph that opens with this is set as a heading. */
+const HEADING_PREFIX = /^#\s+/;
 
 /**
  * Split a body into what actually renders: paragraphs on blank lines, with the
  * marker line becoming the button wherever the admin left it.
+ *
+ * Two pieces of light formatting, and only two, because the people writing
+ * these are not going to learn a markup language: a paragraph that starts with
+ * "# " is a heading, and words wrapped in ** are bold. Both are stripped from
+ * the plain-text copy of the message.
  */
 export function splitBody(body: string): EmailBlock[] {
   // Windows line endings reach this from pasted text and from anything the repo
@@ -193,16 +242,68 @@ export function splitBody(body: string): EmailBlock[] {
     .split(/\n[ \t]*\n/)
     .map((part) => part.trim())
     .filter((part) => part.length > 0)
-    .map<EmailBlock>((part) =>
-      part === BUTTON_MARKER ? { kind: "button" } : { kind: "paragraph", text: part },
-    );
+    .flatMap<EmailBlock>((part) => {
+      if (part === BUTTON_MARKER) return [{ kind: "button" }];
+      if (HEADING_PREFIX.test(part)) {
+        // Only the first line is the heading. Text typed straight under it,
+        // with no blank line between, is an ordinary paragraph and not a
+        // second line of very large type.
+        const [first, ...rest] = part.replace(HEADING_PREFIX, "").split("\n");
+        const after = rest.join("\n").trim();
+        const heading: EmailBlock = { kind: "heading", text: first.trim() };
+        return after ? [heading, { kind: "paragraph", text: after }] : [heading];
+      }
+      return [{ kind: "paragraph", text: part }];
+    });
 }
 
 export function hasButton(body: string): boolean {
   return splitBody(body).some((block) => block.kind === "button");
 }
 
-const TAG_PATTERN = /\{\{[a-z_]+\}\}/g;
+/**
+ * Bold is a pair of ** around words on one line. Kept to a single line and to
+ * text without asterisks on purpose: two stray ** in different lines of a
+ * paragraph would otherwise turn everything between them bold.
+ */
+export const BOLD_PATTERN = /\*\*([^*\n]+?)\*\*/g;
+
+/** The bold markers, removed. For the plain-text copy and for subject lines. */
+export function stripBoldMarks(text: string): string {
+  return text.replace(BOLD_PATTERN, "$1");
+}
+
+const FIRST_NAME_TAG = "{{first_name}}";
+
+/**
+ * Leave out a greeting that has nobody to greet.
+ *
+ * The invite opens with a line holding only the recipient's first name. When no
+ * name was typed, filling the tag with nothing would send a line reading ",",
+ * and leaving the tag would send literal braces. So a paragraph that is nothing
+ * but the first-name tag and punctuation is dropped whole when there is no
+ * name.
+ *
+ * Deliberately narrow. It touches only `{{first_name}}`, and only when that tag
+ * stands alone: a name used inside a real sentence is left as a visible tag for
+ * the advisor to fix in the draft, and a mistyped tag elsewhere still shows up
+ * as braces rather than vanishing.
+ */
+export function dropEmptyGreeting(body: string, values: Record<string, string>): string {
+  if ((values[FIRST_NAME_TAG] ?? "").trim().length > 0) return body;
+  return body
+    .replace(/\r\n?/g, "\n")
+    .split(/\n[ \t]*\n/)
+    .filter((part) => {
+      if (!part.includes(FIRST_NAME_TAG)) return true;
+      const rest = part
+        .split(FIRST_NAME_TAG)
+        .join("")
+        .replace(/[\s,.:;!*#-]/g, "");
+      return rest.length > 0;
+    })
+    .join("\n\n");
+}
 
 /** Every tag written in the text, in order, deduplicated. */
 export function tagsUsed(text: string): string[] {

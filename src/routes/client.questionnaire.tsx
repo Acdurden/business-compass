@@ -23,7 +23,7 @@ export const Route = createFileRoute("/client/questionnaire")({
       throw redirect({ to: "/client/change-password" });
     }
   },
-  head: () => ({ meta: [{ title: "Your assessment" }] }),
+  head: () => ({ meta: [{ title: "Founder Questionnaire | Kriterion" }] }),
   component: ClientQuestionnaire,
 });
 
@@ -51,7 +51,7 @@ function ClientQuestionnaire() {
   if (!token) {
     return (
       <div className="min-h-screen grid place-items-center p-6 text-center text-sm">
-        No assessment yet.{" "}
+        Your Founder Questionnaire has not been started yet.{" "}
         <a className="underline ml-1" href="/client">
           Go to portal
         </a>
@@ -61,7 +61,7 @@ function ClientQuestionnaire() {
   if (status === "submitted" || status === "complete") {
     return (
       <div className="min-h-screen grid place-items-center p-6 text-center text-sm">
-        Your assessment has been submitted.{" "}
+        Your Founder Questionnaire has been submitted.{" "}
         <a className="underline ml-1" href="/client">
           Back to portal
         </a>
@@ -75,7 +75,8 @@ function ClientQuestionnaire() {
       token={token}
       questionnaireType="objective"
       statusField="client_status"
-      eyebrow="Your assessment"
+      eyebrow="Founder Questionnaire"
+      questionnaireName="Founder Questionnaire"
       finishLabel="Submit"
       finishMode="submitlock"
       exitTo="/client"

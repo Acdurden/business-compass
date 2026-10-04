@@ -25,10 +25,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BackOfficeNav } from "@/components/back-office-nav";
 import { requireAdminAuth } from "@/lib/require-admin-auth";
-import { listEmailTemplates, saveEmailTemplate } from "@/lib/email-templates.functions";
+import {
+  getEmailLook,
+  listEmailTemplates,
+  saveEmailLook,
+  saveEmailTemplate,
+} from "@/lib/email-templates.functions";
 import { getSendingStatus, sendTestEmail, type SendingStatus } from "@/lib/email-send.functions";
 import {
   BUTTON_MARKER,
+  DEFAULT_EMAIL_LOOK,
+  dropEmptyGreeting,
   EMAIL_TEMPLATE_DEFAULTS,
   EMAIL_TEMPLATE_KEYS,
   EMAIL_TEMPLATE_META,
@@ -36,6 +43,7 @@ import {
   isDefaultWording,
   splitBody,
   unknownTags,
+  type EmailLook,
   type EmailTemplate,
   type EmailTemplateKey,
 } from "@/lib/email-templates";
@@ -89,12 +97,60 @@ type QuestionRow = {
   max_score: number | null;
 };
 
+/**
+ * One of the two look switches: a label, a line saying what the choice costs,
+ * and the pair of options. The line is there because neither choice is free and
+ * the person moving the switch should not have to remember why.
+ */
+function LookSwitch<T extends string>({
+  label,
+  detail,
+  value,
+  options,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  detail: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  disabled: boolean;
+  onChange: (next: T) => void;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <div className="mt-1.5 inline-flex overflow-hidden rounded-lg border border-border">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={value === option.value}
+            disabled={disabled}
+            onClick={() => onChange(option.value)}
+            className={`px-3 py-1.5 text-[12.5px] transition-colors disabled:opacity-60 ${
+              value === option.value
+                ? "bg-primary text-primary-foreground"
+                : "bg-card text-muted-foreground hover:bg-muted/60"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
 function EmailTemplatesPage() {
   const load = useServerFn(listEmailTemplates);
   const save = useServerFn(saveEmailTemplate);
   const loadSendingStatus = useServerFn(getSendingStatus);
   const sendTest = useServerFn(sendTestEmail);
   const loadInviteCodes = useServerFn(getActiveInviteCodes);
+  const loadLook = useServerFn(getEmailLook);
+  const saveLook = useServerFn(saveEmailLook);
 
   const [templates, setTemplates] = useState<EmailTemplate[] | null>(null);
   const [current, setCurrent] = useState<EmailTemplateKey>("invite");
@@ -106,6 +162,10 @@ function EmailTemplatesPage() {
   const [sending, setSending] = useState<SendingStatus | null>(null);
   const [testing, setTesting] = useState(false);
   const [testTo, setTestTo] = useState("");
+  const [look, setLook] = useState<EmailLook>(DEFAULT_EMAIL_LOOK);
+  const [savingLook, setSavingLook] = useState(false);
+  /** The signed-in admin's own first name, standing in for a recipient's. */
+  const [myFirstName, setMyFirstName] = useState("");
 
   /* ---------------- templates ---------------- */
 
@@ -124,6 +184,48 @@ function EmailTemplatesPage() {
       cancelled = true;
     };
   }, [load]);
+
+  /* ---------------- how the emails look ---------------- */
+
+  useEffect(() => {
+    let cancelled = false;
+    loadLook()
+      .then((saved) => {
+        if (!cancelled) setLook(saved);
+      })
+      .catch(() => {
+        /* The default is what is being sent if nothing was ever saved. */
+      });
+    void supabase.auth.getUser().then(({ data }) => {
+      if (cancelled) return;
+      const full = String(data.user?.user_metadata?.full_name ?? "").trim();
+      setMyFirstName(full.split(/\s+/)[0] ?? "");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadLook]);
+
+  /**
+   * Saved the moment it is moved. There is no Save button for the look because
+   * the whole point of the switch is to flip it, send a test, and flip it back.
+   * On failure the switch returns to where it was, so the screen never shows a
+   * look that is not the one being sent.
+   */
+  async function changeLook(next: EmailLook) {
+    const previous = look;
+    setLook(next);
+    setSavingLook(true);
+    try {
+      setLook(await saveLook({ data: next }));
+      toast.success("Saved. The next email sent uses this look.");
+    } catch (err) {
+      setLook(previous);
+      toast.error(err instanceof Error ? err.message : "Could not save the look");
+    } finally {
+      setSavingLook(false);
+    }
+  }
 
   /**
    * Whether anything can actually be sent. Asked rather than assumed, so the
@@ -426,6 +528,11 @@ function EmailTemplatesPage() {
     ...preview.values,
     "{{advisor_name}}": draft.fromName,
   };
+  /*
+   * A recipient's first name only exists once someone is invited. The admin's
+   * own stands in, and with none saved the tag stays visible as a tag.
+   */
+  if (myFirstName) previewValues["{{first_name}}"] = myFirstName;
   if (draft.key === "password_reset" && typeof window !== "undefined") {
     previewValues["{{link}}"] = `${window.location.origin}/reset-password`;
   }
@@ -433,15 +540,14 @@ function EmailTemplatesPage() {
   const fill = (text: string) => (showTags ? text : fillTags(text, previewValues));
 
   /**
-   * The invite goes out as person-to-person mail, so it has no wordmark bar, no
-   * button and no footer. The preview has to show that, or an admin signs off on
-   * a card and a button that the recipient never sees.
+   * While the invite is set to plain it has no header, no button and no footer.
+   * The preview has to show that, or an admin signs off on a card and a button
+   * that the recipient never sees.
    */
-  const personal = rendersAsPersonalMail(draft.key);
+  const personal = rendersAsPersonalMail(draft.key, look);
   /**
-   * The real destination carries an invite code chosen when the link is sent, so
-   * the preview can only show its shape. Stated in the caveat rather than
-   * presented as the address that will go out.
+   * The real destination carries a token made when the person is invited, so
+   * the preview can only show its shape.
    */
   const previewCtaUrl =
     typeof window === "undefined" ? "/invite?code=…" : `${window.location.origin}/invite?code=…`;
@@ -452,11 +558,21 @@ function EmailTemplatesPage() {
    * does that a real send does not.
    */
   const rendered = renderEmail(
-    { ...draft, fromEmail: effectiveFrom ?? null },
+    {
+      ...draft,
+      fromEmail: effectiveFrom ?? null,
+      // What a real send does: a greeting with no name behind it is left out.
+      body: showTags ? draft.body : dropEmptyGreeting(draft.body, previewValues),
+    },
     showTags ? {} : previewValues,
     draft.key === "password_reset" && typeof window !== "undefined"
       ? `${window.location.origin}/reset-password`
       : previewCtaUrl,
+    /*
+     * The logo is fetched from wherever this screen is running, so the preview
+     * shows it on a staging address as well as on the live site.
+     */
+    { look, assetOrigin: typeof window === "undefined" ? undefined : window.location.origin },
   );
 
   return (
@@ -499,6 +615,50 @@ function EmailTemplatesPage() {
           </div>
         </div>
       ) : null}
+
+      <div className="mx-auto max-w-6xl px-6 pt-6">
+        <section className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-3">
+            <h2 className="text-sm font-semibold">How the emails look</h2>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              Saved as soon as you switch, and used by the next email sent. Switch, send yourself a
+              test, and compare.
+            </p>
+          </div>
+          <div className="grid gap-5 px-5 py-4 md:grid-cols-2">
+            <LookSwitch
+              label="Invite email"
+              value={look.inviteStyle}
+              disabled={savingLook}
+              options={[
+                { value: "plain", label: "Plain message" },
+                { value: "branded", label: "Branded" },
+              ]}
+              onChange={(inviteStyle) => void changeLook({ ...look, inviteStyle })}
+              detail={
+                look.inviteStyle === "plain"
+                  ? "Paragraphs and one text link, the way a person writes. This is the version that reached the Primary inbox in Gmail."
+                  : "Header, button and footer. An earlier branded invite was filed under Promotions in Gmail, so test this to an address that has never had Kriterion mail."
+              }
+            />
+            <LookSwitch
+              label="Header on branded emails"
+              value={look.headerStyle}
+              disabled={savingLook}
+              options={[
+                { value: "band", label: "Navy band" },
+                { value: "logo", label: "Logo image" },
+              ]}
+              onChange={(headerStyle) => void changeLook({ ...look, headerStyle })}
+              detail={
+                look.headerStyle === "band"
+                  ? "The name set in type on navy. Nothing to load, so nothing a mail app can block. Applies to every branded email."
+                  : "The Kriterion logo on white. Mail apps that hide images show the name in type until the reader allows them. Applies to every branded email."
+              }
+            />
+          </div>
+        </section>
+      </div>
 
       <div className="mx-auto grid max-w-6xl gap-6 px-6 py-8 md:grid-cols-[220px_minmax(0,1fr)]">
         {/* template list */}
@@ -588,7 +748,7 @@ function EmailTemplatesPage() {
               </div>
               <p className="text-[11px] text-muted-foreground">
                 Replies go to this address, so it should be a mailbox someone reads. It must also be
-                one the sending service has been verified to send from — until that is set up,
+                one the sending service has been verified to send from. Until that is set up,
                 nothing can leave the app whatever is typed here.
               </p>
               {/*
@@ -641,7 +801,9 @@ function EmailTemplatesPage() {
                 />
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
                   Leave a blank line between paragraphs. The <code>{BUTTON_MARKER}</code> line is
-                  where the button sits — move that line to move the button.
+                  where the button sits, so move that line to move the button. Start a paragraph
+                  with <code>#</code> and a space to make it a heading, and wrap words in{" "}
+                  <code>**</code> to make them bold.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {meta.tags.map((t) => (
@@ -676,9 +838,8 @@ function EmailTemplatesPage() {
                 />
                 {personal && (
                   <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                    This email is sent as a personal message, so there is no button and this label
-                    is not shown. The link appears as its own web address, introduced by whatever
-                    you write immediately above the button marker.
+                    The invite is set to go out as a plain message, so this label appears as a text
+                    link where the button marker sits, not as a button.
                   </p>
                 )}
               </div>
@@ -744,7 +905,7 @@ function EmailTemplatesPage() {
                 {dirty
                   ? "Unsaved changes"
                   : justSaved
-                    ? "Saved — every email of this kind now uses this wording"
+                    ? "Saved. Every email of this kind now uses this wording"
                     : "No unsaved changes"}
               </span>
             </div>
