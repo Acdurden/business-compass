@@ -6,6 +6,7 @@ import {
   dropEmptyGreeting,
   EMAIL_TEMPLATE_KEYS,
   fillTags,
+  greetingName,
   type EmailTemplate,
   type EmailTemplateKey,
 } from "@/lib/email-templates";
@@ -277,7 +278,7 @@ export const getEmailDraft = createServerFn({ method: "GET" })
       if (invite) {
         to = invite.email;
         ctaUrl = `${origin}/invite?code=${invite.token}`;
-        values["{{first_name}}"] = (invite.first_name ?? "").trim();
+        values["{{first_name}}"] = greetingName(invite.first_name);
         if (invite.send_count > 0 && !blocked) {
           warning =
             invite.send_count === 1

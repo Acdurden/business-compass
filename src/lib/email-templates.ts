@@ -305,6 +305,17 @@ export function dropEmptyGreeting(body: string, values: Record<string, string>):
     .join("\n\n");
 }
 
+/**
+ * A first name as it should open an email: trimmed, with its first letter
+ * capitalised. The invite form takes the name as typed, and "andrew," at the
+ * top of the first message Kriterion sends reads as careless. Only the first
+ * letter is touched, so "McKenzie" or "JP" stay exactly as entered.
+ */
+export function greetingName(raw: string | null | undefined): string {
+  const name = (raw ?? "").trim();
+  return name.charAt(0).toLocaleUpperCase("en-US") + name.slice(1);
+}
+
 /** Every tag written in the text, in order, deduplicated. */
 export function tagsUsed(text: string): string[] {
   return Array.from(new Set(text.match(TAG_PATTERN) ?? []));
