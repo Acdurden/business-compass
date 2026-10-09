@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kriterion seal options</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 16px 64px;
+    background: #dfe1e4;
+    color: #17181b;
+    font-family: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 28px; font-weight: 800; }
+  .lede { margin: 0 0 8px; font-size: 16px; color: #4b4e55; max-width: 760px; line-height: 1.5; }
+  h2 { margin: 44px 0 4px; font-size: 20px; font-weight: 800; }
+  .note { margin: 0 0 14px; font-size: 15px; color: #4b4e55; max-width: 760px; line-height: 1.5; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
+  .tile {
+    background: var(--ground);
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 30px 16px 26px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+  .seal { width: min(74%, 230px); aspect-ratio: 1; color: var(--acc); }
+  .pill {
+    font-size: 15px; font-weight: 700; text-align: center;
+    color: var(--acc);
+    border: 2px solid var(--acc);
+    border-radius: 999px;
+    padding: 6px 16px;
+  }
+  .reviewed .pill { background: var(--acc); color: var(--ground); font-weight: 800; }
+  .bone     { --ground: #f4f2ec; --ink: #17181b; --acc: #7d1d2c; }
+  .sapphire { --ground: #173a9e; --ink: #ffffff; --acc: #ffffff; }
+  svg text { font-family: 'Manrope', 'Segoe UI', system-ui, sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- Seal artwork. Each seal is drawn once and takes its colours from the tile it sits in. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <path id="ring76" d="M 44,120 a 76,76 0 1,1 152,0 a 76,76 0 1,1 -152,0" fill="none"></path>
+    <path id="ring72" d="M 136.2,184.5 A 72,72 0 1,1 182.5,138.2" fill="none"></path>
+    <path id="shield" d="M120 12 L208 42 V118 C208 172 172 208 120 230 C68 208 32 172 32 118 V42 Z"></path>
+
+    <g id="scallops">
+      <circle cx="120" cy="18" r="15"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(15 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(30 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(45 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(60 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(75 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(90 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(105 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(120 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(135 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(150 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(165 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(180 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(195 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(210 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(225 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(240 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(255 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(270 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(285 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(300 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(315 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(330 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(345 120 120)"></circle>
+    </g>
+
+    <g id="burst">
+      <rect x="36.6" y="36.6" width="166.8" height="166.8"></rect>
+      <rect x="36.6" y="36.6" width="166.8" height="166.8" transform="rotate(10 120 120)"></rect>
+      <rect x="36.6" y="36.6" width="166.8" height="166.8" transform="rotate(20 120 120)"></rect>
+      <rect x="36.6" y="36.6" width="166.8" height="166.8" transform="rotate(30 120 120)"></rect>
+      <rect x="36.6" y="36.6" width="166.8" height="166.8" transform="rotate(40 120 120)"></rect>
+      <rect x="36.6" y="36.6" width="166.8" height="166.8" transform="rotate(50 120 120)"></rect>
+      <rect x="36.6" y="36.6" width="166.8" height="166.8" transform="rotate(60 120 120)"></rect>
+      <rect x="36.6" y="36.6" width="166.8" height="166.8" transform="rotate(70 120 120)"></rect>
+      <rect x="36.6" y="36.6" width="166.8" height="166.8" transform="rotate(80 120 120)"></rect>
+    </g>
+
+    <!-- 0. Current: scalloped seal with check -->
+    <symbol id="s0-a" viewBox="0 0 240 240">
+      <use href="#scallops" fill="none" stroke="currentColor" stroke-width="3"></use>
+      <circle cx="120" cy="120" r="108" style="fill: var(--ground)"></circle>
+      <circle cx="120" cy="120" r="98" fill="none" stroke="currentColor" stroke-width="3"></circle>
+      <circle cx="120" cy="120" r="62" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+      <text font-size="13" font-weight="700" fill="currentColor"><textPath href="#ring76" textLength="465" lengthAdjust="spacing">KRITERION · ASSESSED · KRITERION · ASSESSED · </textPath></text>
+      <path d="M94 122 L112 140 L148 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+    <symbol id="s0-r" viewBox="0 0 240 240">
+      <use href="#scallops" fill="currentColor"></use>
+      <circle cx="120" cy="120" r="108" fill="currentColor"></circle>
+      <circle cx="120" cy="120" r="98" fill="none" stroke-width="2" style="stroke: var(--ground)"></circle>
+      <circle cx="120" cy="120" r="62" style="fill: var(--ground)"></circle>
+      <text font-size="15" font-weight="800" style="fill: var(--ground)"><textPath href="#ring76" textLength="465" lengthAdjust="spacing">KRITERION · ADVISOR REVIEWED · </textPath></text>
+      <path d="M94 122 L112 140 L148 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+
+    <!-- 1. Starburst: serrated edge, K monogram -->
+    <symbol id="s1-a" viewBox="0 0 240 240">
+      <use href="#burst" fill="none" stroke="currentColor" stroke-width="2.5"></use>
+      <circle cx="120" cy="120" r="108.5" style="fill: var(--ground)"></circle>
+      <circle cx="120" cy="120" r="100" fill="none" stroke="currentColor" stroke-width="3"></circle>
+      <circle cx="120" cy="120" r="60" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+      <text font-size="13" font-weight="700" fill="currentColor"><textPath href="#ring76" textLength="465" lengthAdjust="spacing">KRITERION · ASSESSED · KRITERION · ASSESSED · </textPath></text>
+      <text x="120" y="147" text-anchor="middle" font-size="76" font-weight="800" fill="currentColor">K</text>
+    </symbol>
+    <symbol id="s1-r" viewBox="0 0 240 240">
+      <use href="#burst" fill="currentColor"></use>
+      <circle cx="120" cy="120" r="100" fill="none" stroke-width="2" style="stroke: var(--ground)"></circle>
+      <circle cx="120" cy="120" r="60" style="fill: var(--ground)"></circle>
+      <text font-size="15" font-weight="800" style="fill: var(--ground)"><textPath href="#ring76" textLength="465" lengthAdjust="spacing">KRITERION · ADVISOR REVIEWED · </textPath></text>
+      <text x="120" y="147" text-anchor="middle" font-size="76" font-weight="800" fill="currentColor">K</text>
+    </symbol>
+
+    <!-- 2. Coin: plain rings with a beaded border -->
+    <symbol id="s2-a" viewBox="0 0 240 240">
+      <circle cx="120" cy="120" r="116" fill="none" stroke="currentColor" stroke-width="3"></circle>
+      <circle cx="120" cy="120" r="106" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-dasharray="0.01 13.865"></circle>
+      <circle cx="120" cy="120" r="96" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+      <circle cx="120" cy="120" r="62" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+      <text font-size="13" font-weight="700" fill="currentColor"><textPath href="#ring76" textLength="465" lengthAdjust="spacing">KRITERION · ASSESSED · KRITERION · ASSESSED · </textPath></text>
+      <path d="M94 122 L112 140 L148 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+    <symbol id="s2-r" viewBox="0 0 240 240">
+      <circle cx="120" cy="120" r="117" fill="currentColor"></circle>
+      <circle cx="120" cy="120" r="106" fill="none" stroke-width="4.4" stroke-linecap="round" stroke-dasharray="0.01 13.865" style="stroke: var(--ground)"></circle>
+      <circle cx="120" cy="120" r="96" fill="none" stroke-width="1.5" style="stroke: var(--ground)"></circle>
+      <circle cx="120" cy="120" r="62" style="fill: var(--ground)"></circle>
+      <text font-size="15" font-weight="800" style="fill: var(--ground)"><textPath href="#ring76" textLength="465" lengthAdjust="spacing">KRITERION · ADVISOR REVIEWED · </textPath></text>
+      <path d="M94 122 L112 140 L148 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+
+    <!-- 3. Shield -->
+    <symbol id="s3-a" viewBox="0 0 240 240">
+      <use href="#shield" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"></use>
+      <use href="#shield" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" transform="translate(120 121) scale(0.89) translate(-120 -121)"></use>
+      <text x="120" y="74" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="3" fill="currentColor">KRITERION</text>
+      <path d="M90 122 L110 142 L152 96" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"></path>
+      <text x="120" y="180" text-anchor="middle" font-size="13" font-weight="800" letter-spacing="2" fill="currentColor">ASSESSED</text>
+    </symbol>
+    <symbol id="s3-r" viewBox="0 0 240 240">
+      <use href="#shield" fill="currentColor"></use>
+      <use href="#shield" fill="none" stroke-width="1.6" stroke-linejoin="round" transform="translate(120 121) scale(0.89) translate(-120 -121)" style="stroke: var(--ground)"></use>
+      <text x="120" y="70" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="3" style="fill: var(--ground)">KRITERION</text>
+      <path d="M92 114 L110 132 L150 90" fill="none" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--ground)"></path>
+      <text x="120" y="170" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="2" style="fill: var(--ground)">ADVISOR</text>
+      <text x="120" y="187" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="2" style="fill: var(--ground)">REVIEWED</text>
+    </symbol>
+
+    <!-- 4. Hexagon -->
+    <symbol id="s4-a" viewBox="0 0 240 240">
+      <polygon points="120,6 218.7,63 218.7,177 120,234 21.3,177 21.3,63" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"></polygon>
+      <polygon points="120,22 204.9,71 204.9,169 120,218 35.1,169 35.1,71" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></polygon>
+      <text x="120" y="80" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="3" fill="currentColor">KRITERION</text>
+      <path d="M88 124 L110 146 L154 98" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"></path>
+      <text x="120" y="184" text-anchor="middle" font-size="14" font-weight="800" letter-spacing="2.5" fill="currentColor">ASSESSED</text>
+    </symbol>
+    <symbol id="s4-r" viewBox="0 0 240 240">
+      <polygon points="120,6 218.7,63 218.7,177 120,234 21.3,177 21.3,63" fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"></polygon>
+      <polygon points="120,22 204.9,71 204.9,169 120,218 35.1,169 35.1,71" fill="none" stroke-width="1.5" stroke-linejoin="round" style="stroke: var(--ground)"></polygon>
+      <text x="120" y="74" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="3" style="fill: var(--ground)">KRITERION</text>
+      <path d="M92 114 L110 132 L150 90" fill="none" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--ground)"></path>
+      <text x="120" y="168" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="2" style="fill: var(--ground)">ADVISOR</text>
+      <text x="120" y="185" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="2" style="fill: var(--ground)">REVIEWED</text>
+    </symbol>
+
+    <!-- 5. Monogram seal with a corner check -->
+    <symbol id="s5-a" viewBox="0 0 240 240">
+      <circle cx="114" cy="116" r="100" fill="none" stroke="currentColor" stroke-width="3"></circle>
+      <circle cx="114" cy="116" r="90" fill="none" stroke="currentColor" stroke-width="1"></circle>
+      <circle cx="114" cy="116" r="56" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+      <text font-size="11" font-weight="700" fill="currentColor"><textPath href="#ring72" textLength="376" lengthAdjust="spacing">KRITERION · ASSESSED · KRITERION · ASSESSED</textPath></text>
+      <text x="114" y="141" text-anchor="middle" font-size="70" font-weight="800" fill="currentColor">K</text>
+      <circle cx="194" cy="196" r="38" style="fill: var(--ground)"></circle>
+      <circle cx="194" cy="196" r="32" fill="currentColor"></circle>
+      <path d="M180 197 L190 207 L209 185" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--ground)"></path>
+    </symbol>
+    <symbol id="s5-r" viewBox="0 0 240 240">
+      <circle cx="114" cy="116" r="101" fill="currentColor"></circle>
+      <circle cx="114" cy="116" r="90" fill="none" stroke-width="1.5" style="stroke: var(--ground)"></circle>
+      <circle cx="114" cy="116" r="56" style="fill: var(--ground)"></circle>
+      <text font-size="14" font-weight="800" style="fill: var(--ground)"><textPath href="#ring72" textLength="376" lengthAdjust="spacing">KRITERION · ADVISOR REVIEWED</textPath></text>
+      <text x="114" y="141" text-anchor="middle" font-size="70" font-weight="800" fill="currentColor">K</text>
+      <circle cx="194" cy="196" r="38" style="fill: var(--ground)"></circle>
+      <circle cx="194" cy="196" r="30" stroke="currentColor" stroke-width="4" style="fill: var(--ground)"></circle>
+      <path d="M180 197 L190 207 L209 185" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>Kriterion seal options</h1>
+  <p class="lede">Five new seal shapes, plus the current one for reference. Each row shows the seal in oxblood on bone and in sapphire and white, first as Assessed and then as Advisor Reviewed.</p>
+
+  <h2>Current. Scalloped seal</h2>
+  <p class="note">The seal from the last round, unchanged.</p>
+  <div class="row">
+    <div class="tile bone"><svg class="seal" role="img" aria-label="Scalloped seal, Assessed, oxblood on bone"><use href="#s0-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile bone reviewed"><svg class="seal" role="img" aria-label="Scalloped seal, Advisor Reviewed, oxblood on bone"><use href="#s0-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+    <div class="tile sapphire"><svg class="seal" role="img" aria-label="Scalloped seal, Assessed, sapphire"><use href="#s0-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile sapphire reviewed"><svg class="seal" role="img" aria-label="Scalloped seal, Advisor Reviewed, sapphire"><use href="#s0-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+  </div>
+
+  <h2>1. Starburst</h2>
+  <p class="note">Serrated edge like a foil seal on a certificate, with a K in the centre.</p>
+  <div class="row">
+    <div class="tile bone"><svg class="seal" role="img" aria-label="Starburst seal, Assessed, oxblood on bone"><use href="#s1-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile bone reviewed"><svg class="seal" role="img" aria-label="Starburst seal, Advisor Reviewed, oxblood on bone"><use href="#s1-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+    <div class="tile sapphire"><svg class="seal" role="img" aria-label="Starburst seal, Assessed, sapphire"><use href="#s1-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile sapphire reviewed"><svg class="seal" role="img" aria-label="Starburst seal, Advisor Reviewed, sapphire"><use href="#s1-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+  </div>
+
+  <h2>2. Coin</h2>
+  <p class="note">Plain rings with a beaded border. The quietest of the set.</p>
+  <div class="row">
+    <div class="tile bone"><svg class="seal" role="img" aria-label="Coin seal, Assessed, oxblood on bone"><use href="#s2-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile bone reviewed"><svg class="seal" role="img" aria-label="Coin seal, Advisor Reviewed, oxblood on bone"><use href="#s2-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+    <div class="tile sapphire"><svg class="seal" role="img" aria-label="Coin seal, Assessed, sapphire"><use href="#s2-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile sapphire reviewed"><svg class="seal" role="img" aria-label="Coin seal, Advisor Reviewed, sapphire"><use href="#s2-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+  </div>
+
+  <h2>3. Shield</h2>
+  <p class="note">A shield with the tier written inside it, so the mark still reads without the label underneath.</p>
+  <div class="row">
+    <div class="tile bone"><svg class="seal" role="img" aria-label="Shield, Assessed, oxblood on bone"><use href="#s3-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile bone reviewed"><svg class="seal" role="img" aria-label="Shield, Advisor Reviewed, oxblood on bone"><use href="#s3-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+    <div class="tile sapphire"><svg class="seal" role="img" aria-label="Shield, Assessed, sapphire"><use href="#s3-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile sapphire reviewed"><svg class="seal" role="img" aria-label="Shield, Advisor Reviewed, sapphire"><use href="#s3-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+  </div>
+
+  <h2>4. Hexagon</h2>
+  <p class="note">A six-sided badge with the tier written inside. The most modern of the set.</p>
+  <div class="row">
+    <div class="tile bone"><svg class="seal" role="img" aria-label="Hexagon, Assessed, oxblood on bone"><use href="#s4-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile bone reviewed"><svg class="seal" role="img" aria-label="Hexagon, Advisor Reviewed, oxblood on bone"><use href="#s4-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+    <div class="tile sapphire"><svg class="seal" role="img" aria-label="Hexagon, Assessed, sapphire"><use href="#s4-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile sapphire reviewed"><svg class="seal" role="img" aria-label="Hexagon, Advisor Reviewed, sapphire"><use href="#s4-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+  </div>
+
+  <h2>5. Monogram with check</h2>
+  <p class="note">A round K seal with a check mark sitting on its lower right edge.</p>
+  <div class="row">
+    <div class="tile bone"><svg class="seal" role="img" aria-label="Monogram seal, Assessed, oxblood on bone"><use href="#s5-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile bone reviewed"><svg class="seal" role="img" aria-label="Monogram seal, Advisor Reviewed, oxblood on bone"><use href="#s5-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+    <div class="tile sapphire"><svg class="seal" role="img" aria-label="Monogram seal, Assessed, sapphire"><use href="#s5-a"></use></svg><div class="pill">Kriterion Assessed</div></div>
+    <div class="tile sapphire reviewed"><svg class="seal" role="img" aria-label="Monogram seal, Advisor Reviewed, sapphire"><use href="#s5-r"></use></svg><div class="pill">Kriterion Advisor Reviewed</div></div>
+  </div>
+</div>
+
+</body>
+</html>

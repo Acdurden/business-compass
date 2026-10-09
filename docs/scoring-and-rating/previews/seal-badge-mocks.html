@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kriterion seal badge mocks</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 16px 64px;
+    background: #dfe1e4;
+    color: #17181b;
+    font-family: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 28px; font-weight: 800; }
+  .lede { margin: 0 0 32px; font-size: 16px; color: #4b4e55; max-width: 720px; line-height: 1.5; }
+  h2 { margin: 40px 0 14px; font-size: 20px; font-weight: 800; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; }
+  .tier { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #4b4e55; }
+
+  /* One card. Every size inside is in cqw, so the card scales with its width.
+     At 1200px wide, 1cqw = 12px, which is the share-card size (1200 x 630). */
+  .card {
+    container-type: inline-size;
+    width: 100%;
+    aspect-ratio: 1200 / 630;
+    background: var(--ground);
+    color: var(--ink);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .card-inner {
+    height: 100%;
+    padding: 3.667cqw 6cqw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+  }
+  .wordmark { font-size: 2.167cqw; font-weight: 800; letter-spacing: 0.083cqw; color: var(--acc); }
+  .seal { width: 19.17cqw; height: 19.17cqw; flex: 0 0 auto; color: var(--acc); }
+  .company { font-size: 5.5cqw; font-weight: 800; letter-spacing: -0.167cqw; line-height: 1; }
+  .pill {
+    font-size: 2cqw; font-weight: 700;
+    color: var(--acc);
+    border: 0.167cqw solid var(--acc);
+    border-radius: 999px;
+    padding: 0.75cqw 2.167cqw;
+  }
+  .reviewed .pill { background: var(--acc); color: var(--ground); font-weight: 800; }
+  .foot { font-size: 1.417cqw; font-weight: 500; color: var(--muted); }
+
+  .bone     { --ground: #f4f2ec; --ink: #17181b; --acc: #7d1d2c; --muted: #5d5f66; }
+  .charcoal { --ground: #1c1d20; --ink: #f3f1ee; --acc: #d99062; --muted: #a3a5ab; }
+  .sapphire { --ground: #173a9e; --ink: #ffffff; --acc: #ffffff; --muted: #c3d0f5; }
+</style>
+</head>
+<body>
+
+<!-- Seal artwork, defined once and reused by every card -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <path id="ring" d="M 44,120 a 76,76 0 1,1 152,0 a 76,76 0 1,1 -152,0" fill="none"></path>
+    <g id="scallops">
+      <circle cx="120" cy="18" r="15"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(15 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(30 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(45 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(60 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(75 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(90 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(105 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(120 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(135 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(150 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(165 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(180 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(195 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(210 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(225 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(240 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(255 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(270 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(285 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(300 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(315 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(330 120 120)"></circle>
+      <circle cx="120" cy="18" r="15" transform="rotate(345 120 120)"></circle>
+    </g>
+
+    <!-- Assessed: outlined seal -->
+    <symbol id="seal-assessed" viewBox="0 0 240 240">
+      <use href="#scallops" fill="none" stroke="currentColor" stroke-width="3"></use>
+      <circle cx="120" cy="120" r="108" style="fill: var(--ground)"></circle>
+      <circle cx="120" cy="120" r="98" fill="none" stroke="currentColor" stroke-width="3"></circle>
+      <circle cx="120" cy="120" r="62" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+      <text font-size="13" font-weight="700" fill="currentColor">
+        <textPath href="#ring" textLength="465" lengthAdjust="spacing">KRITERION · ASSESSED · KRITERION · ASSESSED · </textPath>
+      </text>
+      <path d="M94 122 L112 140 L148 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+
+    <!-- Advisor Reviewed: solid seal -->
+    <symbol id="seal-reviewed" viewBox="0 0 240 240">
+      <use href="#scallops" fill="currentColor"></use>
+      <circle cx="120" cy="120" r="108" fill="currentColor"></circle>
+      <circle cx="120" cy="120" r="98" fill="none" stroke-width="2" style="stroke: var(--ground)"></circle>
+      <circle cx="120" cy="120" r="62" style="fill: var(--ground)"></circle>
+      <text font-size="15" font-weight="800" style="fill: var(--ground)">
+        <textPath href="#ring" textLength="465" lengthAdjust="spacing">KRITERION · ADVISOR REVIEWED · </textPath>
+      </text>
+      <path d="M94 122 L112 140 L148 100" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>Kriterion seal badge mocks</h1>
+  <p class="lede">Three colorways of the seal badge. Each is shown in both tiers: Assessed, then Advisor Reviewed. Company name, date and ID are samples.</p>
+
+  <h2>A. Oxblood on bone</h2>
+  <div class="pair">
+    <div>
+      <p class="tier">Assessed</p>
+      <div class="card bone"><div class="card-inner">
+        <div class="wordmark">kriterion</div>
+        <svg class="seal" role="img" aria-label="Kriterion Assessed seal"><use href="#seal-assessed"></use></svg>
+        <div class="company">Your Company</div>
+        <div class="pill">Kriterion Assessed</div>
+        <div class="foot">October 2026 · Valid 12 months · ID KR-26-00417 · kriterionbvi.com/verify</div>
+      </div></div>
+    </div>
+    <div>
+      <p class="tier">Advisor Reviewed</p>
+      <div class="card bone reviewed"><div class="card-inner">
+        <div class="wordmark">kriterion</div>
+        <svg class="seal" role="img" aria-label="Kriterion Advisor Reviewed seal"><use href="#seal-reviewed"></use></svg>
+        <div class="company">Your Company</div>
+        <div class="pill">Kriterion Advisor Reviewed</div>
+        <div class="foot">October 2026 · Valid 12 months · ID KR-26-00417 · kriterionbvi.com/verify</div>
+      </div></div>
+    </div>
+  </div>
+
+  <h2>B. Copper on charcoal</h2>
+  <div class="pair">
+    <div>
+      <p class="tier">Assessed</p>
+      <div class="card charcoal"><div class="card-inner">
+        <div class="wordmark">kriterion</div>
+        <svg class="seal" role="img" aria-label="Kriterion Assessed seal"><use href="#seal-assessed"></use></svg>
+        <div class="company">Your Company</div>
+        <div class="pill">Kriterion Assessed</div>
+        <div class="foot">October 2026 · Valid 12 months · ID KR-26-00417 · kriterionbvi.com/verify</div>
+      </div></div>
+    </div>
+    <div>
+      <p class="tier">Advisor Reviewed</p>
+      <div class="card charcoal reviewed"><div class="card-inner">
+        <div class="wordmark">kriterion</div>
+        <svg class="seal" role="img" aria-label="Kriterion Advisor Reviewed seal"><use href="#seal-reviewed"></use></svg>
+        <div class="company">Your Company</div>
+        <div class="pill">Kriterion Advisor Reviewed</div>
+        <div class="foot">October 2026 · Valid 12 months · ID KR-26-00417 · kriterionbvi.com/verify</div>
+      </div></div>
+    </div>
+  </div>
+
+  <h2>C. Sapphire and white</h2>
+  <div class="pair">
+    <div>
+      <p class="tier">Assessed</p>
+      <div class="card sapphire"><div class="card-inner">
+        <div class="wordmark">kriterion</div>
+        <svg class="seal" role="img" aria-label="Kriterion Assessed seal"><use href="#seal-assessed"></use></svg>
+        <div class="company">Your Company</div>
+        <div class="pill">Kriterion Assessed</div>
+        <div class="foot">October 2026 · Valid 12 months · ID KR-26-00417 · kriterionbvi.com/verify</div>
+      </div></div>
+    </div>
+    <div>
+      <p class="tier">Advisor Reviewed</p>
+      <div class="card sapphire reviewed"><div class="card-inner">
+        <div class="wordmark">kriterion</div>
+        <svg class="seal" role="img" aria-label="Kriterion Advisor Reviewed seal"><use href="#seal-reviewed"></use></svg>
+        <div class="company">Your Company</div>
+        <div class="pill">Kriterion Advisor Reviewed</div>
+        <div class="foot">October 2026 · Valid 12 months · ID KR-26-00417 · kriterionbvi.com/verify</div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
