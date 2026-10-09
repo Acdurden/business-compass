@@ -773,7 +773,7 @@ function AwaitingReview({
         <TimelineItem
           state="done"
           title="You submitted your assessment"
-          body="Every question answered, across nine areas of the business."
+          body="Every question answered, across nine areas of the business, eight of them scored."
         />
         <TimelineItem
           state="current"
