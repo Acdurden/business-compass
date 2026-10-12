@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { redirect } from "@tanstack/react-router";
-import { KeyRound, ShieldCheck, Trash2 } from "lucide-react";
+import { KeyRound, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import {
   deleteAdvisorAccount,
   listAdvisorAccounts,
@@ -17,7 +17,7 @@ import {
 } from "@/lib/password-admin.functions";
 import { createAdvisor } from "@/lib/client-invites.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
-import { BackOfficeNav } from "@/components/back-office-nav";
+import { BackOfficeShell } from "@/components/back-office-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
 async function requireAdminAuth(currentHref: string) {
@@ -68,21 +68,25 @@ function AdvisorsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list]);
 
+  useEffect(() => {
+    if (window.location.hash === "#create-advisor") focusCreateAdvisor();
+  }, []);
+
   const adminCount = rows.filter((r) => r.is_admin).length;
 
   return (
-    <main className="min-h-screen">
-      <BackOfficeNav active={"advisors"} />
-      <header className="border-b border-border/60">
-        <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
-            <h1 className="text-lg font-semibold tracking-tight">Advisors</h1>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-4xl px-6 py-10 space-y-8">
+    <BackOfficeShell
+      active="advisors"
+      title="Advisors"
+      description="Advisor and admin accounts."
+      actions={
+        <Button onClick={focusCreateAdvisor}>
+          <Plus className="mr-1.5 h-4 w-4" />
+          Create advisor
+        </Button>
+      }
+    >
+      <div className="max-w-4xl space-y-8">
         <CreateAdvisorCard onCreated={loadAdvisors} />
 
         {loading ? (
@@ -127,8 +131,20 @@ function AdvisorsPage() {
           </ul>
         )}
       </div>
-    </main>
+    </BackOfficeShell>
   );
+}
+
+/**
+ * The top bar's "Create advisor" button, and the dashboard's link to
+ * `/admin/advisors#create-advisor`, both land here: the form already on the
+ * page, scrolled into view with the email field ready to type in.
+ */
+function focusCreateAdvisor() {
+  document
+    .getElementById("create-advisor")
+    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  document.getElementById("adv-email")?.focus({ preventScroll: true });
 }
 
 function CreateAdvisorCard({ onCreated }: { onCreated: () => void }) {
@@ -161,6 +177,7 @@ function CreateAdvisorCard({ onCreated }: { onCreated: () => void }) {
 
   return (
     <form
+      id="create-advisor"
       onSubmit={onSubmit}
       className="rounded-xl border border-dashed border-primary/40 bg-card p-5 shadow-sm space-y-3"
     >

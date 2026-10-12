@@ -31,7 +31,8 @@ import {
   type QueueSubmission,
 } from "@/lib/advisor-queue";
 import { ClipboardList, ListChecks, Send, Users } from "lucide-react";
-import { BackOfficeNav } from "@/components/back-office-nav";
+import { BackOfficeShell } from "@/components/back-office-shell";
+import { useIsBackOfficeAdmin } from "@/lib/back-office";
 import { InviteClientButton } from "@/components/invite-client-button";
 import { SendEmailDialog } from "@/components/send-email-dialog";
 
@@ -49,6 +50,7 @@ export const Route = createFileRoute("/advisor/")({
 
 function AdvisorDashboard() {
   const navigate = useNavigate();
+  const admin = useIsBackOfficeAdmin();
   const loadClientAccounts = useServerFn(listClientAccounts);
 
   const [submissions, setSubmissions] = useState<QueueSubmission[]>([]);
@@ -179,43 +181,50 @@ function AdvisorDashboard() {
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center p-6">
+      <BackOfficeShell active="dashboard" title="Dashboard">
         <p className="text-sm text-muted-foreground">Loading your dashboard…</p>
-      </main>
+      </BackOfficeShell>
     );
   }
 
   if (error) {
     return (
-      <main className="grid min-h-screen place-items-center gap-3 p-6 text-center">
-        <p className="text-sm text-destructive">{error}</p>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/admin/submissions">Go to submissions</Link>
-        </Button>
-      </main>
+      <BackOfficeShell active="dashboard" title="Dashboard">
+        <div className="space-y-3">
+          <p className="text-sm text-destructive">{error}</p>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/submissions">Go to submissions</Link>
+          </Button>
+        </div>
+      </BackOfficeShell>
     );
   }
 
   return (
-    <main className="min-h-screen pb-24">
-      <BackOfficeNav active={"dashboard"} />
-      <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Advisor</p>
-            <h1 className="text-lg font-semibold">Dashboard</h1>
-          </div>
-          {/*
-           * The one thing an advisor starts rather than continues, so it sits
-           * above the queue instead of inside it. Same dialog as the
-           * submissions list — one component, so the plan links cannot drift
-           * between the two screens.
-           */}
-          <InviteClientButton />
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl px-6 py-7">
+    <BackOfficeShell
+      active="dashboard"
+      title="Dashboard"
+      description="What needs you today, then what is waiting on clients."
+      /*
+       * The one thing an advisor starts rather than continues, so it sits
+       * above the queue instead of inside it. Same dialog as the submissions
+       * list: one component, so the plan links cannot drift between the two
+       * screens.
+       */
+      actions={
+        <>
+          {admin === true ? (
+            <Button asChild variant="outline">
+              <Link to="/admin/advisors" hash="create-advisor">
+                Create advisor
+              </Link>
+            </Button>
+          ) : null}
+          <InviteClientButton size="default" />
+        </>
+      }
+    >
+      <div className="max-w-6xl">
         <SectionHeading title="Assessments and reviews" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {tiles.map((t) => {
@@ -340,7 +349,7 @@ function AdvisorDashboard() {
           </>
         ) : null}
       </div>
-    </main>
+    </BackOfficeShell>
   );
 }
 

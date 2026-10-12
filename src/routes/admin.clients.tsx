@@ -13,7 +13,8 @@ import {
 } from "@/lib/password-admin.functions";
 import { TempPasswordDialog } from "@/components/temp-password-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { BackOfficeNav } from "@/components/back-office-nav";
+import { BackOfficeShell } from "@/components/back-office-shell";
+import { InviteClientButton } from "@/components/invite-client-button";
 
 async function requireAdvisorAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
@@ -57,18 +58,13 @@ function ClientsPage() {
   }, [list]);
 
   return (
-    <main className="min-h-screen">
-      <BackOfficeNav active={"clients"} />
-      <header className="border-b border-border/60">
-        <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
-            <h1 className="text-lg font-semibold tracking-tight">Clients</h1>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-4xl px-6 py-10">
+    <BackOfficeShell
+      active="clients"
+      title="Clients"
+      description="Every client account, with or without an assessment."
+      actions={<InviteClientButton size="default" />}
+    >
+      <div className="max-w-4xl">
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading clients…</p>
         ) : rows.length === 0 ? (
@@ -101,7 +97,7 @@ function ClientsPage() {
           </ul>
         )}
       </div>
-    </main>
+    </BackOfficeShell>
   );
 }
 

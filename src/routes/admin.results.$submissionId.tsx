@@ -10,7 +10,13 @@ import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
 import { generateClientPdf } from "@/lib/generate-client-pdf";
 import { ArrowLeft, FileDown, ClipboardList, ListChecks, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { BackOfficeNav } from "@/components/back-office-nav";
+import { BackOfficeShell, type Crumb } from "@/components/back-office-shell";
+
+const RESULTS_CRUMBS: Crumb[] = [
+  { label: "Work" },
+  { label: "Submissions", to: "/admin/submissions" },
+  { label: "Results" },
+];
 
 export const Route = createFileRoute("/admin/results/$submissionId")({
   ssr: false,
@@ -207,19 +213,21 @@ function ResultsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center p-6">
+      <BackOfficeShell active="submissions" title="Results" crumbs={RESULTS_CRUMBS}>
         <p className="text-sm text-muted-foreground">Loading results…</p>
-      </main>
+      </BackOfficeShell>
     );
   }
   if (error || !sub || !result) {
     return (
-      <main className="min-h-screen grid place-items-center p-6 text-center space-y-3">
-        <p className="text-sm text-destructive">{error ?? "Could not load results"}</p>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/admin/submissions">Back to submissions</Link>
-        </Button>
-      </main>
+      <BackOfficeShell active="submissions" title="Results" crumbs={RESULTS_CRUMBS}>
+        <div className="space-y-3">
+          <p className="text-sm text-destructive">{error ?? "Could not load results"}</p>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/submissions">Back to submissions</Link>
+          </Button>
+        </div>
+      </BackOfficeShell>
     );
   }
 
@@ -250,61 +258,57 @@ function ResultsPage() {
   const amount = hasAmount ? rawAmount : 0;
 
   return (
-    <main className="min-h-screen pb-24">
-      <BackOfficeNav active={null} />
-      <header className="border-b border-border/60">
-        <div className="mx-auto max-w-4xl px-6 py-5 flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Combined results
-            </p>
-            <h1 className="text-lg font-semibold truncate">{sub.company_name}</h1>
-            <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-              {sub.submission_id}
-            </p>
-          </div>
-          <div className="flex gap-2 shrink-0 flex-wrap">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/admin/submissions">
-                <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
-                Back to submissions
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/advisor/$submissionId" params={{ submissionId }}>
-                <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-                Edit advisory
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/advisor/plan/$submissionId" params={{ submissionId }}>
-                <ListChecks className="h-3.5 w-3.5 mr-1.5" />
-                Action plan
-              </Link>
-            </Button>
-            {/*
+    <BackOfficeShell
+      active="submissions"
+      title={sub.company_name}
+      crumbs={[
+        { label: "Work" },
+        { label: "Submissions", to: "/admin/submissions" },
+        { label: "Combined results" },
+      ]}
+      description={
+        <>
+          Combined results
+          <span className="ml-2 font-mono text-[11px]">{sub.submission_id}</span>
+        </>
+      }
+      actions={
+        <>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/submissions">
+              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+              Back to submissions
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/advisor/$submissionId" params={{ submissionId }}>
+              <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+              Edit advisory
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/advisor/plan/$submissionId" params={{ submissionId }}>
+              <ListChecks className="h-3.5 w-3.5 mr-1.5" />
+              Action plan
+            </Link>
+          </Button>
+          {/*
               Two documents, labelled as two documents. "Download PDF" on its
               own is how the internal working file ended up being the one shown
               to people outside the practice.
             */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void downloadPdf()}
-              disabled={pdfBusy}
-            >
-              <FileDown className="h-3.5 w-3.5 mr-1.5" />
-              {pdfBusy ? "Generating…" : "Internal PDF"}
-            </Button>
-            <Button size="sm" onClick={() => void downloadClientPdf()} disabled={clientPdfBusy}>
-              <FileText className="h-3.5 w-3.5 mr-1.5" />
-              {clientPdfBusy ? "Generating…" : "Client PDF"}
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-4xl px-6 py-8 space-y-8">
+          <Button variant="outline" size="sm" onClick={() => void downloadPdf()} disabled={pdfBusy}>
+            <FileDown className="h-3.5 w-3.5 mr-1.5" />
+            {pdfBusy ? "Generating…" : "Internal PDF"}
+          </Button>
+          <Button size="sm" onClick={() => void downloadClientPdf()} disabled={clientPdfBusy}>
+            <FileText className="h-3.5 w-3.5 mr-1.5" />
+            {clientPdfBusy ? "Generating…" : "Client PDF"}
+          </Button>
+        </>
+      }
+    >
+      <div className="max-w-4xl space-y-8">
         {!advisoryComplete && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
             Advisory questionnaire isn't marked complete yet — adjusted ValScore figures below
@@ -393,7 +397,7 @@ function ResultsPage() {
           />
         )}
       </div>
-    </main>
+    </BackOfficeShell>
   );
 }
 

@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { BackOfficeNav } from "@/components/back-office-nav";
+import { BackOfficeShell } from "@/components/back-office-shell";
 import { requireAdminAuth } from "@/lib/require-admin-auth";
 import {
   getEmailLook,
@@ -505,12 +505,11 @@ function EmailTemplatesPage() {
 
   if (!templates || !draft) {
     return (
-      <main className="min-h-screen">
-        <BackOfficeNav active={"emails"} />
-        <div className="mx-auto max-w-6xl px-6 py-10">
+      <BackOfficeShell active="emails" title="Emails">
+        <div className="max-w-6xl">
           <p className="text-sm text-muted-foreground">Loading the templates…</p>
         </div>
-      </main>
+      </BackOfficeShell>
     );
   }
 
@@ -576,412 +575,414 @@ function EmailTemplatesPage() {
   );
 
   return (
-    <main className="min-h-screen">
-      <BackOfficeNav active={"emails"} />
-
-      <header className="border-b border-border/60">
-        <div className="mx-auto max-w-6xl px-6 py-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
-          <h1 className="text-lg font-semibold tracking-tight">Emails</h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            The standard wording for everything Kriterion sends. Saving here changes the default for
-            everyone; an advisor sending to one client still gets a draft they can change for that
-            email alone.
-          </p>
-        </div>
-      </header>
-
-      {sending && !sending.ready ? (
-        <div className="mx-auto max-w-6xl px-6 pt-6">
-          <div className="flex items-start gap-3 rounded-xl border border-amber-500/50 bg-amber-500/5 px-4 py-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
-            <div className="text-[12.5px] leading-relaxed">
-              <p className="font-medium">
-                Nothing can be sent yet. You can still write the wording.
-              </p>
-              <p className="mt-0.5 text-muted-foreground">
-                {[
-                  !sending.hasAccount || !sending.hasToken
-                    ? "Kriterion has no credentials for the sending service."
-                    : null,
-                  sending.missingSender.length > 0
-                    ? "No sender address is set on any template."
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              </p>
+    <BackOfficeShell
+      active="emails"
+      title="Emails"
+      description={
+        <p className="max-w-3xl">
+          The standard wording for everything Kriterion sends. Saving here changes the default for
+          everyone; an advisor sending to one client still gets a draft they can change for that
+          email alone.
+        </p>
+      }
+    >
+      <div className="max-w-6xl space-y-6">
+        {sending && !sending.ready ? (
+          <div>
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/50 bg-amber-500/5 px-4 py-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+              <div className="text-[12.5px] leading-relaxed">
+                <p className="font-medium">
+                  Nothing can be sent yet. You can still write the wording.
+                </p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {[
+                    !sending.hasAccount || !sending.hasToken
+                      ? "Kriterion has no credentials for the sending service."
+                      : null,
+                    sending.missingSender.length > 0
+                      ? "No sender address is set on any template."
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      <div className="mx-auto max-w-6xl px-6 pt-6">
-        <section className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="border-b border-border px-5 py-3">
-            <h2 className="text-sm font-semibold">How the emails look</h2>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              Saved as soon as you switch, and used by the next email sent. Switch, send yourself a
-              test, and compare.
-            </p>
-          </div>
-          <div className="grid gap-5 px-5 py-4 md:grid-cols-2">
-            <LookSwitch
-              label="Invite email"
-              value={look.inviteStyle}
-              disabled={savingLook}
-              options={[
-                { value: "plain", label: "Plain message" },
-                { value: "branded", label: "Branded" },
-              ]}
-              onChange={(inviteStyle) => void changeLook({ ...look, inviteStyle })}
-              detail={
-                look.inviteStyle === "plain"
-                  ? "Paragraphs and one text link, the way a person writes. This is the version that reached the Primary inbox in Gmail."
-                  : "Header, button and footer. An earlier branded invite was filed under Promotions in Gmail, so test this to an address that has never had Kriterion mail."
-              }
-            />
-            <LookSwitch
-              label="Header on branded emails"
-              value={look.headerStyle}
-              disabled={savingLook}
-              options={[
-                { value: "band", label: "Navy band" },
-                { value: "logo", label: "Logo image" },
-              ]}
-              onChange={(headerStyle) => void changeLook({ ...look, headerStyle })}
-              detail={
-                look.headerStyle === "band"
-                  ? "The name set in type on navy. Nothing to load, so nothing a mail app can block. Applies to every branded email."
-                  : "The Kriterion logo on white. Mail apps that hide images show the name in type until the reader allows them. Applies to every branded email."
-              }
-            />
-          </div>
-        </section>
-      </div>
-
-      <div className="mx-auto grid max-w-6xl gap-6 px-6 py-8 md:grid-cols-[220px_minmax(0,1fr)]">
-        {/* template list */}
-        <nav className="h-fit overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          {EMAIL_TEMPLATE_KEYS.map((key) => {
-            const t = templates.find((row) => row.key === key) ?? EMAIL_TEMPLATE_DEFAULTS[key];
-            const edited = !isDefaultWording(t);
-            const on = key === current;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => selectTemplate(key)}
-                className={`block w-full border-b border-border px-4 py-3 text-left last:border-b-0 transition-colors ${
-                  on ? "bg-primary text-primary-foreground" : "hover:bg-muted/60"
-                }`}
-              >
-                <span className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium">{EMAIL_TEMPLATE_META[key].name}</span>
-                  {edited && (
-                    <span
-                      className={`text-[10px] uppercase tracking-wide ${
-                        on ? "text-primary-foreground/80" : "text-muted-foreground"
-                      }`}
-                    >
-                      edited
-                    </span>
-                  )}
-                </span>
-                <span
-                  className={`mt-0.5 block text-[11px] ${
-                    on ? "text-primary-foreground/75" : "text-muted-foreground"
-                  }`}
-                >
-                  {EMAIL_TEMPLATE_META[key].when}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-          {/* editor */}
+        <div>
           <section className="rounded-xl border border-border bg-card shadow-sm">
             <div className="border-b border-border px-5 py-3">
-              <h2 className="text-sm font-semibold">{meta.name}</h2>
-            </div>
-
-            <div className="space-y-4 px-5 py-5">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label
-                    htmlFor="from-name"
-                    className="text-xs uppercase tracking-wide text-muted-foreground"
-                  >
-                    Sender name
-                  </Label>
-                  <Input
-                    id="from-name"
-                    className="mt-1.5"
-                    value={draft.fromName}
-                    onChange={(e) => {
-                      setDraft({ ...draft, fromName: e.target.value });
-                      setJustSaved(false);
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label
-                    htmlFor="from-email"
-                    className="text-xs uppercase tracking-wide text-muted-foreground"
-                  >
-                    Sender address
-                  </Label>
-                  <Input
-                    id="from-email"
-                    type="email"
-                    className="mt-1.5"
-                    placeholder="not set yet"
-                    value={draft.fromEmail ?? ""}
-                    onChange={(e) => {
-                      setDraft({ ...draft, fromEmail: e.target.value || null });
-                      setJustSaved(false);
-                    }}
-                  />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Replies go to this address, so it should be a mailbox someone reads. It must also be
-                one the sending service has been verified to send from. Until that is set up,
-                nothing can leave the app whatever is typed here.
+              <h2 className="text-sm font-semibold">How the emails look</h2>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                Saved as soon as you switch, and used by the next email sent. Switch, send yourself
+                a test, and compare.
               </p>
-              {/*
-               * One mailbox serves every template unless a template is given its
-               * own. Saying so here is what stops "no sender address" reading as
-               * a fault on a screen where sending plainly works.
-               */}
-              {!draft.fromEmail && inheritedSender ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Left empty, this email sends from{" "}
-                  <span className="font-medium text-foreground">{inheritedSender.email}</span>, the
-                  address set on <span className="font-medium">{inheritedSender.from}</span>. Type
-                  one here only to override it for this email.
-                </p>
-              ) : null}
+            </div>
+            <div className="grid gap-5 px-5 py-4 md:grid-cols-2">
+              <LookSwitch
+                label="Invite email"
+                value={look.inviteStyle}
+                disabled={savingLook}
+                options={[
+                  { value: "plain", label: "Plain message" },
+                  { value: "branded", label: "Branded" },
+                ]}
+                onChange={(inviteStyle) => void changeLook({ ...look, inviteStyle })}
+                detail={
+                  look.inviteStyle === "plain"
+                    ? "Paragraphs and one text link, the way a person writes. This is the version that reached the Primary inbox in Gmail."
+                    : "Header, button and footer. An earlier branded invite was filed under Promotions in Gmail, so test this to an address that has never had Kriterion mail."
+                }
+              />
+              <LookSwitch
+                label="Header on branded emails"
+                value={look.headerStyle}
+                disabled={savingLook}
+                options={[
+                  { value: "band", label: "Navy band" },
+                  { value: "logo", label: "Logo image" },
+                ]}
+                onChange={(headerStyle) => void changeLook({ ...look, headerStyle })}
+                detail={
+                  look.headerStyle === "band"
+                    ? "The name set in type on navy. Nothing to load, so nothing a mail app can block. Applies to every branded email."
+                    : "The Kriterion logo on white. Mail apps that hide images show the name in type until the reader allows them. Applies to every branded email."
+                }
+              />
+            </div>
+          </section>
+        </div>
 
-              <div>
-                <Label
-                  htmlFor="template-subject"
-                  className="text-xs uppercase tracking-wide text-muted-foreground"
+        <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+          {/* template list */}
+          <nav className="h-fit overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            {EMAIL_TEMPLATE_KEYS.map((key) => {
+              const t = templates.find((row) => row.key === key) ?? EMAIL_TEMPLATE_DEFAULTS[key];
+              const edited = !isDefaultWording(t);
+              const on = key === current;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => selectTemplate(key)}
+                  className={`block w-full border-b border-border px-4 py-3 text-left last:border-b-0 transition-colors ${
+                    on ? "bg-primary text-primary-foreground" : "hover:bg-muted/60"
+                  }`}
                 >
-                  Subject line
-                </Label>
-                <Input
-                  id="template-subject"
-                  className="mt-1.5"
-                  value={draft.subject}
-                  onChange={(e) => {
-                    setDraft({ ...draft, subject: e.target.value });
-                    setJustSaved(false);
-                  }}
-                />
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{EMAIL_TEMPLATE_META[key].name}</span>
+                    {edited && (
+                      <span
+                        className={`text-[10px] uppercase tracking-wide ${
+                          on ? "text-primary-foreground/80" : "text-muted-foreground"
+                        }`}
+                      >
+                        edited
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={`mt-0.5 block text-[11px] ${
+                      on ? "text-primary-foreground/75" : "text-muted-foreground"
+                    }`}
+                  >
+                    {EMAIL_TEMPLATE_META[key].when}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+            {/* editor */}
+            <section className="rounded-xl border border-border bg-card shadow-sm">
+              <div className="border-b border-border px-5 py-3">
+                <h2 className="text-sm font-semibold">{meta.name}</h2>
               </div>
 
-              <div>
-                <Label
-                  htmlFor="template-body"
-                  className="text-xs uppercase tracking-wide text-muted-foreground"
-                >
-                  Body
-                </Label>
-                <Textarea
-                  id="template-body"
-                  className="mt-1.5 min-h-[300px] leading-relaxed"
-                  value={draft.body}
-                  onChange={(e) => {
-                    setDraft({ ...draft, body: e.target.value });
-                    setJustSaved(false);
-                  }}
-                />
-                <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  Leave a blank line between paragraphs. The <code>{BUTTON_MARKER}</code> line is
-                  where the button sits, so move that line to move the button. Start a paragraph
-                  with <code>#</code> and a space to make it a heading, and wrap words in{" "}
-                  <code>**</code> to make them bold.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {meta.tags.map((t) => (
-                    <button
-                      key={t.tag}
-                      type="button"
-                      title={t.describes}
-                      onClick={() => insertTag(t.tag)}
-                      className="rounded-full border border-border bg-muted px-2.5 py-1 font-mono text-[11px] text-foreground/80 transition-colors hover:bg-muted/60"
+              <div className="space-y-4 px-5 py-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label
+                      htmlFor="from-name"
+                      className="text-xs uppercase tracking-wide text-muted-foreground"
                     >
-                      {t.tag}
-                    </button>
-                  ))}
+                      Sender name
+                    </Label>
+                    <Input
+                      id="from-name"
+                      className="mt-1.5"
+                      value={draft.fromName}
+                      onChange={(e) => {
+                        setDraft({ ...draft, fromName: e.target.value });
+                        setJustSaved(false);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="from-email"
+                      className="text-xs uppercase tracking-wide text-muted-foreground"
+                    >
+                      Sender address
+                    </Label>
+                    <Input
+                      id="from-email"
+                      type="email"
+                      className="mt-1.5"
+                      placeholder="not set yet"
+                      value={draft.fromEmail ?? ""}
+                      onChange={(e) => {
+                        setDraft({ ...draft, fromEmail: e.target.value || null });
+                        setJustSaved(false);
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <Label
-                  htmlFor="template-cta"
-                  className="text-xs uppercase tracking-wide text-muted-foreground"
-                >
-                  Button label
-                </Label>
-                <Input
-                  id="template-cta"
-                  className="mt-1.5"
-                  value={draft.ctaLabel}
-                  onChange={(e) => {
-                    setDraft({ ...draft, ctaLabel: e.target.value });
-                    setJustSaved(false);
-                  }}
-                />
-                {personal && (
-                  <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                    The invite is set to go out as a plain message, so this label appears as a text
-                    link where the button marker sits, not as a button.
+                <p className="text-[11px] text-muted-foreground">
+                  Replies go to this address, so it should be a mailbox someone reads. It must also
+                  be one the sending service has been verified to send from. Until that is set up,
+                  nothing can leave the app whatever is typed here.
+                </p>
+                {/*
+                 * One mailbox serves every template unless a template is given its
+                 * own. Saying so here is what stops "no sender address" reading as
+                 * a fault on a screen where sending plainly works.
+                 */}
+                {!draft.fromEmail && inheritedSender ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Left empty, this email sends from{" "}
+                    <span className="font-medium text-foreground">{inheritedSender.email}</span>,
+                    the address set on <span className="font-medium">{inheritedSender.from}</span>.
+                    Type one here only to override it for this email.
                   </p>
+                ) : null}
+
+                <div>
+                  <Label
+                    htmlFor="template-subject"
+                    className="text-xs uppercase tracking-wide text-muted-foreground"
+                  >
+                    Subject line
+                  </Label>
+                  <Input
+                    id="template-subject"
+                    className="mt-1.5"
+                    value={draft.subject}
+                    onChange={(e) => {
+                      setDraft({ ...draft, subject: e.target.value });
+                      setJustSaved(false);
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="template-body"
+                    className="text-xs uppercase tracking-wide text-muted-foreground"
+                  >
+                    Body
+                  </Label>
+                  <Textarea
+                    id="template-body"
+                    className="mt-1.5 min-h-[300px] leading-relaxed"
+                    value={draft.body}
+                    onChange={(e) => {
+                      setDraft({ ...draft, body: e.target.value });
+                      setJustSaved(false);
+                    }}
+                  />
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Leave a blank line between paragraphs. The <code>{BUTTON_MARKER}</code> line is
+                    where the button sits, so move that line to move the button. Start a paragraph
+                    with <code>#</code> and a space to make it a heading, and wrap words in{" "}
+                    <code>**</code> to make them bold.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {meta.tags.map((t) => (
+                      <button
+                        key={t.tag}
+                        type="button"
+                        title={t.describes}
+                        onClick={() => insertTag(t.tag)}
+                        className="rounded-full border border-border bg-muted px-2.5 py-1 font-mono text-[11px] text-foreground/80 transition-colors hover:bg-muted/60"
+                      >
+                        {t.tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="template-cta"
+                    className="text-xs uppercase tracking-wide text-muted-foreground"
+                  >
+                    Button label
+                  </Label>
+                  <Input
+                    id="template-cta"
+                    className="mt-1.5"
+                    value={draft.ctaLabel}
+                    onChange={(e) => {
+                      setDraft({ ...draft, ctaLabel: e.target.value });
+                      setJustSaved(false);
+                    }}
+                  />
+                  {personal && (
+                    <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+                      The invite is set to go out as a plain message, so this label appears as a
+                      text link where the button marker sits, not as a button.
+                    </p>
+                  )}
+                </div>
+
+                {(buttonMissing || strayTags.length > 0) && (
+                  <div className="space-y-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+                    {buttonMissing && (
+                      <p className="flex items-start gap-2 text-[12.5px] text-destructive">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        There is no <code>{BUTTON_MARKER}</code> line, so this email would go out
+                        with no button in it.
+                      </p>
+                    )}
+                    {strayTags.length > 0 && (
+                      <p className="flex items-start gap-2 text-[12.5px] text-destructive">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        {strayTags.join(", ")}{" "}
+                        {strayTags.length === 1 ? "is not a tag" : "are not tags"} this email can
+                        fill in. It would reach the client exactly as written.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {(buttonMissing || strayTags.length > 0) && (
-                <div className="space-y-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5">
-                  {buttonMissing && (
-                    <p className="flex items-start gap-2 text-[12.5px] text-destructive">
-                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      There is no <code>{BUTTON_MARKER}</code> line, so this email would go out with
-                      no button in it.
-                    </p>
-                  )}
-                  {strayTags.length > 0 && (
-                    <p className="flex items-start gap-2 text-[12.5px] text-destructive">
-                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      {strayTags.join(", ")}{" "}
-                      {strayTags.length === 1 ? "is not a tag" : "are not tags"} this email can fill
-                      in. It would reach the client exactly as written.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-b-xl border-t border-border bg-card px-5 py-3">
-              <Button onClick={() => void onSave()} disabled={!dirty || busy}>
-                {busy ? "Saving…" : "Save"}
-              </Button>
-              <Button variant="outline" onClick={onRevert} disabled={busy}>
-                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                Revert to the Kriterion default
-              </Button>
-              <Input
-                aria-label="Send the test to"
-                className="h-9 w-full sm:w-56"
-                placeholder="your own address"
-                value={testTo}
-                onChange={(e) => setTestTo(e.target.value)}
-              />
-              <Button
-                variant="outline"
-                onClick={() => void onSendTest()}
-                disabled={testing || dirty || !sending?.ready || !effectiveFrom}
-                title={
-                  !sending?.ready
-                    ? "Sending is not switched on yet"
-                    : dirty
-                      ? "Save first, so the test matches what would go out"
-                      : !effectiveFrom
-                        ? "No sender address is set on any template yet"
-                        : undefined
-                }
-              >
-                <Send className="mr-1.5 h-3.5 w-3.5" />
-                {testing ? "Sending…" : testTo.trim() ? "Send a test" : "Send a test to myself"}
-              </Button>
-              <span
-                className={`ml-auto text-[12.5px] ${
-                  dirty ? "font-medium text-destructive" : "text-muted-foreground"
-                }`}
-              >
-                {dirty
-                  ? "Unsaved changes"
-                  : justSaved
-                    ? "Saved. Every email of this kind now uses this wording"
-                    : "No unsaved changes"}
-              </span>
-            </div>
-          </section>
-
-          {/* preview */}
-          <section className="space-y-3">
-            <div className="flex overflow-hidden rounded-lg border border-border">
-              <button
-                type="button"
-                aria-pressed={showTags}
-                onClick={() => setShowTags(true)}
-                className={`flex-1 px-3 py-2 text-[12px] transition-colors ${
-                  showTags ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"
-                }`}
-              >
-                Show the tags
-              </button>
-              <button
-                type="button"
-                aria-pressed={!showTags}
-                onClick={() => setShowTags(false)}
-                className={`flex-1 px-3 py-2 text-[12px] transition-colors ${
-                  showTags ? "bg-card text-muted-foreground" : "bg-primary text-primary-foreground"
-                }`}
-              >
-                Filled in with real data
-              </button>
-            </div>
-
-            {/*
-             * The real renderer, in an iframe.
-             *
-             * This panel used to rebuild the wordmark, the button, the link and
-             * the footer in JSX, while both file headers claimed the preview
-             * and the send path shared code so that what an admin signs off is
-             * what leaves the building. They did not, and on 2026-09-18 the
-             * email header changed and this replica would have gone on showing
-             * the old one. Now it renders the exact HTML `renderEmail`
-             * produces, which is the only version of this that cannot drift.
-             *
-             * Sandboxed with no permissions: it is our own markup, but it is
-             * markup an admin has typed into, and it has no reason to run
-             * anything.
-             */}
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-              <div className="border-b border-border px-5 pb-3 pt-4">
-                <p className="text-[15px] font-semibold tracking-tight">{rendered.subject}</p>
-                <p className="mt-1 text-[11.5px] text-muted-foreground">
-                  from {draft.fromName} &lt;{effectiveFrom ?? "address not set"}&gt;
-                </p>
-              </div>
-              {blocks.length === 0 ? (
-                <p className="px-5 py-4 text-[12.5px] text-destructive">
-                  The body is empty, so there is nothing to send.
-                </p>
-              ) : (
-                <iframe
-                  title="Email preview"
-                  sandbox=""
-                  srcDoc={rendered.html}
-                  className="block h-[520px] w-full border-0 bg-white"
+              <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-b-xl border-t border-border bg-card px-5 py-3">
+                <Button onClick={() => void onSave()} disabled={!dirty || busy}>
+                  {busy ? "Saving…" : "Save"}
+                </Button>
+                <Button variant="outline" onClick={onRevert} disabled={busy}>
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                  Revert to the Kriterion default
+                </Button>
+                <Input
+                  aria-label="Send the test to"
+                  className="h-9 w-full sm:w-56"
+                  placeholder="your own address"
+                  value={testTo}
+                  onChange={(e) => setTestTo(e.target.value)}
                 />
-              )}
-            </div>
+                <Button
+                  variant="outline"
+                  onClick={() => void onSendTest()}
+                  disabled={testing || dirty || !sending?.ready || !effectiveFrom}
+                  title={
+                    !sending?.ready
+                      ? "Sending is not switched on yet"
+                      : dirty
+                        ? "Save first, so the test matches what would go out"
+                        : !effectiveFrom
+                          ? "No sender address is set on any template yet"
+                          : undefined
+                  }
+                >
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
+                  {testing ? "Sending…" : testTo.trim() ? "Send a test" : "Send a test to myself"}
+                </Button>
+                <span
+                  className={`ml-auto text-[12.5px] ${
+                    dirty ? "font-medium text-destructive" : "text-muted-foreground"
+                  }`}
+                >
+                  {dirty
+                    ? "Unsaved changes"
+                    : justSaved
+                      ? "Saved. Every email of this kind now uses this wording"
+                      : "No unsaved changes"}
+                </span>
+              </div>
+            </section>
 
-            <div className="rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] text-muted-foreground shadow-sm">
-              <p>
-                <span className="font-medium text-foreground">What is behind the tags.</span>{" "}
-                {meta.note}
-              </p>
-              {preview.caveat && <p className="mt-2">{preview.caveat}</p>}
-            </div>
-          </section>
+            {/* preview */}
+            <section className="space-y-3">
+              <div className="flex overflow-hidden rounded-lg border border-border">
+                <button
+                  type="button"
+                  aria-pressed={showTags}
+                  onClick={() => setShowTags(true)}
+                  className={`flex-1 px-3 py-2 text-[12px] transition-colors ${
+                    showTags
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground"
+                  }`}
+                >
+                  Show the tags
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={!showTags}
+                  onClick={() => setShowTags(false)}
+                  className={`flex-1 px-3 py-2 text-[12px] transition-colors ${
+                    showTags
+                      ? "bg-card text-muted-foreground"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
+                  Filled in with real data
+                </button>
+              </div>
+
+              {/*
+               * The real renderer, in an iframe.
+               *
+               * This panel used to rebuild the wordmark, the button, the link and
+               * the footer in JSX, while both file headers claimed the preview
+               * and the send path shared code so that what an admin signs off is
+               * what leaves the building. They did not, and on 2026-09-18 the
+               * email header changed and this replica would have gone on showing
+               * the old one. Now it renders the exact HTML `renderEmail`
+               * produces, which is the only version of this that cannot drift.
+               *
+               * Sandboxed with no permissions: it is our own markup, but it is
+               * markup an admin has typed into, and it has no reason to run
+               * anything.
+               */}
+              <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                <div className="border-b border-border px-5 pb-3 pt-4">
+                  <p className="text-[15px] font-semibold tracking-tight">{rendered.subject}</p>
+                  <p className="mt-1 text-[11.5px] text-muted-foreground">
+                    from {draft.fromName} &lt;{effectiveFrom ?? "address not set"}&gt;
+                  </p>
+                </div>
+                {blocks.length === 0 ? (
+                  <p className="px-5 py-4 text-[12.5px] text-destructive">
+                    The body is empty, so there is nothing to send.
+                  </p>
+                ) : (
+                  <iframe
+                    title="Email preview"
+                    sandbox=""
+                    srcDoc={rendered.html}
+                    className="block h-[520px] w-full border-0 bg-white"
+                  />
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] text-muted-foreground shadow-sm">
+                <p>
+                  <span className="font-medium text-foreground">What is behind the tags.</span>{" "}
+                  {meta.note}
+                </p>
+                {preview.caveat && <p className="mt-2">{preview.caveat}</p>}
+              </div>
+            </section>
+          </div>
         </div>
       </div>
-    </main>
+    </BackOfficeShell>
   );
 }

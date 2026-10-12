@@ -41,7 +41,8 @@ import {
 } from "@/lib/advisor-submissions.functions";
 import { listTestSubmissionIds, setSubmissionTest } from "@/lib/research-desk.functions";
 import { useResearchDeskAccess } from "@/lib/use-research-desk-access";
-import { BackOfficeNav } from "@/components/back-office-nav";
+import { BackOfficeShell } from "@/components/back-office-shell";
+import { needsAdvisor } from "@/lib/submission-stage";
 
 export const Route = createFileRoute("/admin/submissions")({
   ssr: false,
@@ -783,21 +784,14 @@ function AdminSubmissionsPage() {
   ];
 
   return (
-    <main className="min-h-screen">
-      <BackOfficeNav active={"submissions"} />
-      <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
-            <h1 className="text-lg font-semibold tracking-tight">Submissions</h1>
-          </div>
-          <div className="flex gap-2">
-            <InviteClientButton />
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
+    <BackOfficeShell
+      active="submissions"
+      title="Submissions"
+      description="Click any row to see every action for that submission."
+      actions={<InviteClientButton size="default" />}
+      needsCount={loading ? null : rows.filter(needsAdvisor).length}
+    >
+      <div className="space-y-6">
         {/* Summary strip */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <SummaryTile
@@ -887,6 +881,6 @@ function AdminSubmissionsPage() {
           </div>
         )}
       </div>
-    </main>
+    </BackOfficeShell>
   );
 }

@@ -68,7 +68,13 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { BackOfficeNav } from "@/components/back-office-nav";
+import { BackOfficeShell, type Crumb } from "@/components/back-office-shell";
+
+const PLAN_CRUMBS: Crumb[] = [
+  { label: "Work" },
+  { label: "Submissions", to: "/admin/submissions" },
+  { label: "Action plan" },
+];
 import { saveAdvisorVerdict, setAdvisorStatus } from "@/lib/advisor-submissions.functions";
 
 export const Route = createFileRoute("/advisor/plan/$submissionId")({
@@ -583,20 +589,22 @@ function ActionPlanWorkspace() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center p-6">
+      <BackOfficeShell active="submissions" title="Action plan" crumbs={PLAN_CRUMBS}>
         <p className="text-sm text-muted-foreground">Loading the review…</p>
-      </main>
+      </BackOfficeShell>
     );
   }
 
   if (error || !sub || !result || !config) {
     return (
-      <main className="min-h-screen grid place-items-center gap-3 p-6 text-center">
-        <p className="text-sm text-destructive">{error ?? "Could not load this review"}</p>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/admin/submissions">Back to submissions</Link>
-        </Button>
-      </main>
+      <BackOfficeShell active="submissions" title="Action plan" crumbs={PLAN_CRUMBS}>
+        <div className="space-y-3">
+          <p className="text-sm text-destructive">{error ?? "Could not load this review"}</p>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/submissions">Back to submissions</Link>
+          </Button>
+        </div>
+      </BackOfficeShell>
     );
   }
 
@@ -616,58 +624,55 @@ function ActionPlanWorkspace() {
   const locked = sub.advisor_status === "final";
 
   return (
-    <main className="min-h-screen pb-24">
-      <BackOfficeNav active={null} />
-      <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Action plan
-            </p>
-            <h1 className="truncate text-lg font-semibold">{sub.company_name}</h1>
-            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-              {sub.submission_id}
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/admin/submissions">
-                <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
-                Back to submissions
-              </Link>
+    <BackOfficeShell
+      active="submissions"
+      title={sub.company_name}
+      crumbs={PLAN_CRUMBS}
+      description={
+        <>
+          Action plan
+          <span className="ml-2 font-mono text-[11px]">{sub.submission_id}</span>
+        </>
+      }
+      actions={
+        <>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/submissions">
+              <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+              Back to submissions
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/advisor/$submissionId" params={{ submissionId }}>
+              <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
+              Advisory answers
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/results/$submissionId" params={{ submissionId }}>
+              <Eye className="mr-1.5 h-3.5 w-3.5" />
+              Results
+            </Link>
+          </Button>
+          {locked ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={completing}
+              onClick={() => void setCompleted(false)}
+            >
+              <Unlock className="mr-1.5 h-3.5 w-3.5" />
+              Reopen for editing
             </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/advisor/$submissionId" params={{ submissionId }}>
-                <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
-                Advisory answers
-              </Link>
+          ) : (
+            <Button size="sm" disabled={completing} onClick={() => setGateOpen(true)}>
+              Complete Action Plan
             </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/admin/results/$submissionId" params={{ submissionId }}>
-                <Eye className="mr-1.5 h-3.5 w-3.5" />
-                Results
-              </Link>
-            </Button>
-            {locked ? (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={completing}
-                onClick={() => void setCompleted(false)}
-              >
-                <Unlock className="mr-1.5 h-3.5 w-3.5" />
-                Reopen for editing
-              </Button>
-            ) : (
-              <Button size="sm" disabled={completing} onClick={() => setGateOpen(true)}>
-                Complete Action Plan
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto grid max-w-6xl gap-6 px-6 py-7 lg:grid-cols-[1fr_300px] lg:items-start">
+          )}
+        </>
+      }
+    >
+      <div className="grid max-w-6xl gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
         <div className="min-w-0 space-y-4">
           {locked ? (
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-4 py-3.5">
@@ -807,7 +812,7 @@ function ActionPlanWorkspace() {
           )}
         </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-6">
+        <aside className="space-y-4 lg:sticky lg:top-20">
           <RailCard title="The plan so far">
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold tabular-nums">{planItems.length}</span>
@@ -875,7 +880,7 @@ function ActionPlanWorkspace() {
           )}
         </aside>
       </div>
-    </main>
+    </BackOfficeShell>
   );
 }
 

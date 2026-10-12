@@ -28,7 +28,7 @@ import {
   type EditorScoreBand,
   type EditorMultiple,
 } from "@/lib/questionnaire-admin.functions";
-import { BackOfficeNav } from "@/components/back-office-nav";
+import { BackOfficeShell } from "@/components/back-office-shell";
 
 export const Route = createFileRoute("/admin/questionnaire")({
   ssr: false,
@@ -583,9 +583,9 @@ function QuestionnaireEditorPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center">
+      <BackOfficeShell active="questionnaire" title="Questionnaire editor">
         <p className="text-sm text-muted-foreground">Loading questionnaire…</p>
-      </main>
+      </BackOfficeShell>
     );
   }
 
@@ -634,34 +634,34 @@ function QuestionnaireEditorPage() {
   };
 
   return (
-    <main className="min-h-screen pb-28">
-      <BackOfficeNav active={"questionnaire"} />
-      <header className="border-b border-border/60 sticky top-0 bg-background/95 backdrop-blur z-20">
-        <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</p>
-            <h1 className="text-lg font-semibold tracking-tight">Questionnaire editor</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => dispatch({ type: "undo" })}
-              disabled={!st.past.length}
-            >
-              <Undo2 className="h-3.5 w-3.5 mr-1.5" /> Undo
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => dispatch({ type: "redo" })}
-              disabled={!st.future.length}
-            >
-              <Redo2 className="h-3.5 w-3.5 mr-1.5" /> Redo
-            </Button>
-          </div>
-        </div>
-        <div className="mx-auto max-w-5xl px-6 flex gap-1 flex-wrap border-t border-border/40">
+    <BackOfficeShell
+      active="questionnaire"
+      title="Questionnaire editor"
+      description="Objective and advisory questions, score bands, valuation multipliers."
+      actions={
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => dispatch({ type: "undo" })}
+            disabled={!st.past.length}
+          >
+            <Undo2 className="h-3.5 w-3.5 mr-1.5" /> Undo
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => dispatch({ type: "redo" })}
+            disabled={!st.future.length}
+          >
+            <Redo2 className="h-3.5 w-3.5 mr-1.5" /> Redo
+          </Button>
+        </>
+      }
+    >
+      {/* The top bar is h-14, so the tab strip sticks just below it. */}
+      <header className="sticky top-14 z-10 max-w-5xl border-b border-border/60 bg-background/95 backdrop-blur">
+        <div className="flex gap-1 flex-wrap">
           {tabs.map((t) => (
             <button
               key={t.key}
@@ -677,7 +677,7 @@ function QuestionnaireEditorPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="max-w-5xl py-8">
         {(tab === "objective" || tab === "advisory") && <EditorPane qtype={tab} api={api} />}
         {tab === "bands" && (
           <BandsPane
@@ -714,8 +714,8 @@ function QuestionnaireEditorPage() {
       </div>
 
       {/* save bar */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 backdrop-blur z-30">
-        <div className="mx-auto max-w-5xl px-6 py-3 flex items-center gap-3">
+      <div className="sticky bottom-0 z-30 max-w-5xl border-t border-border bg-background/95 backdrop-blur">
+        <div className="py-3 flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
             {dirty ? (
               <span className="text-foreground font-medium">
@@ -776,7 +776,7 @@ function QuestionnaireEditorPage() {
           setPendingTab(null);
         }}
       />
-    </main>
+    </BackOfficeShell>
   );
 }
 
