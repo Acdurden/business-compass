@@ -1,51 +1,39 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { z } from "zod";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
-import {
-  FileDown,
-  Unlock,
-  RotateCcw,
-  ClipboardList,
-  Eye,
-  Pencil,
-  CheckCircle2,
-  KeyRound,
-  MoreHorizontal,
-  ArrowRight,
-  Trash2,
-  ListChecks,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { requireAdvisorAuth } from "@/lib/require-advisor-auth";
-import { generateSubmissionPdf } from "@/lib/generate-submission-pdf";
-import { resetClientPassword } from "@/lib/password-admin.functions";
-import { TempPasswordDialog } from "@/components/temp-password-dialog";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { InviteClientButton } from "@/components/invite-client-button";
-import {
-  deleteSubmission,
-  listAllSubmissions,
-  setAdvisorStatus,
-} from "@/lib/advisor-submissions.functions";
-import { listTestSubmissionIds, setSubmissionTest } from "@/lib/research-desk.functions";
-import { useResearchDeskAccess } from "@/lib/use-research-desk-access";
 import { BackOfficeShell } from "@/components/back-office-shell";
-import { needsAdvisor } from "@/lib/submission-stage";
+import { StagePill, SubmissionSheet, TestPill } from "@/components/submission-sheet";
+import {
+  STAGE,
+  STAGE_FILTERS,
+  matchesStageFilter,
+  shortDate,
+  stageDetail,
+  type Stage,
+  type StageFilter,
+} from "@/lib/submission-stage";
+import { useSubmissionDirectory, type SubmissionView } from "@/lib/use-submission-directory";
+import { useSubmissionActions, type SubmissionActionHandlers } from "@/lib/use-submission-actions";
+import { cn } from "@/lib/utils";
+
+/**
+ * `open` is the submission whose sheet is showing, so a link (from the
+ * dashboard or the command palette) can land with it already open. `filter`
+ * is the chip, so the dashboard tiles can land on the right one.
+ */
+const searchSchema = z.object({
+  open: z.string().optional(),
+  filter: z.enum(["needs", "client", "final", "all"]).optional(),
+});
 
 export const Route = createFileRoute("/admin/submissions")({
   ssr: false,
+  validateSearch: searchSchema,
   beforeLoad: ({ location }) => requireAdvisorAuth(location.href),
   head: () => ({
     meta: [{ title: "Admin · Submissions" }],
@@ -53,735 +41,79 @@ export const Route = createFileRoute("/admin/submissions")({
   component: AdminSubmissionsPage,
 });
 
-type Row = {
-  submission_id: string;
-  company_name: string;
-  client_status: string;
-  advisor_status: string;
-  plan: string;
-  updated_at: string;
-  owner_user_id: string | null;
-  advisor_id: string | null;
-};
-
-function normalizeAdvisoryStatus(
-  status: string | null | undefined,
-): "notstarted" | "inprogress" | "submitted" | "final" {
-  if (status === "submitted" || status === "final" || status === "inprogress") return status;
-  return "notstarted";
-}
-
-const ADVISORY_STATUS_LABEL: Record<string, string> = {
-  notstarted: "Not started",
-  inprogress: "In progress",
-  submitted: "Submitted",
-  final: "Final",
-};
-
-const CLIENT_STATUS_LABEL: Record<string, string> = {
-  notstarted: "Not started",
-  inprogress: "In progress",
-  submitted: "Submitted",
-  complete: "Complete",
-};
-
-// -------------------------------------------------------------------------
-// Pipeline logic — one place that decides, for a row, the plain-English next
-// step and which single action is primary.
-// -------------------------------------------------------------------------
-
-type PrimaryKind = "awaiting_client" | "do_advisory" | "mark_final" | "view_results";
-
-function clientReady(clientStatus: string): boolean {
-  return clientStatus === "submitted" || clientStatus === "complete";
-}
-
-function derive(r: Row): { kind: PrimaryKind; next: string } {
-  const adv = normalizeAdvisoryStatus(r.advisor_status);
-  if (!clientReady(r.client_status)) {
-    return r.client_status === "inprogress"
-      ? {
-          kind: "awaiting_client",
-          next: "Client is completing their assessment.",
-        }
-      : {
-          kind: "awaiting_client",
-          next: "Waiting on the client to start their assessment.",
-        };
-  }
-  if (adv === "notstarted")
-    return { kind: "do_advisory", next: "Ready for your advisory interview." };
-  if (adv === "inprogress")
-    return {
-      kind: "do_advisory",
-      next: "Advisory in progress. Resume when ready.",
-    };
-  if (adv === "submitted")
-    return {
-      kind: "mark_final",
-      next: "Advisory submitted. Review and finalize.",
-    };
-  return { kind: "view_results", next: "Complete. Results ready to share." };
-}
-
 // Action-first ordering: rows that need the advisor float to the top.
-function sortPriority(r: Row): number {
-  const adv = normalizeAdvisoryStatus(r.advisor_status);
-  if (clientReady(r.client_status) && (adv === "notstarted" || adv === "inprogress")) return 0;
-  if (adv === "submitted") return 1;
-  if (r.client_status === "inprogress") return 2;
-  if (r.client_status === "notstarted") return 3;
-  if (adv === "final") return 5;
-  return 4;
-}
-
-type FilterKey =
-  "all" | "awaiting_advisory" | "client_in_progress" | "submitted" | "not_started" | "adv_final";
-
-function matchesFilter(r: Row, filter: FilterKey): boolean {
-  const adv = normalizeAdvisoryStatus(r.advisor_status);
-  switch (filter) {
-    case "awaiting_advisory":
-      return clientReady(r.client_status) && adv !== "submitted" && adv !== "final";
-    case "client_in_progress":
-      return r.client_status === "inprogress";
-    case "submitted":
-      return r.client_status === "submitted";
-    case "not_started":
-      return r.client_status === "notstarted";
-    case "adv_final":
-      return adv === "final";
-    default:
-      return true;
-  }
-}
-
-// -------------------------------------------------------------------------
-// Small presentational bits
-// -------------------------------------------------------------------------
-
-type Tone = "green" | "blue" | "amber" | "gray";
-
-function toneClass(tone: Tone): string {
-  switch (tone) {
-    case "green":
-      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
-    case "blue":
-      return "bg-primary/10 text-primary border-primary/30";
-    case "amber":
-      return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30";
-    default:
-      return "bg-muted text-muted-foreground border-border";
-  }
-}
-
-function clientTone(status: string): Tone {
-  return status === "complete"
-    ? "green"
-    : status === "submitted"
-      ? "blue"
-      : status === "inprogress"
-        ? "amber"
-        : "gray";
-}
-
-function advisoryTone(adv: string): Tone {
-  return adv === "final"
-    ? "green"
-    : adv === "submitted"
-      ? "blue"
-      : adv === "inprogress"
-        ? "amber"
-        : "gray";
-}
-
-function Pill({ label, value, tone }: { label: string; value: string; tone: Tone }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] ${toneClass(
-        tone,
-      )}`}
-    >
-      <span className="opacity-60">{label}</span>
-      <span className="font-medium">{value}</span>
-    </span>
-  );
-}
-
-// -------------------------------------------------------------------------
-// Row
-// -------------------------------------------------------------------------
-
-function SubmissionRow({
-  r,
-  isTest,
-  onTestChange,
-  onPatch,
-  onDelete,
-}: {
-  r: Row;
-  /** Null when this person may not see the test switch, or the flags did not load. */
-  isTest: boolean | null;
-  onTestChange: (next: boolean) => void;
-  onPatch: (patch: Partial<Row>) => void;
-  onDelete: () => void;
-}) {
-  const navigate = useNavigate();
-  const setStatus = useServerFn(setAdvisorStatus);
-  const resetPw = useServerFn(resetClientPassword);
-  const del = useServerFn(deleteSubmission);
-  const setTest = useServerFn(setSubmissionTest);
-
-  const [pending, setPending] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<null | "reset_client" | "reset_advisor" | "delete">(null);
-  const [pwOpen, setPwOpen] = useState(false);
-  const [pwResult, setPwResult] = useState<{
-    email: string | null;
-    tempPassword: string;
-  } | null>(null);
-
-  const adv = normalizeAdvisoryStatus(r.advisor_status);
-  const ready = clientReady(r.client_status);
-  const { kind, next } = derive(r);
-
-  async function markFinal() {
-    setPending("final");
-    try {
-      await setStatus({
-        data: { submissionId: r.submission_id, status: "final" },
-      });
-      toast.success("Marked as final");
-      onPatch({ advisor_status: "final" });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not mark as final");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function reopenEdit() {
-    if (
-      !window.confirm(
-        "Reopen the advisory questionnaire for editing? You'll need to resubmit when finished.",
-      )
-    )
-      return;
-    setPending("edit");
-    try {
-      await setStatus({
-        data: { submissionId: r.submission_id, status: "inprogress" },
-      });
-      onPatch({ advisor_status: "inprogress" });
-      navigate({
-        to: "/advisor/$submissionId",
-        params: { submissionId: r.submission_id },
-      });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not reopen");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function unlock() {
-    setPending("unlock");
-    const { error } = await supabase.rpc("advisor_unlock_submission", {
-      p_submission_id: r.submission_id,
-    });
-    setPending(null);
-    if (error) {
-      toast.error(error.message ?? "Could not unlock");
-      return;
-    }
-    toast.success("Unlocked. The client can edit again.");
-    onPatch({ client_status: "inprogress" });
-  }
-
-  async function resetClientAnswers() {
-    setPending("reset_client");
-    const { error } = await supabase.rpc("advisor_reset_client_responses", {
-      p_submission_id: r.submission_id,
-    });
-    setPending(null);
-    if (error) {
-      toast.error(error.message ?? "Could not reset");
-      return;
-    }
-    toast.success("Client questionnaire reset");
-    onPatch({ client_status: "notstarted" });
-  }
-
-  async function resetAdvisorAnswers() {
-    setPending("reset_advisor");
-    const { error } = await supabase.rpc("advisor_reset_advisor_responses", {
-      p_submission_id: r.submission_id,
-    });
-    setPending(null);
-    if (error) {
-      toast.error(error.message ?? "Could not reset");
-      return;
-    }
-    toast.success("Advisor answers reset");
-    onPatch({ advisor_status: "notstarted" });
-  }
-
-  async function resetPassword() {
-    if (
-      !window.confirm(
-        "Reset this client's password? They'll be signed out and will need the new temporary password to sign in.",
-      )
-    )
-      return;
-    setPending("pw");
-    try {
-      const res = await resetPw({ data: { submissionId: r.submission_id } });
-      setPwResult({ email: res.email, tempPassword: res.tempPassword });
-      setPwOpen(true);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not reset password");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function toggleTest(next: boolean) {
-    setPending("test");
-    try {
-      const res = await setTest({ data: { submissionId: r.submission_id, isTest: next } });
-      onTestChange(res.isTest);
-      toast.success(res.isTest ? "Marked as a test" : "Marked as a real assessment");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not change the test setting");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function downloadPdf() {
-    setPending("pdf");
-    try {
-      await generateSubmissionPdf(r.submission_id);
-    } catch (err) {
-      console.error(err);
-      toast.error("Could not generate PDF");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function deleteRow() {
-    setPending("delete");
-    try {
-      await del({ data: { submissionId: r.submission_id } });
-      toast.success("Submission deleted");
-      onDelete();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not delete submission");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  const pwLoginUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
-
-  let primary: React.ReactNode;
-  if (kind === "awaiting_client") {
-    primary = (
-      <Button size="sm" variant="outline" disabled className="opacity-70">
-        <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-        Awaiting client
-      </Button>
-    );
-  } else if (kind === "do_advisory") {
-    primary = (
-      <Button size="sm" asChild>
-        <Link to="/advisor/$submissionId" params={{ submissionId: r.submission_id }}>
-          <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-          {adv === "inprogress" ? "Resume advisory" : "Complete advisory"}
-        </Link>
-      </Button>
-    );
-  } else if (kind === "mark_final") {
-    primary = (
-      <Button size="sm" onClick={() => void markFinal()} disabled={pending === "final"}>
-        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-        {pending === "final" ? "Marking…" : "Mark as Final"}
-      </Button>
-    );
-  } else {
-    primary = (
-      <Button size="sm" asChild>
-        <Link to="/admin/results/$submissionId" params={{ submissionId: r.submission_id }}>
-          <Eye className="h-3.5 w-3.5 mr-1.5" />
-          View results
-        </Link>
-      </Button>
-    );
-  }
-
-  return (
-    <li className="flex flex-col gap-3 px-4 py-3.5 md:grid md:grid-cols-[2.1fr_1.9fr_1.6fr_auto] md:items-center md:gap-4">
-      {/* Company */}
-      <div className="min-w-0">
-        <p className="font-medium truncate flex items-center gap-2">
-          <span className="truncate">{r.company_name}</span>
-          <span
-            className={
-              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
-              (r.plan === "objective"
-                ? "border-border bg-muted text-muted-foreground"
-                : "border-primary/25 bg-primary/10 text-primary")
-            }
-            title={
-              r.plan === "objective"
-                ? "Objective only - self-assessment, no advisor review included"
-                : "Full service - includes an advisor review"
-            }
-          >
-            {r.plan === "objective" ? "Objective" : "Full service"}
-          </span>
-        </p>
-        <p className="mt-0.5 flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
-          <span className="truncate">{r.submission_id}</span>
-          {r.owner_user_id ? (
-            <span className="inline-flex shrink-0 items-center rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-sans uppercase tracking-wide text-primary">
-              Account
-            </span>
-          ) : null}
-        </p>
-        {isTest !== null && (
-          <label
-            className="mt-1.5 inline-flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground"
-            title="A test stays in the app but is left out of every Insights figure. Admin only."
-          >
-            <Switch
-              checked={isTest}
-              disabled={pending === "test"}
-              onCheckedChange={(v) => void toggleTest(v)}
-              aria-label={`Mark ${r.company_name || "this assessment"} as a test`}
-            />
-            <span className={isTest ? "font-medium text-amber-700 dark:text-amber-300" : ""}>
-              Test
-            </span>
-          </label>
-        )}
-      </div>
-
-      {/* Progress track */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Pill
-          label="Client"
-          value={CLIENT_STATUS_LABEL[r.client_status] ?? r.client_status}
-          tone={clientTone(r.client_status)}
-        />
-        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-        <Pill label="Advisory" value={ADVISORY_STATUS_LABEL[adv]} tone={advisoryTone(adv)} />
-      </div>
-
-      {/* Next step */}
-      <p className="text-xs text-muted-foreground">{next}</p>
-
-      {/* Action */}
-      <div className="flex items-center gap-2 md:justify-end">
-        {primary}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              className="px-2"
-              disabled={pending !== null}
-              aria-label="More actions"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              More actions
-            </DropdownMenuLabel>
-
-            {(adv === "submitted" || adv === "final") && (
-              <DropdownMenuItem asChild>
-                <Link
-                  to="/advisor/$submissionId"
-                  params={{ submissionId: r.submission_id }}
-                  search={{ mode: "review" as const }}
-                >
-                  <Eye className="h-4 w-4" />
-                  Review advisory
-                </Link>
-              </DropdownMenuItem>
-            )}
-
-            <DropdownMenuItem asChild>
-              <Link to="/advisor/plan/$submissionId" params={{ submissionId: r.submission_id }}>
-                <ListChecks className="h-4 w-4" />
-                Action plan
-              </Link>
-            </DropdownMenuItem>
-
-            {ready && kind !== "view_results" && (
-              <DropdownMenuItem asChild>
-                <Link to="/admin/results/$submissionId" params={{ submissionId: r.submission_id }}>
-                  <Eye className="h-4 w-4" />
-                  View results
-                </Link>
-              </DropdownMenuItem>
-            )}
-
-            {(adv === "submitted" || adv === "final") && (
-              <DropdownMenuItem onSelect={() => void reopenEdit()}>
-                <Pencil className="h-4 w-4" />
-                Edit / update answers
-              </DropdownMenuItem>
-            )}
-
-            {/* The advisor's working file, not the client's document. */}
-            <DropdownMenuItem onSelect={() => void downloadPdf()}>
-              <FileDown className="h-4 w-4" />
-              Internal PDF
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Client controls
-            </DropdownMenuLabel>
-
-            {r.client_status === "submitted" && (
-              <DropdownMenuItem onSelect={() => void unlock()}>
-                <Unlock className="h-4 w-4" />
-                Unlock client
-              </DropdownMenuItem>
-            )}
-
-            {r.owner_user_id && (
-              <DropdownMenuItem onSelect={() => void resetPassword()}>
-                <KeyRound className="h-4 w-4" />
-                Reset password
-              </DropdownMenuItem>
-            )}
-
-            {adv !== "notstarted" && (
-              <DropdownMenuItem
-                onSelect={() => setConfirm("reset_advisor")}
-                className="text-destructive focus:text-destructive"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Reset advisor answers
-              </DropdownMenuItem>
-            )}
-
-            <DropdownMenuItem
-              onSelect={() => setConfirm("reset_client")}
-              className="text-destructive focus:text-destructive"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset client answers
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => setConfirm("delete")}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete submission
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <ConfirmDialog
-        open={confirm === "reset_client"}
-        onOpenChange={(o) => !o && setConfirm(null)}
-        title="Reset client answers?"
-        description="This will permanently clear all objective answers for this client. This action cannot be undone."
-        confirmLabel="Reset client answers"
-        destructive
-        onConfirm={() => void resetClientAnswers()}
-      />
-      <ConfirmDialog
-        open={confirm === "reset_advisor"}
-        onOpenChange={(o) => !o && setConfirm(null)}
-        title="Reset advisor answers?"
-        description="This will permanently clear all advisory responses and set the advisor status back to Not Started. This action cannot be undone."
-        confirmLabel="Reset advisor answers"
-        destructive
-        onConfirm={() => void resetAdvisorAnswers()}
-      />
-      <ConfirmDialog
-        open={confirm === "delete"}
-        onOpenChange={(o) => !o && setConfirm(null)}
-        title="Delete this submission?"
-        description={
-          <>
-            This permanently deletes {r.company_name ? <strong>{r.company_name}</strong> : "this"}
-            &rsquo;s submission and all of its answers (objective and advisory).
-            {r.owner_user_id
-              ? " The client's login stays active, so they could start a new assessment."
-              : ""}{" "}
-            This cannot be undone.
-          </>
-        }
-        confirmLabel="Delete submission"
-        destructive
-        onConfirm={() => void deleteRow()}
-      />
-      <TempPasswordDialog
-        open={pwOpen}
-        onOpenChange={setPwOpen}
-        email={pwResult?.email ?? null}
-        password={pwResult?.tempPassword ?? null}
-        loginUrl={pwLoginUrl}
-        title="Client password reset"
-      />
-    </li>
-  );
-}
-
-// -------------------------------------------------------------------------
-// Summary tile
-// -------------------------------------------------------------------------
-
-function SummaryTile({
-  num,
-  label,
-  active,
-  accent,
-  onClick,
-}: {
-  num: number;
-  label: string;
-  active: boolean;
-  accent?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl border p-4 text-left transition-colors ${
-        accent ? "border-primary/40 bg-primary/5" : "border-border bg-card"
-      } ${active ? "ring-2 ring-primary/50" : "hover:bg-muted/40"}`}
-    >
-      <div
-        className={`text-2xl font-bold leading-none tracking-tight ${accent ? "text-primary" : ""}`}
-      >
-        {num}
-      </div>
-      <div className="mt-1.5 text-xs text-muted-foreground">{label}</div>
-    </button>
-  );
-}
-
-// -------------------------------------------------------------------------
-// Page
-// -------------------------------------------------------------------------
+const STAGE_ORDER: Record<Stage, number> = {
+  needs: 0,
+  advisory: 0,
+  review: 1,
+  client: 2,
+  invited: 3,
+  final: 5,
+  complete: 5,
+};
 
 function AdminSubmissionsPage() {
-  const navigate = useNavigate();
-  const listAll = useServerFn(listAllSubmissions);
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const navigate = useNavigate({ from: Route.fullPath });
+  const { open, filter: filterParam } = Route.useSearch();
+  const filter: StageFilter = filterParam ?? "needs";
+  const dir = useSubmissionDirectory();
+  const [query, setQuery] = useState("");
 
-  /*
-   * Test flags come from their own admin-only call rather than the shared
-   * list, so an advisor who is not an admin never receives them. Null means
-   * "do not show the switch": still loading, not allowed, or the call failed.
-   * A failure is logged and otherwise ignored; the rest of the page does not
-   * depend on it.
-   */
-  const deskAccess = useResearchDeskAccess();
-  const listTests = useServerFn(listTestSubmissionIds);
-  const [testIds, setTestIds] = useState<Set<string> | null>(null);
-
-  useEffect(() => {
-    if (deskAccess !== true) return;
-    let cancelled = false;
-    listTests()
-      .then((ids) => {
-        if (!cancelled) setTestIds(new Set(ids));
-      })
-      .catch((err) => {
-        console.warn("Test flags did not load", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [deskAccess, listTests]);
-
-  function setRowTest(submissionId: string, isTest: boolean) {
-    setTestIds((prev) => {
-      const next = new Set(prev ?? []);
-      if (isTest) next.add(submissionId);
-      else next.delete(submissionId);
-      return next;
-    });
-  }
-
-  useEffect(() => {
-    listAll()
-      .then((data) => {
-        setRows((data ?? []) as Row[]);
-        setLoading(false);
-      })
-      .catch((err) => {
-        toast.error(err instanceof Error ? err.message : "Failed to load submissions");
-        setLoading(false);
-      });
-  }, [listAll]);
-
-  function updateRow(submissionId: string, patch: Partial<Row>) {
-    setRows((prev) => prev.map((x) => (x.submission_id === submissionId ? { ...x, ...patch } : x)));
-  }
-
-  function removeRow(submissionId: string) {
-    setRows((prev) => prev.filter((x) => x.submission_id !== submissionId));
-  }
-
-  const q = search.trim().toLowerCase();
-  const searched = useMemo(
-    () =>
-      rows.filter(
-        (r) =>
-          !q ||
-          r.company_name.toLowerCase().includes(q) ||
-          r.submission_id.toLowerCase().includes(q),
-      ),
-    [rows, q],
-  );
-
+  const q = query.trim().toLowerCase();
   const visible = useMemo(() => {
-    const list = searched.filter((r) => matchesFilter(r, filter));
+    const list = dir.items.filter(
+      (r) =>
+        matchesStageFilter(r.stage, filter) &&
+        (!q ||
+          r.company_name.toLowerCase().includes(q) ||
+          r.ownerName.toLowerCase().includes(q) ||
+          r.ownerEmail.toLowerCase().includes(q) ||
+          r.submission_id.toLowerCase().includes(q)),
+    );
     return [...list].sort((a, b) => {
-      const pa = sortPriority(a);
-      const pb = sortPriority(b);
+      const pa = STAGE_ORDER[a.stage];
+      const pb = STAGE_ORDER[b.stage];
       if (pa !== pb) return pa - pb;
       return (b.updated_at || "").localeCompare(a.updated_at || "");
     });
-  }, [searched, filter]);
+  }, [dir.items, filter, q]);
 
-  const count = (f: FilterKey) => rows.filter((r) => matchesFilter(r, f)).length;
+  const counts = useMemo(() => {
+    const c: Record<StageFilter, number> = { needs: 0, client: 0, final: 0, all: 0 };
+    for (const r of dir.items) {
+      for (const f of STAGE_FILTERS) if (matchesStageFilter(r.stage, f.key)) c[f.key] += 1;
+    }
+    return c;
+  }, [dir.items]);
 
-  const chips: { key: FilterKey; label: string; n: number }[] = [
-    { key: "all", label: "All", n: rows.length },
-    {
-      key: "awaiting_advisory",
-      label: "Needs my advisory",
-      n: count("awaiting_advisory"),
-    },
-    {
-      key: "client_in_progress",
-      label: "Client in progress",
-      n: count("client_in_progress"),
-    },
-    { key: "submitted", label: "Submitted", n: count("submitted") },
-    { key: "adv_final", label: "Final", n: count("adv_final") },
-  ];
+  const showTest = dir.items.some((r) => r.isTest !== null);
+  const selected = open ? (dir.items.find((r) => r.submission_id === open) ?? null) : null;
+
+  function setFilter(next: StageFilter) {
+    navigate({
+      search: (prev) => ({ ...prev, filter: next === "needs" ? undefined : next }),
+      replace: true,
+    });
+  }
+
+  function openSheet(id: string) {
+    navigate({ search: (prev) => ({ ...prev, open: id }) });
+  }
+
+  function closeSheet() {
+    navigate({ search: (prev) => ({ ...prev, open: undefined }), replace: true });
+  }
+
+  function handlersFor(id: string): SubmissionActionHandlers {
+    return {
+      onPatch: (patch) => dir.patch(id, patch),
+      onDelete: () => {
+        dir.remove(id);
+        if (open === id) closeSheet();
+      },
+      onTestChange: (v) => dir.setTest(id, v),
+    };
+  }
 
   return (
     <BackOfficeShell
@@ -789,98 +121,165 @@ function AdminSubmissionsPage() {
       title="Submissions"
       description="Click any row to see every action for that submission."
       actions={<InviteClientButton size="default" />}
-      needsCount={loading ? null : rows.filter(needsAdvisor).length}
+      needsCount={dir.loading ? null : counts.needs}
     >
-      <div className="space-y-6">
-        {/* Summary strip */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <SummaryTile
-            num={count("awaiting_advisory")}
-            label="Awaiting your advisory"
-            accent
-            active={filter === "awaiting_advisory"}
-            onClick={() =>
-              setFilter((f) => (f === "awaiting_advisory" ? "all" : "awaiting_advisory"))
-            }
-          />
-          <SummaryTile
-            num={count("client_in_progress")}
-            label="Client in progress"
-            active={filter === "client_in_progress"}
-            onClick={() =>
-              setFilter((f) => (f === "client_in_progress" ? "all" : "client_in_progress"))
-            }
-          />
-          <SummaryTile
-            num={count("not_started")}
-            label="Not started"
-            active={filter === "not_started"}
-            onClick={() => setFilter((f) => (f === "not_started" ? "all" : "not_started"))}
-          />
-          <SummaryTile
-            num={count("adv_final")}
-            label="Final"
-            active={filter === "adv_final"}
-            onClick={() => setFilter((f) => (f === "adv_final" ? "all" : "adv_final"))}
-          />
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {STAGE_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              aria-pressed={filter === f.key}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "h-[34px] rounded-full border px-3 text-[13px] transition-colors",
+                filter === f.key
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-card text-foreground/80 hover:bg-muted/60",
+              )}
+            >
+              {f.label} <span className="opacity-70">{counts[f.key]}</span>
+            </button>
+          ))}
+          <label className="flex h-[38px] w-full items-center gap-2 rounded-lg border border-input bg-card px-3 text-muted-foreground sm:ml-auto sm:w-auto sm:min-w-[260px]">
+            <Search className="h-[15px] w-[15px] shrink-0" aria-hidden="true" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter by company or owner"
+              aria-label="Filter by company or owner"
+              className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"
+            />
+          </label>
         </div>
 
-        {/* Toolbar */}
-        <div className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
-          <Input
-            placeholder="Search by company name or submission ID…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            {chips.map((c) => (
-              <Button
-                key={c.key}
-                type="button"
-                size="sm"
-                variant={filter === c.key ? "default" : "outline"}
-                onClick={() => setFilter(c.key)}
-              >
-                {c.label}
-                <span className="ml-1.5 opacity-60">{c.n}</span>
-              </Button>
-            ))}
-            <span className="ml-auto self-center text-[11px] text-muted-foreground">
-              {visible.length} of {rows.length}
-            </span>
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-2 pl-5 pr-3 font-medium">Company</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Updated</th>
+                  {showTest ? <th className="px-3 py-2 font-medium">Test</th> : null}
+                  <th className="py-2 pl-3 pr-5 text-right font-medium">Next step</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dir.loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-7 text-center text-muted-foreground">
+                      Loading…
+                    </td>
+                  </tr>
+                ) : visible.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-7 text-center text-muted-foreground">
+                      {dir.items.length === 0 ? "No submissions yet." : "No submissions match."}
+                    </td>
+                  </tr>
+                ) : (
+                  visible.map((r) => (
+                    <SubmissionRow
+                      key={r.submission_id}
+                      r={r}
+                      showTest={showTest}
+                      onOpen={() => openSheet(r.submission_id)}
+                      handlers={handlersFor(r.submission_id)}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        {/* List */}
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : visible.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {rows.length === 0 ? "No submissions yet." : "No submissions match your search."}
-          </p>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <div className="hidden border-b border-border bg-muted/40 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[2.1fr_1.9fr_1.6fr_auto] md:gap-4">
-              <div>Company</div>
-              <div>Progress</div>
-              <div>Next step</div>
-              <div className="text-right">Action</div>
-            </div>
-            <ul className="divide-y divide-border">
-              {visible.map((r) => (
-                <SubmissionRow
-                  key={r.submission_id}
-                  r={r}
-                  isTest={testIds ? testIds.has(r.submission_id) : null}
-                  onTestChange={(v) => setRowTest(r.submission_id, v)}
-                  onPatch={(patch) => updateRow(r.submission_id, patch)}
-                  onDelete={() => removeRow(r.submission_id)}
-                />
-              ))}
-            </ul>
-          </div>
-        )}
+        </section>
       </div>
+
+      <SubmissionSheet
+        submission={selected}
+        open={!!open}
+        onOpenChange={(o) => {
+          if (!o) closeSheet();
+        }}
+        admin={dir.admin === true}
+        handlers={handlersFor(selected?.submission_id ?? open ?? "")}
+      />
     </BackOfficeShell>
+  );
+}
+
+function SubmissionRow({
+  r,
+  showTest,
+  onOpen,
+  handlers,
+}: {
+  r: SubmissionView;
+  showTest: boolean;
+  onOpen: () => void;
+  handlers: SubmissionActionHandlers;
+}) {
+  const a = useSubmissionActions(r, handlers);
+  const meta = STAGE[r.stage];
+  const owner = r.ownerName || r.ownerEmail;
+
+  return (
+    <tr
+      className="cursor-pointer border-b border-border/60 last:border-b-0 hover:bg-muted/40"
+      onClick={onOpen}
+    >
+      <td className="py-2.5 pl-5 pr-3 align-middle">
+        <div className="flex items-center gap-2 font-medium">
+          <span>{r.company_name || "Untitled company"}</span>
+          {r.isTest ? <TestPill /> : null}
+        </div>
+        <div className="text-xs text-muted-foreground">{owner || "No client account"}</div>
+      </td>
+      <td className="px-3 py-2.5 align-middle">
+        <StagePill stage={r.stage} />
+        <div className="mt-1 text-xs text-muted-foreground">
+          {stageDetail(r.stage, r.updated_at)}
+        </div>
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 align-middle">{shortDate(r.updated_at)}</td>
+      {showTest ? (
+        <td className="px-3 py-2.5 align-middle" onClick={(e) => e.stopPropagation()}>
+          {r.isTest !== null ? (
+            <Switch
+              checked={r.isTest}
+              disabled={a.pending === "test"}
+              onCheckedChange={(v) => void a.toggleTest(v)}
+              aria-label={`Mark ${r.company_name || "this assessment"} as a test`}
+              title="A test stays in the app but is left out of every Insights figure. Admin only."
+            />
+          ) : null}
+        </td>
+      ) : null}
+      <td
+        className="whitespace-nowrap py-2.5 pl-3 pr-5 text-right align-middle"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="inline-flex gap-2">
+          <Button
+            size="sm"
+            variant={meta.advisorWork ? "default" : "outline"}
+            onClick={a.runNext}
+            disabled={a.pending !== null}
+          >
+            {a.pending === "final" ? "Marking…" : meta.next}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onOpen}
+            aria-label={`All actions for ${r.company_name || "this submission"}`}
+          >
+            All actions
+          </Button>
+        </div>
+        {a.dialogs}
+      </td>
+    </tr>
   );
 }

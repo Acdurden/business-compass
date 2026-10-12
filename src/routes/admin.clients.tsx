@@ -19,7 +19,7 @@ import { InviteClientButton } from "@/components/invite-client-button";
 async function requireAdvisorAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
-    throw redirect({ to: "/auth", search: { redirect: currentHref } });
+    throw redirect({ to: "/client/auth", search: { redirect: currentHref } });
   }
   const { data: isAdvisor } = await supabase.rpc("has_role", {
     _user_id: data.session.user.id,

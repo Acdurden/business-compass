@@ -211,6 +211,16 @@ function ResultsPage() {
     }
   }
 
+  /*
+   * The page loads its data after the route has rendered, so the browser's own
+   * jump to a #hash finds nothing. Do it once the sections exist.
+   */
+  useEffect(() => {
+    if (loading) return;
+    const hash = window.location.hash.slice(1);
+    if (hash) document.getElementById(hash)?.scrollIntoView({ block: "start" });
+  }, [loading]);
+
   if (loading) {
     return (
       <BackOfficeShell active="submissions" title="Results" crumbs={RESULTS_CRUMBS}>
@@ -382,6 +392,7 @@ function ResultsPage() {
 
         {sub.client_status !== "notstarted" && (
           <AnswersReview
+            id="client-answers"
             title="Objective answers"
             sections={objSections}
             questions={questionsList.filter((q) => q.questionnaire_type === "objective")}
@@ -402,11 +413,14 @@ function ResultsPage() {
 }
 
 function AnswersReview({
+  id,
   title,
   sections,
   questions,
   responses,
 }: {
+  /** An anchor, so the submission sheet can link straight to these answers. */
+  id?: string;
   title: string;
   sections: SectionRow[];
   questions: QuestionRow[];
@@ -414,7 +428,7 @@ function AnswersReview({
 }) {
   const respByQ = new Map(responses.map((r) => [r.question_id, r]));
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
+    <section id={id} className="scroll-mt-20 rounded-xl border border-border bg-card p-5">
       <h2 className="text-sm font-semibold mb-4">{title}</h2>
       <div className="space-y-6">
         {sections.map((s) => {

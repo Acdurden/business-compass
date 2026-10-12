@@ -221,7 +221,7 @@ function BackOfficeSidebar({
   async function signOut() {
     resetBackOfficeRoleCache();
     await supabase.auth.signOut();
-    navigate({ to: "/auth" });
+    navigate({ to: "/client/auth" });
   }
 
   const initials =

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Client-side route guard for advisor/admin-only routes.
  * Use inside `beforeLoad` on routes with `ssr: false`.
- * Redirects to /auth when no Supabase session exists, and to /client when
+ * Redirects to /client/auth (the one sign-in page) when no Supabase session exists, and to /client when
  * the signed-in user is a client (not an advisor).
  *
  * Also enforces the forced password change. Until 2026-09-18 that check lived
@@ -21,7 +21,7 @@ export async function requireAdvisorAuth(
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
     throw redirect({
-      to: "/auth",
+      to: "/client/auth",
       search: { redirect: currentHref },
     });
   }
@@ -35,7 +35,7 @@ export async function requireAdvisorAuth(
       _role: "client",
     });
     if (isClient) throw redirect({ to: "/client" });
-    throw redirect({ to: "/auth", search: { redirect: currentHref } });
+    throw redirect({ to: "/client/auth", search: { redirect: currentHref } });
   }
   if (!opts?.allowTempPassword && data.session.user.user_metadata?.must_change_password) {
     throw redirect({ to: "/advisor/change-password" });

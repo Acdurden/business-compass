@@ -265,6 +265,8 @@ export type ClientAccountRow = {
    */
   last_sign_in_at: string | null;
   company_names: string[];
+  /** The first name typed on their invite, stored at sign-up. Empty when there was none. */
+  first_name: string;
 };
 
 export const listClientAccounts = createServerFn({ method: "GET" })
@@ -307,6 +309,7 @@ export const listClientAccounts = createServerFn({ method: "GET" })
         created_at: u.created_at ?? null,
         last_sign_in_at: u.last_sign_in_at ?? null,
         company_names: companiesByUser.get(u.id) ?? [],
+        first_name: String(u.user_metadata?.first_name ?? "").trim(),
       }))
       .sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
   });

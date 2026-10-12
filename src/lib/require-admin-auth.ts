@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Client-side route guard for admin-only routes.
  * Use inside `beforeLoad` on routes with `ssr: false`.
- * Redirects to /auth when no Supabase session exists, to /client when the
+ * Redirects to /client/auth (the one sign-in page) when no Supabase session exists, to /client when the
  * signed-in user is a client, and to /advisor when the user is a non-admin
  * advisor. Only users with the `admin` role are allowed through.
  *
@@ -15,7 +15,7 @@ export async function requireAdminAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
     throw redirect({
-      to: "/auth",
+      to: "/client/auth",
       search: { redirect: currentHref },
     });
   }
@@ -35,7 +35,7 @@ export async function requireAdminAuth(currentHref: string) {
       _role: "client",
     });
     if (isClient) throw redirect({ to: "/client" });
-    throw redirect({ to: "/auth", search: { redirect: currentHref } });
+    throw redirect({ to: "/client/auth", search: { redirect: currentHref } });
   }
   /* Same forced password change as `requireAdvisorAuth`. An admin is an
      advisor with more rights, not one exempt from setting their own password. */

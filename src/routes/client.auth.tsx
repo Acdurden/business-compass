@@ -1,19 +1,73 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { z } from "zod";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+/**
+ * The one sign-in screen, for clients, advisors and admins alike.
+ *
+ * There used to be a separate advisor sign-in at `/auth`. Since 12 October
+ * 2026 that address forwards here, and this page sends each person on by role
+ * after they sign in. The URL keeps its old name because every invite,
+ * password-reset email and bookmark a client already holds points at it.
+ */
+
+const searchSchema = z.object({
+  /** Where an advisor was heading when the route guard sent them here. */
+  redirect: z.string().optional(),
+});
+
 export const Route = createFileRoute("/client/auth")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Client sign-in" }] }),
+  validateSearch: searchSchema,
+  head: () => ({ meta: [{ title: "Sign in" }] }),
   component: ClientAuthPage,
 });
 
+/** Only ever a page on this site, and never a sign-in page (that would loop). */
+function advisorDestination(redirect: string | undefined) {
+  if (!redirect) return "/advisor";
+  try {
+    const url = new URL(redirect, window.location.origin);
+    if (url.origin !== window.location.origin) return "/advisor";
+    if (url.pathname === "/auth" || url.pathname === "/client/auth") {
+      return "/advisor";
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/advisor";
+  }
+}
+
+/**
+ * Where a signed-in person belongs, or null for an account with neither role.
+ * Client is checked first, as the old advisor sign-in did.
+ */
+async function destinationFor(user: User, redirect: string | undefined): Promise<string | null> {
+  const mustChange = Boolean(user.user_metadata?.must_change_password);
+  const { data: isClient, error: clientError } = await supabase.rpc("has_role", {
+    _user_id: user.id,
+    _role: "client",
+  });
+  if (clientError) throw clientError;
+  if (isClient) return mustChange ? "/client/change-password" : "/client";
+  const { data: isAdvisor, error: advisorError } = await supabase.rpc("has_role", {
+    _user_id: user.id,
+    _role: "advisor",
+  });
+  if (advisorError) throw advisorError;
+  if (isAdvisor) return mustChange ? "/advisor/change-password" : advisorDestination(redirect);
+  return null;
+}
+
 function ClientAuthPage() {
   const navigate = useNavigate();
+  const { redirect } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "setpassword" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,16 +92,18 @@ function ClientAuthPage() {
       });
       return;
     }
-    // If already signed in as a client, jump straight to /client.
-    void supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) return;
-      const { data: isClient } = await supabase.rpc("has_role", {
-        _user_id: data.session.user.id,
-        _role: "client",
+    // Already signed in: go straight to wherever this person belongs.
+    void supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        if (!data.session) return;
+        const to = await destinationFor(data.session.user, redirect);
+        if (to) navigate({ to });
+      })
+      .catch(() => {
+        // Stay on the form; signing in again will surface any real error.
       });
-      if (isClient) navigate({ to: "/client" });
-    });
-  }, [navigate]);
+  }, [navigate, redirect]);
 
   async function onSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -55,21 +111,18 @@ function ClientAuthPage() {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      const { data: isClient } = await supabase.rpc("has_role", {
-        _user_id: data.user!.id,
-        _role: "client",
-      });
-      if (!isClient) {
+      if (!data.user) throw new Error("Sign in returned no user session.");
+      const to = await destinationFor(data.user, redirect);
+      if (!to) {
         await supabase.auth.signOut();
-        throw new Error("This account is not a client account. Use the advisor sign-in.");
+        throw new Error("This account does not have access yet. Contact your advisor.");
       }
-      if (data.user?.user_metadata?.must_change_password) {
+      if (to.endsWith("/change-password")) {
         toast.message("Please set a new password to continue");
-        navigate({ to: "/client/change-password" });
-        return;
+      } else {
+        toast.success("Signed in");
       }
-      toast.success("Signed in");
-      navigate({ to: "/client" });
+      navigate({ to });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign-in failed");
     } finally {
@@ -86,7 +139,9 @@ function ClientAuthPage() {
       toast.success("Password set. You're signed in.");
       // Clean the hash so refresh doesn't re-trigger setup mode.
       window.history.replaceState(null, "", window.location.pathname);
-      navigate({ to: "/client" });
+      const { data } = await supabase.auth.getUser();
+      const to = data.user ? await destinationFor(data.user, redirect) : null;
+      navigate({ to: to ?? "/client" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not set password");
     } finally {
@@ -115,15 +170,13 @@ function ClientAuthPage() {
     <main className="min-h-screen grid place-items-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Client portal
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Kriterion</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">
             {mode === "setpassword"
               ? "Set your password"
               : mode === "forgot"
                 ? "Reset your password"
-                : "Client sign-in"}
+                : "Sign in"}
           </h1>
         </div>
 
@@ -266,13 +319,6 @@ function ClientAuthPage() {
             </button>
           </form>
         )}
-
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Advisor?{" "}
-          <Link to="/auth" className="underline">
-            Advisor sign-in
-          </Link>
-        </p>
       </div>
     </main>
   );

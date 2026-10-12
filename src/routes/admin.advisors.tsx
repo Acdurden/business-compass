@@ -23,7 +23,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 async function requireAdminAuth(currentHref: string) {
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
-    throw redirect({ to: "/auth", search: { redirect: currentHref } });
+    throw redirect({ to: "/client/auth", search: { redirect: currentHref } });
   }
   const { data: isAdmin } = await supabase.rpc("has_role", {
     _user_id: data.session.user.id,
@@ -173,7 +173,8 @@ function CreateAdvisorCard({ onCreated }: { onCreated: () => void }) {
     }
   }
 
-  const loginUrl = typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
+  const loginUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
 
   return (
     <form
@@ -187,7 +188,7 @@ function CreateAdvisorCard({ onCreated }: { onCreated: () => void }) {
         </p>
         <p className="text-[11px] text-muted-foreground mt-1">
           Creates a confirmed advisor with an auto-generated temporary password shown once. They
-          will be prompted to set a new password on first sign-in at <code>/auth</code>.
+          will be prompted to set a new password on first sign-in at <code>/client/auth</code>.
         </p>
       </div>
       <div className="grid md:grid-cols-[1fr_auto] gap-3 md:items-end">
@@ -320,7 +321,8 @@ function ResetAdvisorPasswordButton({ userId, email }: { userId: string; email: 
     }
   }
 
-  const loginUrl = typeof window !== "undefined" ? `${window.location.origin}/auth` : "/auth";
+  const loginUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/client/auth` : "/client/auth";
 
   return (
     <>
