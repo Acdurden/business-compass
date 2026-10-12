@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kriterion Back Office Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#f5f6f8; --card:#ffffff; --ink:#16203a; --ink2:#3d465c; --muted:#5b6478;
+  --line:#e1e5ec; --line2:#f0f2f5; --ctl:#d6dbe4;
+  --side:#101a30; --side2:#172340; --sideLine:#2a3654; --sideInk:#c3cbdc; --sideMuted:#8592ad; --sideOn:#24345a;
+  --link:#1d3a8a; --warnBg:#fdf1dc; --warnInk:#7a4a06; --okBg:#e7f1ea; --okInk:#1d4d2b;
+  --badBg:#fdf6f5; --badLine:#e0a59d; --badInk:#8a1f14; --bad:#a3271a; --amber:#f2b350;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;color:var(--ink);background:var(--ground);font-size:14px}
+a{color:var(--link)} a:hover{color:#142a66}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.5}
+:focus-visible{outline:2px solid #3b6fe0;outline-offset:2px}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+/* Shell */
+.app{display:flex;min-height:100vh}
+.side{width:256px;flex:0 0 256px;background:var(--side);color:var(--sideInk);display:flex;flex-direction:column;gap:18px;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;transition:width .15s,flex-basis .15s}
+.brand{display:flex;align-items:baseline;justify-content:space-between;padding:2px 8px;min-height:24px}
+.brand b{font-weight:700;letter-spacing:.08em;font-size:15px;color:#fff}
+.brand small{font-size:11px;color:#9aa6c0}
+.search{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--sideLine);background:var(--side2);color:#aab4cc;font-size:13px;text-align:left;width:100%}
+.search span.t{flex:1}
+.kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;border:1px solid var(--sideLine);border-radius:4px;padding:1px 5px;color:var(--sideMuted)}
+.group{display:flex;flex-direction:column;gap:2px}
+.glabel{display:flex;align-items:center;gap:8px;padding:0 10px 6px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--sideMuted);font-weight:600}
+.tag{font-size:10px;letter-spacing:0;text-transform:none;color:#c9b27a;border:1px solid #5a4d2c;border-radius:4px;padding:0 5px;font-weight:500}
+.nav{display:flex;align-items:center;gap:12px;height:40px;padding:0 10px;border-radius:8px;text-decoration:none;color:var(--sideInk);font-size:14px;position:relative}
+.nav:hover{background:#1a2747;color:#fff}
+.nav[aria-current=page]{background:var(--sideOn);color:#fff;font-weight:500}
+.nav svg{flex:0 0 18px}
+.nav .lbl{flex:1;white-space:nowrap}
+.count{font-size:11px;font-weight:600;background:var(--amber);color:#1d1404;border-radius:10px;padding:1px 8px}
+.foot{margin-top:auto;border-top:1px solid #22304e;padding:14px 6px 0;display:flex;align-items:center;gap:10px}
+.avatar{width:32px;height:32px;flex:0 0 32px;border-radius:16px;background:#26355a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.who{flex:1;display:flex;flex-direction:column;min-width:0}
+.who span:first-child{color:#fff;font-size:13px}
+.who span:last-child{color:#9aa6c0;font-size:11px}
+.iconbtn{width:36px;height:36px;border-radius:8px;border:none;background:transparent;color:#aab4cc;display:flex;align-items:center;justify-content:center}
+.iconbtn:hover{background:#1a2747;color:#fff}
+
+/* Collapsed */
+.app.collapsed .side{width:72px;flex-basis:72px}
+.app.collapsed .brand small,.app.collapsed .search .t,.app.collapsed .search .kbd,.app.collapsed .glabel,.app.collapsed .nav .lbl,.app.collapsed .who{display:none}
+.app.collapsed .brand b{font-size:0}
+.app.collapsed .brand b::after{content:"K";font-size:15px}
+.app.collapsed .search{justify-content:center;padding:0}
+.app.collapsed .nav{justify-content:center;padding:0}
+.app.collapsed .count{position:absolute;top:2px;right:4px;padding:0 5px;font-size:10px}
+.app.collapsed .foot{flex-direction:column}
+
+/* Main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.ghost{height:36px;width:36px;border-radius:8px;border:1px solid var(--ctl);background:#fff;color:var(--ink2);display:flex;align-items:center;justify-content:center}
+.crumbs{font-size:13px;color:var(--muted)}
+.crumbs b{color:var(--ink);font-weight:500}
+.spacer{flex:1}
+.roleswitch{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);border:1px dashed var(--ctl);border-radius:8px;padding:3px 4px 3px 10px}
+.roleswitch button{height:28px;padding:0 10px;border-radius:6px;border:none;background:transparent;color:var(--ink2);font-size:12px}
+.roleswitch button[aria-pressed=true]{background:var(--ink);color:#fff}
+.content{padding:28px 32px 56px;display:flex;flex-direction:column;gap:24px;max-width:1280px;width:100%}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px}
+.head h1{margin:0;font-size:24px;font-weight:600;letter-spacing:-.01em;flex:1 1 240px}
+.head p{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+.btn{height:40px;padding:0 16px;border-radius:8px;border:1px solid var(--ctl);background:#fff;color:var(--ink);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:hover{background:#f7f8fa}
+.btn.primary{border:none;background:var(--ink);color:#fff}
+.btn.primary:hover{background:#24304f}
+.btn.sm{height:34px;padding:0 12px;font-size:13px}
+.btn.danger{border-color:var(--badLine);color:var(--badInk)}
+.btn.danger.solid{background:var(--bad);border:none;color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.card h2{margin:0;font-size:16px;font-weight:600}
+.cardhead{display:flex;align-items:baseline;gap:10px;padding:18px 20px 12px;flex-wrap:wrap}
+.cardhead .note{font-size:13px;color:var(--muted)}
+.cardhead a{margin-left:auto;font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.tile{text-decoration:none;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.tile:hover{border-color:#b9c1cf}
+.tile .l{font-size:13px;color:var(--muted)}
+.tile .v{font-size:30px;font-weight:600;letter-spacing:-.02em}
+.tile .a{font-size:12px;color:var(--link)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th{text-align:left;font-weight:500;font-size:12px;color:var(--muted);padding:8px 12px;border-bottom:1px solid #e9ecf1}
+td{padding:11px 12px;border-bottom:1px solid var(--line2);vertical-align:middle}
+th:first-child,td:first-child{padding-left:20px}
+th:last-child,td:last-child{padding-right:20px}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:#f8f9fb}
+.company{font-weight:500}
+.sub{font-size:12px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;border-radius:6px;padding:3px 8px;white-space:nowrap}
+.pill.warn{background:var(--warnBg);color:var(--warnInk)}
+.pill.ok{background:var(--okBg);color:var(--okInk)}
+.pill.neutral{background:#eef1f6;color:var(--ink2)}
+.pill.test{background:#efe9fb;color:#4b2a8a}
+.right{text-align:right;white-space:nowrap}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+.list{padding:6px 20px 16px}
+.li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line2)}
+.li .grow{flex:1;display:flex;flex-direction:column;min-width:0}
+.notice{margin:4px 20px 18px;padding:12px 14px;border-radius:8px;background:#f3f5f9;font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{height:34px;padding:0 12px;border-radius:17px;border:1px solid var(--ctl);background:#fff;color:var(--ink2);font-size:13px}
+.chip[aria-pressed=true]{border-color:var(--ink);background:var(--ink);color:#fff}
+.filter{display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;border-radius:8px;border:1px solid var(--ctl);background:#fff;color:var(--muted);min-width:260px;margin-left:auto}
+.filter input{border:none;outline:none;flex:1;font:inherit;color:var(--ink);background:transparent}
+.switch{width:38px;height:22px;border-radius:11px;border:none;background:#cfd5df;position:relative;padding:0}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:8px;background:#fff;transition:left .12s}
+.switch[aria-checked=true]{background:#5b3fb0}
+.switch[aria-checked=true]::after{left:19px}
+.empty{padding:28px 20px;color:var(--muted);text-align:center}
+.placeholder{padding:28px;display:flex;flex-direction:column;gap:10px;color:var(--ink2);line-height:1.5}
+.placeholder h2{font-size:16px}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;background:rgba(16,26,48,.38);z-index:20;display:none}
+.scrim.open{display:block}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--ground);z-index:21;transform:translateX(100%);transition:transform .18s;display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(16,26,48,.18)}
+.sheet.open{transform:none}
+.sheethead{background:#fff;border-bottom:1px solid var(--line);padding:18px 22px;display:flex;flex-direction:column;gap:12px}
+.sheethead .row{display:flex;align-items:flex-start;gap:12px}
+.sheethead h2{margin:2px 0 4px;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.sheetbody{flex:1;overflow-y:auto;padding:18px 22px 32px;display:flex;flex-direction:column;gap:16px}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.steps li{border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:2px;font-size:12px;background:#fff;color:var(--muted);border:1px dashed #c9cfda}
+.steps li b{font-size:12.5px;font-weight:500}
+.steps li.done{background:var(--okBg);color:var(--okInk);border:1px solid transparent}
+.steps li.now{background:var(--ink);color:#fff;border:1px solid transparent}
+.agroup{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.agroup h3{margin:0;font-size:14.5px;font-weight:600}
+.agroup p{margin:0 0 4px;font-size:12.5px;color:var(--muted)}
+.action{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border-radius:8px;border:1px solid var(--ctl);background:#fff;color:var(--ink);font-size:14px;text-align:left;width:100%}
+.action:hover:not(:disabled){background:#f7f8fa}
+.action span.n{font-size:12px;color:var(--muted);margin-left:auto}
+.agroup.danger{background:var(--badBg);border-color:#f0c9c4}
+.agroup.danger h3{color:var(--badInk)}
+.agroup.danger p{color:#5c2a24}
+.agroup.danger .action{border-color:var(--badLine);color:var(--badInk)}
+.agroup.danger .action.solid{background:var(--bad);border:none;color:#fff}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;font-size:13px}
+.facts span{display:block;color:var(--muted);font-size:12px}
+
+/* Palette */
+.pal{position:fixed;inset:0;background:rgba(16,26,48,.38);z-index:30;display:none;justify-content:center;align-items:flex-start;padding:12vh 16px 0}
+.pal.open{display:flex}
+.palbox{width:100%;max-width:600px;background:#fff;border-radius:14px;box-shadow:0 20px 50px rgba(16,26,48,.28);overflow:hidden}
+.palin{display:flex;align-items:center;gap:10px;padding:0 16px;height:56px;border-bottom:1px solid #e9ecf1}
+.palin input{flex:1;border:none;outline:none;font:inherit;font-size:16px;color:var(--ink)}
+.palin .kbd{color:var(--muted);border-color:var(--ctl)}
+.pallist{max-height:52vh;overflow-y:auto;padding:6px 8px 8px}
+.palg{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:10px 10px 6px}
+.palrow{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:8px;font-size:14px;cursor:pointer}
+.palrow .h{margin-left:auto;font-size:12px;color:var(--muted)}
+.palrow.sel{background:#e8ecf3}
+.palfoot{display:flex;gap:16px;padding:10px 18px;border-top:1px solid #e9ecf1;font-size:12px;color:var(--muted)}
+
+/* Modal + toast */
+.modal{position:fixed;inset:0;background:rgba(16,26,48,.45);z-index:40;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modalbox{background:#fff;border-radius:12px;max-width:440px;width:100%;padding:22px;display:flex;flex-direction:column;gap:10px}
+.modalbox h2{margin:0;font-size:17px}
+.modalbox p{margin:0;color:var(--ink2);line-height:1.5}
+.modalbox .row{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:13.5px;opacity:0;transition:all .18s;z-index:50;pointer-events:none;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translateX(-50%)}
+
+.previewbar{background:#fff7e6;color:#5c3d05;font-size:12.5px;padding:6px 32px;border-bottom:1px solid #f1dfb5}
+
+/* Mobile */
+.menubtn{display:none}
+@media (max-width:860px){
+  .side{position:fixed;left:0;top:0;bottom:0;z-index:25;transform:translateX(-100%);transition:transform .18s;width:264px;flex-basis:264px}
+  .app.mobile-open .side{transform:none}
+  .app.collapsed .side{width:264px}
+  .menubtn{display:flex}
+  .collapsebtn{display:none}
+  .topbar,.content,.previewbar{padding-left:16px;padding-right:16px}
+  .filter{margin-left:0;min-width:0;width:100%}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:860px){
+  .app.collapsed .brand small,.app.collapsed .search .t,.app.collapsed .search .kbd,.app.collapsed .glabel,.app.collapsed .nav .lbl,.app.collapsed .who{display:revert}
+  .app.collapsed .brand b{font-size:15px}.app.collapsed .brand b::after{content:""}
+  .app.collapsed .nav,.app.collapsed .search{justify-content:flex-start;padding:0 10px}
+  .app.collapsed .foot{flex-direction:row}
+  .app.collapsed .count{position:static;padding:1px 8px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side" id="side" aria-label="Back office">
+    <div class="brand"><b>KRITERION</b><small>Back office</small></div>
+    <button type="button" class="search" id="openPal" title="Search (Ctrl K)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3"/></svg>
+      <span class="t">Search</span><span class="kbd">Ctrl K</span>
+    </button>
+    <div id="navGroups"></div>
+    <div class="foot">
+      <span class="avatar">AD</span>
+      <div class="who"><span>Andrew Durden</span><span id="roleLabel">Admin</span></div>
+      <button type="button" class="iconbtn" aria-label="Sign out" title="Sign out" id="signout">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+  <div class="scrim" id="sideScrim"></div>
+
+  <div class="main">
+    <div class="previewbar">Preview only. Sample data, no real accounts. Buttons show what they would do. Try Ctrl K, click a submission row, collapse the sidebar, and switch the role to Advisor.</div>
+    <div class="topbar">
+      <button type="button" class="ghost menubtn" id="menuBtn" aria-label="Open menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <button type="button" class="ghost collapsebtn" id="collapseBtn" aria-label="Collapse sidebar" title="Collapse sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18v16H3zM9 4v16"/></svg>
+      </button>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="spacer"></div>
+      <div class="roleswitch" role="group" aria-label="Preview as">
+        Preview as
+        <button type="button" data-role="admin" aria-pressed="true">Admin</button>
+        <button type="button" data-role="advisor" aria-pressed="false">Advisor</button>
+      </div>
+    </div>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+
+<div class="scrim" id="sheetScrim"></div>
+<aside class="sheet" id="sheet" aria-label="Submission" aria-hidden="true"></aside>
+
+<div class="pal" id="pal" role="dialog" aria-label="Command palette">
+  <div class="palbox">
+    <div class="palin">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5b6478" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3"/></svg>
+      <input id="palInput" type="text" placeholder="Type a client, page or action" aria-label="Search" autocomplete="off">
+      <span class="kbd">Esc</span>
+    </div>
+    <div class="pallist" id="palList" role="listbox"></div>
+    <div class="palfoot"><span>Up and down to move</span><span>Enter to open</span></div>
+  </div>
+</div>
+
+<div class="modal" id="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modalbox">
+    <h2 id="modalTitle"></h2>
+    <p id="modalText"></p>
+    <div class="row"><button type="button" class="btn" id="modalCancel">Cancel</button><button type="button" class="btn danger solid" id="modalOk">Confirm</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+var ICON = {
+  dashboard:'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+  submissions:'M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17M11 6h10M11 12h10M11 18h10',
+  clients:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  market:'M3 3v18h18M7 16v-5M12 16V8M17 16V9',
+  insights:'M3 17l6-6 4 4 8-8M15 7h6v6',
+  questionnaire:'M9 4h6v3H9zM9 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-3M9 12h6M9 16h4',
+  emails:'M3 5h18v14H3zM3 6l9 7 9-7',
+  advisors:'M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 9-5.2M18 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4z'
+};
+var NAV = [
+  {label:'Work', admin:false, items:[
+    {key:'dashboard', label:'Dashboard', admin:false},
+    {key:'submissions', label:'Submissions', admin:false, badge:true},
+    {key:'clients', label:'Clients', admin:false}
+  ]},
+  {label:'Research', admin:true, items:[
+    {key:'market', label:'Market data', admin:true},
+    {key:'insights', label:'Insights', admin:true}
+  ]},
+  {label:'Settings', admin:true, items:[
+    {key:'questionnaire', label:'Questionnaire', admin:true},
+    {key:'emails', label:'Emails', admin:true},
+    {key:'advisors', label:'Advisors', admin:true}
+  ]}
+];
+var GROUP_OF = {}; NAV.forEach(function(g){ g.items.forEach(function(i){ GROUP_OF[i.key]=g.label; }); });
+var LABEL_OF = {}; NAV.forEach(function(g){ g.items.forEach(function(i){ LABEL_OF[i.key]=i.label; }); });
+
+// Stages: invited, client, needs, advisory, final
+var STAGE = {
+  invited:{label:'Invited, not started', pill:'neutral', step:0, next:'Resend invite'},
+  client:{label:'Client in progress', pill:'neutral', step:1, next:'Copy login link'},
+  needs:{label:'Needs advisory', pill:'warn', step:2, next:'Start advisory'},
+  advisory:{label:'Advisory in progress', pill:'warn', step:2, next:'Continue advisory'},
+  final:{label:'Final', pill:'ok', step:4, next:'Open action plan'}
+};
+var subs = [
+  {id:'s1', company:'Harbor Marine Services', owner:'Dana Whitfield', email:'dana@harbormarine.example', stage:'needs', detail:'Submitted 2 days ago', updated:'Oct 10', invited:'Sep 28', test:false},
+  {id:'s2', company:'Coastal HVAC Group', owner:'Luis Ortega', email:'luis@coastalhvac.example', stage:'needs', detail:'Submitted 5 days ago', updated:'Oct 7', invited:'Sep 22', test:false},
+  {id:'s3', company:'Treasure Coast Dental Lab', owner:'Priya Nair', email:'priya@tcdentallab.example', stage:'advisory', detail:'Advisory started yesterday', updated:'Oct 11', invited:'Sep 19', test:false},
+  {id:'s4', company:'Indian River Landscaping', owner:'Marcus Bell', email:'marcus@irlandscaping.example', stage:'invited', detail:'Invited 6 days ago, not started', updated:'Oct 6', invited:'Oct 6', test:false},
+  {id:'s5', company:'Seaside Print Co.', owner:'Joan Ferris', email:'joan@seasideprint.example', stage:'client', detail:'Section 4 of 9', updated:'Oct 11', invited:'Oct 1', test:false},
+  {id:'s6', company:'Palm Ridge Logistics', owner:'Tom Alvarez', email:'tom@palmridge.example', stage:'client', detail:'Section 7 of 9', updated:'Oct 9', invited:'Sep 30', test:false},
+  {id:'s7', company:'Barrier Island Brewing', owner:'Kelly Shaw', email:'kelly@bibrewing.example', stage:'final', detail:'Final on Oct 2', updated:'Oct 2', invited:'Sep 8', test:false},
+  {id:'s8', company:'Oak Hammock Veterinary', owner:'Sam Ito', email:'sam@oakhammockvet.example', stage:'final', detail:'Final on Sep 26', updated:'Sep 26', invited:'Sep 3', test:true}
+];
+var noAssessment = [
+  {name:'Rachel Kim', company:'Kim Family Bakery', email:'rachel@kimbakery.example', last:'Never'},
+  {name:'Owen Price', company:'Price Electric', email:'owen@priceelectric.example', last:'Oct 3'},
+  {name:'Grace Mendez', company:'Mendez Pool Care', email:'grace@mendezpool.example', last:'Never'},
+  {name:'Victor Hale', company:'Hale Marine Supply', email:'victor@halemarine.example', last:'Sep 29'}
+];
+var advisors = [
+  {name:'Andrew Durden', email:'adurden@thedurdencompany.com', role:'Admin'},
+  {name:'[Advisor name]', email:'[advisor email]', role:'Advisor'}
+];
+
+var state = { role:'admin', page:'dashboard', filter:'needs', q:'', openId:null };
+try { if (localStorage.getItem('kr-collapsed')==='1') document.getElementById('app').classList.add('collapsed'); } catch(e){}
+
+function isAdmin(){ return state.role==='admin'; }
+function needsCount(){ return subs.filter(function(s){ return s.stage==='needs'||s.stage==='advisory'; }).length; }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function svg(path,size){ size=size||18; return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+path+'"/></svg>'; }
+var PLUS = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+
+/* ---------- Toast and confirm ---------- */
+var toastT;
+function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(function(){t.classList.remove('show');},2200); }
+var modalCb=null;
+function confirmDanger(title,text,okLabel,cb){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalText').textContent=text;
+  document.getElementById('modalOk').textContent=okLabel;
+  modalCb=cb; document.getElementById('modal').classList.add('open');
+  document.getElementById('modalCancel').focus();
+}
+document.getElementById('modalCancel').onclick=function(){ document.getElementById('modal').classList.remove('open'); };
+document.getElementById('modalOk').onclick=function(){ document.getElementById('modal').classList.remove('open'); if(modalCb) modalCb(); };
+
+/* ---------- Routing ---------- */
+function go(page, openId){
+  if (!isAdmin() && isAdminPage(page)) page='dashboard';
+  var h='#/'+page+(openId?'?open='+openId:'');
+  if (location.hash!==h) location.hash=h; else route();
+}
+function isAdminPage(p){ var it=null; NAV.forEach(function(g){ g.items.forEach(function(i){ if(i.key===p) it=i; }); }); return it?it.admin:false; }
+function route(){
+  var m=(location.hash||'#/dashboard').match(/^#\/([a-z]+)(?:\?open=([a-z0-9]+))?/);
+  var page=(m&&m[1])||'dashboard';
+  if (!LABEL_OF[page]) page='dashboard';
+  if (!isAdmin() && isAdminPage(page)) { location.hash='#/dashboard'; return; }
+  state.page=page;
+  renderNav(); renderCrumbs(); renderPage();
+  if (m && m[2]) openSheet(m[2]); else closeSheet(true);
+  document.getElementById('app').classList.remove('mobile-open');
+  document.getElementById('sideScrim').classList.remove('open');
+}
+window.addEventListener('hashchange', route);
+
+/* ---------- Nav ---------- */
+function renderNav(){
+  var html='';
+  NAV.forEach(function(g){
+    if (g.admin && !isAdmin()) return;
+    html+='<nav class="group" aria-label="'+g.label+'"><div class="glabel">'+g.label+(g.admin?'<span class="tag">Admin</span>':'')+'</div>';
+    g.items.forEach(function(i){
+      var cur = state.page===i.key ? ' aria-current="page"' : '';
+      var badge = i.badge && needsCount() ? '<span class="count" aria-label="'+needsCount()+' need you">'+needsCount()+'</span>' : '';
+      html+='<a class="nav" href="#/'+i.key+'"'+cur+' title="'+i.label+'">'+svg(ICON[i.key])+'<span class="lbl">'+i.label+'</span>'+badge+'</a>';
+    });
+    html+='</nav>';
+  });
+  document.getElementById('navGroups').innerHTML=html;
+  document.getElementById('navGroups').style.cssText='display:flex;flex-direction:column;gap:18px';
+  document.getElementById('roleLabel').textContent=isAdmin()?'Admin':'Advisor';
+}
+function renderCrumbs(){
+  document.getElementById('crumbs').innerHTML=esc(GROUP_OF[state.page])+' / <b>'+esc(LABEL_OF[state.page])+'</b>';
+}
+
+/* ---------- Pages ---------- */
+function head(title, sub, actions){
+  return '<div class="head"><div style="flex:1 1 280px"><h1>'+title+'</h1>'+(sub?'<p>'+sub+'</p>':'')+'</div><div style="display:flex;gap:10px;flex-wrap:wrap">'+(actions||'')+'</div></div>';
+}
+var INVITE = '<button type="button" class="btn primary" data-act="invite">'+PLUS+'Invite client</button>';
+
+function pageDashboard(){
+  var needs=subs.filter(function(s){return s.stage==='needs'||s.stage==='advisory';});
+  var waiting=subs.filter(function(s){return s.stage==='invited'||s.stage==='client';});
+  var fin=subs.filter(function(s){return s.stage==='final';});
+  var h=head('Dashboard','What needs you today, then what is waiting on clients.', (isAdmin()?'<button type="button" class="btn" data-go="advisors">Create advisor</button>':'')+INVITE);
+  h+='<section class="tiles" aria-label="At a glance">'+
+    tile('Needs your advisory',needs.length,'Review now','#/submissions" data-filter="needs')+
+    tile('Waiting on the client',waiting.length,'See who','#/submissions" data-filter="client')+
+    tile('Marked final',fin.length,'View results','#/submissions" data-filter="final')+
+    tile('Accounts with no assessment',noAssessment.length,'Open clients','#/clients')+'</section>';
+  h+='<section class="card"><div class="cardhead"><h2>Needs you</h2><span class="note">Nothing moves until you act</span><a href="#/submissions">All submissions</a></div>';
+  if(!needs.length) h+='<div class="empty">Nothing waiting on you.</div>';
+  else {
+    h+='<div class="tablewrap"><table><thead><tr><th>Company</th><th>Owner</th><th>Stage</th><th>Waiting</th><th class="right">Next step</th></tr></thead><tbody>';
+    needs.forEach(function(s){
+      h+='<tr class="clickable" data-open="'+s.id+'"><td class="company">'+esc(s.company)+'</td><td>'+esc(s.owner)+'</td><td><span class="pill '+STAGE[s.stage].pill+'">'+STAGE[s.stage].label+'</span></td><td>'+esc(s.detail)+'</td><td class="right"><button type="button" class="btn primary sm" data-next="'+s.id+'">'+STAGE[s.stage].next+'</button> <button type="button" class="btn sm" data-open="'+s.id+'" aria-label="All actions for '+esc(s.company)+'">All actions</button></td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='</section><div class="two"><section class="card"><div class="cardhead"><h2>Waiting on the client</h2></div><div class="list">';
+  waiting.forEach(function(s){ h+='<div class="li"><div class="grow"><span class="company">'+esc(s.company)+'</span><span class="sub">'+esc(s.detail)+'</span></div><button type="button" class="btn sm" data-next="'+s.id+'">'+STAGE[s.stage].next+'</button></div>'; });
+  h+='</div></section><section class="card"><div class="cardhead"><h2>Finished</h2></div><div class="list">';
+  fin.forEach(function(s){ h+='<div class="li"><div class="grow"><span class="company">'+esc(s.company)+'</span><span class="sub">'+esc(s.detail)+'</span></div><button type="button" class="btn sm" data-say="Would open combined results for '+esc(s.company)+'">View results</button><button type="button" class="btn sm" data-say="Would open the action plan for '+esc(s.company)+'">Action plan</button></div>'; });
+  h+='</div><div class="notice"><span style="flex:1">'+noAssessment.length+' client accounts have no assessment yet</span><a href="#/clients">Open clients</a></div></section></div>';
+  return h;
+}
+function tile(l,v,a,href){ return '<a class="tile" href="'+href+'"><span class="l">'+l+'</span><span class="v">'+v+'</span><span class="a">'+a+'</span></a>'; }
+
+function pageSubmissions(){
+  var groups={needs:['needs','advisory'],client:['invited','client'],final:['final'],all:null};
+  var counts={needs:0,client:0,final:0,all:subs.length};
+  subs.forEach(function(s){ if(groups.needs.indexOf(s.stage)>-1)counts.needs++; if(groups.client.indexOf(s.stage)>-1)counts.client++; if(s.stage==='final')counts.final++; });
+  var list=subs.filter(function(s){
+    var g=groups[state.filter]; if(g && g.indexOf(s.stage)<0) return false;
+    var q=state.q.toLowerCase(); return !q || s.company.toLowerCase().indexOf(q)>-1 || s.owner.toLowerCase().indexOf(q)>-1;
+  });
+  var h=head('Submissions','Click any row to see every action for that submission.',INVITE);
+  h+='<div class="chips">'+chip('needs','Needs me',counts.needs)+chip('client','Waiting on client',counts.client)+chip('final','Final',counts.final)+chip('all','All',counts.all)+
+     '<label class="filter">'+svg('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3',15)+'<input id="subFilter" type="text" placeholder="Filter by company or owner" aria-label="Filter by company or owner" value="'+esc(state.q)+'"></label></div>';
+  h+='<section class="card"><div class="tablewrap"><table><thead><tr><th>Company</th><th>Status</th><th>Updated</th>'+(isAdmin()?'<th>Test</th>':'')+'<th class="right">Next step</th></tr></thead><tbody>';
+  if(!list.length) h+='<tr><td colspan="5" class="empty">No submissions match.</td></tr>';
+  list.forEach(function(s){
+    h+='<tr class="clickable" data-open="'+s.id+'"><td><div class="company">'+esc(s.company)+(s.test?' <span class="pill test">Test</span>':'')+'</div><div class="sub">'+esc(s.owner)+'</div></td><td><span class="pill '+STAGE[s.stage].pill+'">'+STAGE[s.stage].label+'</span><div class="sub" style="margin-top:4px">'+esc(s.detail)+'</div></td><td>'+esc(s.updated)+'</td>'+
+      (isAdmin()?'<td><button type="button" class="switch" role="switch" aria-checked="'+s.test+'" aria-label="Mark '+esc(s.company)+' as test" data-test="'+s.id+'"></button></td>':'')+
+      '<td class="right"><button type="button" class="btn '+(s.stage==='needs'||s.stage==='advisory'?'primary ':'')+'sm" data-next="'+s.id+'">'+STAGE[s.stage].next+'</button> <button type="button" class="btn sm" data-open="'+s.id+'">All actions</button></td></tr>';
+  });
+  h+='</tbody></table></div></section>';
+  return h;
+}
+function chip(k,l,c){ return '<button type="button" class="chip" data-filter="'+k+'" aria-pressed="'+(state.filter===k)+'">'+l+' <span style="opacity:.7">'+c+'</span></button>'; }
+
+function pageClients(){
+  var h=head('Clients','Every client account, with or without an assessment.',INVITE);
+  h+='<section class="card"><div class="cardhead"><h2>No assessment yet</h2><span class="note">Accounts that exist but have no submission</span></div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Email</th><th>Last sign-in</th><th class="right">Actions</th></tr></thead><tbody>';
+  noAssessment.forEach(function(c){
+    h+='<tr><td><div class="company">'+esc(c.company)+'</div><div class="sub">'+esc(c.name)+'</div></td><td>'+esc(c.email)+'</td><td>'+esc(c.last)+'</td><td class="right"><button type="button" class="btn sm" data-say="Invite re-sent to '+esc(c.email)+'">Resend invite</button> <button type="button" class="btn sm" data-say="Client login link copied">Copy login link</button></td></tr>';
+  });
+  h+='</tbody></table></div></section>';
+  h+='<section class="card"><div class="cardhead"><h2>With an assessment</h2><a href="#/submissions" data-filter="all">Open in submissions</a></div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Email</th><th>Status</th><th class="right">Actions</th></tr></thead><tbody>';
+  subs.forEach(function(s){
+    h+='<tr class="clickable" data-open="'+s.id+'"><td><div class="company">'+esc(s.company)+'</div><div class="sub">'+esc(s.owner)+'</div></td><td>'+esc(s.email)+'</td><td><span class="pill '+STAGE[s.stage].pill+'">'+STAGE[s.stage].label+'</span></td><td class="right"><button type="button" class="btn sm" data-open="'+s.id+'">All actions</button></td></tr>';
+  });
+  h+='</tbody></table></div></section>';
+  return h;
+}
+function placeholder(title, sub, body, actions){
+  return head(title, sub, actions||'')+'<section class="card placeholder"><h2>Page content unchanged</h2><p style="margin:0">'+body+'</p></section>';
+}
+function pageAdvisors(){
+  var h=head('Advisors','Advisor and admin accounts.','<button type="button" class="btn primary" data-say="Would open Create advisor account">'+PLUS+'Create advisor</button>');
+  h+='<section class="card"><div class="tablewrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead><tbody>';
+  advisors.forEach(function(a){ h+='<tr><td class="company">'+esc(a.name)+'</td><td>'+esc(a.email)+'</td><td><span class="pill neutral">'+a.role+'</span></td></tr>'; });
+  return h+'</tbody></table></div></section>';
+}
+function renderPage(){
+  var p=state.page, h='';
+  if(p==='dashboard') h=pageDashboard();
+  else if(p==='submissions') h=pageSubmissions();
+  else if(p==='clients') h=pageClients();
+  else if(p==='market') h=placeholder('Market data','Acquisitions, multiples, owner pay, financing.','The research desk Market data page drops in here as already approved. Only the navigation around it changes.');
+  else if(p==='insights') h=placeholder('Insights','Our assessments and market figures over time.','The research desk Insights page drops in here as already approved.');
+  else if(p==='questionnaire') h=placeholder('Questionnaire editor','Objective and advisory questions, score bands, valuation multipliers.','The existing editor keeps its four tabs. It gets the sidebar and the top bar, nothing else.');
+  else if(p==='emails') h=placeholder('Emails','How invite and notification emails look.','The existing email settings page stays as it is inside the new frame.','<button type="button" class="btn" data-say="Would open Send email">Send email</button>');
+  else if(p==='advisors') h=pageAdvisors();
+  document.getElementById('content').innerHTML=h;
+  var f=document.getElementById('subFilter');
+  if(f){ f.oninput=function(){ state.q=f.value; var pos=f.selectionStart; renderPage(); var nf=document.getElementById('subFilter'); nf.focus(); nf.setSelectionRange(pos,pos); }; }
+}
+
+/* ---------- Submission sheet ---------- */
+var lastFocus=null;
+function findSub(id){ for(var i=0;i<subs.length;i++) if(subs[i].id===id) return subs[i]; return null; }
+function openSheet(id){
+  var s=findSub(id); if(!s) return;
+  state.openId=id; lastFocus=document.activeElement;
+  var st=STAGE[s.stage];
+  var steps=[['Invited',s.invited],['Founder Questionnaire',st.step>=2?'Submitted':(s.stage==='client'?s.detail:'Not started')],['Advisory review',s.stage==='advisory'?'In progress':(st.step>2?'Done':'Not started')],['Final and action plan',s.stage==='final'?s.detail.replace('Final on ',''):'After review']];
+  var stepHtml=steps.map(function(x,i){ var c = i<st.step || (s.stage==='final') ? 'done' : (i===st.step || (i===2&&st.step===2) ? 'now':''); return '<li class="'+c+'"><b>'+x[0]+'</b>'+esc(x[1])+'</li>'; }).join('');
+  var afterAdvisory = s.stage==='final' || s.stage==='advisory';
+  var clientDone = st.step>=2;
+  var h='<div class="sheethead"><div class="row"><div style="flex:1;min-width:0"><div class="sub">Submission'+(s.test?' <span class="pill test">Test</span>':'')+'</div><h2>'+esc(s.company)+'</h2><div style="color:var(--ink2);font-size:13.5px">'+esc(s.owner)+', owner. '+esc(s.detail)+'.</div></div>'+
+    '<button type="button" class="ghost" id="closeSheet" aria-label="Close">'+svg('M6 6l12 12M18 6L6 18',16)+'</button></div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" data-next="'+s.id+'">'+st.next+'</button>'+(s.stage==='advisory'?'<button type="button" class="btn" data-say="Would mark '+esc(s.company)+' as final">Mark as final</button>':'')+'</div>'+
+    '<ol class="steps" aria-label="Progress">'+stepHtml+'</ol></div>';
+  h+='<div class="sheetbody">';
+  h+='<section class="agroup"><h3>Review</h3><p>Everything an advisor does on this submission, in order.</p>'+
+    act('Review client answers','Read only',!clientDone)+
+    act(afterAdvisory?'Edit / update advisory answers':'Start advisory', '', !clientDone)+
+    act('View results', afterAdvisory?'Combined':'Objective only', !clientDone)+
+    act('Action plan', afterAdvisory?'':'After advisory', !afterAdvisory)+
+    act('Internal PDF','Download',!clientDone)+'</section>';
+  h+='<section class="agroup"><h3>Client account</h3><p>'+esc(s.email)+'</p>'+
+    act('Copy client login link','',false)+act('Resend invite','',false)+
+    act('Unlock questionnaire','Lets the client edit again',!clientDone)+act('Reset password','Issues a temporary password',false)+'</section>';
+  h+='<section class="agroup"><h3>Details</h3><div class="facts"><div><span>Invited</span>'+esc(s.invited)+'</div><div><span>Last update</span>'+esc(s.updated)+'</div><div><span>Status</span>'+st.label+'</div><div><span>Advisor</span>Andrew Durden</div></div></section>';
+  h+='<section class="agroup danger"><h3>Danger zone</h3><p>Each of these asks you to confirm and cannot be undone.</p>'+
+    '<button type="button" class="action" data-danger="advisor">Reset advisor answers</button>'+
+    '<button type="button" class="action" data-danger="client">Reset client answers</button>'+
+    (isAdmin()?'<button type="button" class="action solid" data-danger="delete">Delete submission</button>':'')+'</section>';
+  h+='</div>';
+  var sh=document.getElementById('sheet'); sh.innerHTML=h; sh.classList.add('open'); sh.setAttribute('aria-hidden','false');
+  document.getElementById('sheetScrim').classList.add('open');
+  document.getElementById('closeSheet').onclick=function(){ go(state.page); };
+  document.getElementById('closeSheet').focus();
+}
+function act(label,note,disabled){ return '<button type="button" class="action" '+(disabled?'disabled ':'')+'data-say="Would open: '+esc(label)+'"><span>'+esc(label)+'</span>'+(note?'<span class="n">'+esc(note)+'</span>':'')+'</button>'; }
+function closeSheet(silent){
+  var sh=document.getElementById('sheet'); if(!sh.classList.contains('open')) return;
+  sh.classList.remove('open'); sh.setAttribute('aria-hidden','true');
+  document.getElementById('sheetScrim').classList.remove('open'); state.openId=null;
+  if(lastFocus && lastFocus.focus && !silent) lastFocus.focus();
+}
+document.getElementById('sheetScrim').onclick=function(){ go(state.page); };
+
+/* ---------- Actions (delegated) ---------- */
+function runNext(s){
+  if(s.stage==='needs'){ s.stage='advisory'; s.detail='Advisory started today'; toast('Advisory started for '+s.company+'. In the app this opens the advisory questionnaire.'); }
+  else if(s.stage==='advisory') toast('Would open the advisory questionnaire for '+s.company);
+  else if(s.stage==='client') toast('Client login link copied');
+  else if(s.stage==='invited') toast('Invite re-sent to '+s.email);
+  else toast('Would open the action plan for '+s.company);
+  rerender();
+}
+function rerender(){ renderNav(); renderPage(); if(state.openId) openSheet(state.openId); }
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-next],[data-open],[data-say],[data-filter],[data-test],[data-danger],[data-go],[data-act]');
+  if(!t) return;
+  if(t.hasAttribute('data-next')){ e.stopPropagation(); runNext(findSub(t.getAttribute('data-next'))); return; }
+  if(t.hasAttribute('data-test')){ e.stopPropagation(); var s=findSub(t.getAttribute('data-test')); s.test=!s.test; toast(s.company+(s.test?' marked as test':' no longer a test')); renderPage(); return; }
+  if(t.hasAttribute('data-filter')){ state.filter=t.getAttribute('data-filter'); if(state.page!=='submissions'){ e.preventDefault(); go('submissions'); } else renderPage(); return; }
+  if(t.hasAttribute('data-say')){ e.stopPropagation(); toast(t.getAttribute('data-say')); return; }
+  if(t.hasAttribute('data-go')){ go(t.getAttribute('data-go')); return; }
+  if(t.hasAttribute('data-act')){ toast('Would open the invite dialog (per-person invite link)'); return; }
+  if(t.hasAttribute('data-danger')){
+    var sub=findSub(state.openId), k=t.getAttribute('data-danger');
+    var cfg={advisor:['Reset advisor answers?','This clears every advisory answer for '+sub.company+'. The client answers stay.','Reset advisor answers'],
+             client:['Reset client answers?','This clears every client answer for '+sub.company+' and sends it back to the client.','Reset client answers'],
+             delete:['Delete this submission?','This removes '+sub.company+' and all of its answers. This cannot be undone.','Delete submission']}[k];
+    confirmDanger(cfg[0],cfg[1],cfg[2],function(){
+      if(k==='delete'){ subs=subs.filter(function(x){return x.id!==sub.id;}); toast(sub.company+' deleted (preview only)'); go(state.page); renderNav(); }
+      else if(k==='client'){ sub.stage='client'; sub.detail='Section 1 of 9'; toast('Client answers reset'); rerender(); }
+      else { if(sub.stage==='advisory'||sub.stage==='final'){ sub.stage='needs'; sub.detail='Submitted, advisory reset'; } toast('Advisor answers reset'); rerender(); }
+    });
+    return;
+  }
+  if(t.hasAttribute('data-open')){ e.stopPropagation(); go(state.page, t.getAttribute('data-open')); }
+});
+
+/* ---------- Sidebar controls ---------- */
+document.getElementById('collapseBtn').onclick=function(){
+  var a=document.getElementById('app'); a.classList.toggle('collapsed');
+  try{ localStorage.setItem('kr-collapsed', a.classList.contains('collapsed')?'1':'0'); }catch(e){}
+};
+document.getElementById('menuBtn').onclick=function(){ document.getElementById('app').classList.add('mobile-open'); document.getElementById('sideScrim').classList.add('open'); };
+document.getElementById('sideScrim').onclick=function(){ document.getElementById('app').classList.remove('mobile-open'); this.classList.remove('open'); };
+document.getElementById('signout').onclick=function(){ toast('Would sign out and return to /auth'); };
+Array.prototype.forEach.call(document.querySelectorAll('.roleswitch button'),function(b){
+  b.onclick=function(){
+    state.role=b.getAttribute('data-role');
+    Array.prototype.forEach.call(document.querySelectorAll('.roleswitch button'),function(x){ x.setAttribute('aria-pressed', String(x===b)); });
+    if(!isAdmin() && isAdminPage(state.page)) go('dashboard'); else rerender();
+    toast(isAdmin()?'Showing what an admin sees':'Showing what an advisor sees. Research and Settings are hidden.');
+  };
+});
+
+/* ---------- Command palette ---------- */
+var palItems=[], palSel=0;
+function buildPal(q){
+  q=(q||'').toLowerCase().trim(); var groups=[];
+  var pages=[]; NAV.forEach(function(g){ if(g.admin&&!isAdmin()) return; g.items.forEach(function(i){ if(!q||i.label.toLowerCase().indexOf(q)>-1) pages.push({label:i.label,hint:g.label,run:function(){go(i.key);}}); }); });
+  var clients=subs.filter(function(s){ return q && (s.company.toLowerCase().indexOf(q)>-1||s.owner.toLowerCase().indexOf(q)>-1); }).map(function(s){ return {label:s.company,hint:STAGE[s.stage].label,run:function(){ go('submissions', s.id); }}; });
+  if(clients.length) groups.push(['Clients',clients]);
+  if(clients.length===1){
+    var s=findSub(clients[0].run && subs.filter(function(x){return x.company===clients[0].label;})[0].id);
+    groups.push(['Actions for '+s.company,[
+      {label:STAGE[s.stage].next,hint:'Next step',run:function(){runNext(s);}},
+      {label:'View results',hint:'',run:function(){toast('Would open results for '+s.company);}},
+      {label:'Copy client login link',hint:'',run:function(){toast('Client login link copied');}},
+      {label:'Reset client password',hint:'',run:function(){toast('Would issue a temporary password for '+s.owner);}}
+    ]]);
+  }
+  var actions=[{label:'Invite client',hint:'Action',run:function(){toast('Would open the invite dialog (per-person invite link)');}}];
+  if(isAdmin()){ actions.push({label:'Create advisor account',hint:'Admin',run:function(){go('advisors');}}); actions.push({label:'Edit questionnaire',hint:'Admin',run:function(){go('questionnaire');}}); }
+  actions=actions.filter(function(a){return !q||a.label.toLowerCase().indexOf(q)>-1;});
+  if(pages.length) groups.push(['Go to',pages]);
+  if(actions.length) groups.push(['Actions',actions]);
+  palItems=[]; var h='';
+  groups.forEach(function(g){ h+='<div class="palg">'+esc(g[0])+'</div>'; g[1].forEach(function(it){ var i=palItems.length; palItems.push(it); h+='<div class="palrow" role="option" data-i="'+i+'"><span>'+esc(it.label)+'</span><span class="h">'+esc(it.hint)+'</span></div>'; }); });
+  if(!palItems.length) h='<div class="empty">No matches</div>';
+  document.getElementById('palList').innerHTML=h; palSel=0; markPal();
+}
+function markPal(){ Array.prototype.forEach.call(document.querySelectorAll('.palrow'),function(r){ var on=+r.getAttribute('data-i')===palSel; r.classList.toggle('sel',on); r.setAttribute('aria-selected',on); if(on) r.scrollIntoView({block:'nearest'}); }); }
+function openPal(){ var p=document.getElementById('pal'); p.classList.add('open'); var i=document.getElementById('palInput'); i.value=''; buildPal(''); i.focus(); }
+function closePal(){ document.getElementById('pal').classList.remove('open'); }
+function runPal(i){ var it=palItems[i]; closePal(); if(it) it.run(); }
+document.getElementById('openPal').onclick=openPal;
+document.getElementById('palInput').oninput=function(){ buildPal(this.value); };
+document.getElementById('palList').onclick=function(e){ var r=e.target.closest('.palrow'); if(r) runPal(+r.getAttribute('data-i')); };
+document.getElementById('pal').onclick=function(e){ if(e.target===this) closePal(); };
+document.getElementById('palInput').onkeydown=function(e){
+  if(e.key==='ArrowDown'){ e.preventDefault(); palSel=Math.min(palSel+1,palItems.length-1); markPal(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); palSel=Math.max(palSel-1,0); markPal(); }
+  else if(e.key==='Enter'){ e.preventDefault(); runPal(palSel); }
+};
+document.addEventListener('keydown',function(e){
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); if(document.getElementById('pal').classList.contains('open')) closePal(); else openPal(); }
+  else if(e.key==='Escape'){
+    if(document.getElementById('modal').classList.contains('open')) document.getElementById('modal').classList.remove('open');
+    else if(document.getElementById('pal').classList.contains('open')) closePal();
+    else if(state.openId) go(state.page);
+  }
+});
+
+route();
+})();
+</script>
+</body>
+</html>
