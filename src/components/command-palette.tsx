@@ -178,12 +178,15 @@ function PaletteBody({
                 View results
               </CommandItem>
             ) : null}
-            <CommandItem
-              value="client-copy"
-              onSelect={() => run(() => onSubmissionAction(only, "copy"))}
-            >
-              Copy client login link
-            </CommandItem>
+            {/* When copying the link is already the next step, it is listed once. */}
+            {only.stage !== "client" ? (
+              <CommandItem
+                value="client-copy"
+                onSelect={() => run(() => onSubmissionAction(only, "copy"))}
+              >
+                Copy client login link
+              </CommandItem>
+            ) : null}
             {only.owner_user_id ? (
               <CommandItem
                 value="client-reset"

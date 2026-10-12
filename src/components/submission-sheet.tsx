@@ -352,7 +352,7 @@ function ActionGroup({
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-border bg-card px-[18px] py-4">
       <h3 className="text-[14.5px] font-semibold">{title}</h3>
-      {note ? <p className="mb-1 break-all text-[12.5px] text-muted-foreground">{note}</p> : null}
+      {note ? <p className="mb-1 break-words text-[12.5px] text-muted-foreground">{note}</p> : null}
       {children}
     </section>
   );
