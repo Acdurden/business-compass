@@ -421,7 +421,7 @@ export function buildNotes(
     out.push({
       id: "never-opened",
       count: String(neverOpened),
-      text: "client accounts exist with no assessment against them. Most are likely seed and test data rather than real people who stalled — open the list and check before reading anything into the number.",
+      text: "client accounts exist with no assessment against them. Most are likely seed and test data rather than real people who stalled. Open the list and check before reading anything into the number.",
     });
   }
 

@@ -31,6 +31,10 @@ import {
   type QueueSubmission,
 } from "@/lib/advisor-queue";
 import { ClipboardList, ListChecks, Send, Users } from "lucide-react";
+import { StagePill, SubmissionSheet } from "@/components/submission-sheet";
+import { STAGE, matchesStageFilter, stageOf, type StageFilter } from "@/lib/submission-stage";
+import { useSubmissionDirectory, type SubmissionView } from "@/lib/use-submission-directory";
+import { useSubmissionActions, type SubmissionActionHandlers } from "@/lib/use-submission-actions";
 import { BackOfficeShell } from "@/components/back-office-shell";
 import { useIsBackOfficeAdmin } from "@/lib/back-office";
 import { InviteClientButton } from "@/components/invite-client-button";
@@ -179,6 +183,47 @@ function AdvisorDashboard() {
     [items, submissions, dormantCount],
   );
 
+  /*
+   * The directory is what the submission sheet and the row buttons act on.
+   * Changes they make are mirrored into this page's own rows, so the lists and
+   * tiles move the moment an action lands rather than on the next visit.
+   */
+  const dir = useSubmissionDirectory();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const viewById = useMemo(() => new Map(dir.items.map((v) => [v.submission_id, v])), [dir.items]);
+
+  function handlersFor(id: string): SubmissionActionHandlers {
+    return {
+      onPatch: (patch) => {
+        dir.patch(id, patch);
+        setSubmissions((prev) =>
+          prev.map((x) =>
+            x.submission_id === id
+              ? {
+                  ...x,
+                  ...(patch.client_status ? { client_status: patch.client_status } : {}),
+                  ...(patch.advisor_status ? { advisor_status: patch.advisor_status } : {}),
+                }
+              : x,
+          ),
+        );
+      },
+      onDelete: () => {
+        dir.remove(id);
+        setSubmissions((prev) => prev.filter((x) => x.submission_id !== id));
+        setOpenId((cur) => (cur === id ? null : cur));
+      },
+      onTestChange: (v) => dir.setTest(id, v),
+    };
+  }
+
+  /** The same stage rules as the submissions list, so the two pages agree. */
+  const glance = useMemo(() => {
+    const count = (f: StageFilter) =>
+      submissions.filter((x) => matchesStageFilter(stageOf(x), f)).length;
+    return { needs: count("needs"), client: count("client"), final: count("final") };
+  }, [submissions]);
+
   if (loading) {
     return (
       <BackOfficeShell active="dashboard" title="Dashboard">
@@ -224,109 +269,196 @@ function AdvisorDashboard() {
         </>
       }
     >
-      <div className="max-w-6xl">
-        <SectionHeading title="Assessments and reviews" />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          {tiles.map((t) => {
-            const accounts = t.includesAccounts ? (dormant ?? []) : [];
-            /**
-             * A tile only opens when there is something to show. A count of
-             * zero that still invites a click would be a promise the panel
-             * cannot keep.
-             */
-            const drillable = t.items.length > 0 || accounts.length > 0;
-            const open = openTile === t.key;
-            const body = (
-              <>
-                <div className="text-[10.5px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
-                  {t.key}
+      <div className="max-w-6xl space-y-6">
+        <section aria-label="At a glance" className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+          <GlanceTile label="Needs your advisory" value={glance.needs} action="Review now" />
+          <GlanceTile
+            label="Waiting on the client"
+            value={glance.client}
+            action="See who"
+            filter="client"
+          />
+          <GlanceTile
+            label="Marked final"
+            value={glance.final}
+            action="View results"
+            filter="final"
+          />
+          <GlanceTile
+            label="Accounts with no assessment"
+            value={dormantCount}
+            action="Open clients"
+            clients
+          />
+        </section>
+
+        <section className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex flex-wrap items-baseline gap-2.5 px-5 pb-3 pt-[18px]">
+            <h2 className="text-base font-semibold">Needs you</h2>
+            <span className="text-[13px] text-muted-foreground">Nothing moves until you act</span>
+            <Link to="/admin/submissions" className="ml-auto text-[13px] underline">
+              All submissions
+            </Link>
+          </div>
+          {needs.length === 0 ? (
+            <p className="px-5 pb-7 pt-3 text-center text-muted-foreground">
+              Nothing waiting on you.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                    <th className="py-2 pl-5 pr-3 font-medium">Company</th>
+                    <th className="px-3 py-2 font-medium">Owner</th>
+                    <th className="px-3 py-2 font-medium">Stage</th>
+                    <th className="px-3 py-2 font-medium">Waiting</th>
+                    <th className="py-2 pl-3 pr-5 text-right font-medium">Next step</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {needs.map((i) => (
+                    <NeedsRow
+                      key={i.id}
+                      item={i}
+                      view={viewById.get(i.id) ?? null}
+                      onOpen={() => setOpenId(i.id)}
+                      handlers={handlersFor(i.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          <ListCard title="Waiting on the client" empty="No client is mid-assessment.">
+            {waiting.map((i) => {
+              const v = viewById.get(i.id);
+              return (
+                <ListRow key={i.id} item={i}>
+                  {v ? <NextStepButton view={v} handlers={handlersFor(i.id)} /> : null}
+                  {i.canNudge && v?.stage === "client" ? (
+                    <EmailRowButton item={i} action="nudge" />
+                  ) : null}
+                </ListRow>
+              );
+            })}
+          </ListCard>
+          <ListCard
+            title="Finished"
+            empty="No review has been marked final yet."
+            footer={
+              dormantCount ? (
+                <div className="mx-5 mb-[18px] mt-1 flex items-center gap-2.5 rounded-lg bg-muted/60 px-3.5 py-3 text-[13px] text-foreground/80">
+                  <span className="flex-1">
+                    {plural(dormantCount, "client account has", "client accounts have")} no
+                    assessment yet
+                  </span>
+                  <Link to="/admin/clients" className="underline">
+                    Open clients
+                  </Link>
                 </div>
-                <div
-                  className={`mt-1.5 text-[27px] font-extrabold tabular-nums tracking-tight ${
-                    t.alert
-                      ? "text-amber-700 dark:text-amber-300"
-                      : t.value === 0
-                        ? "text-muted-foreground"
-                        : ""
+              ) : null
+            }
+          >
+            {done.map((i) => (
+              <ListRow key={i.id} item={i}>
+                {i.canAnnounce ? <EmailRowButton item={i} action="review_ready" /> : null}
+                <ActionButton submissionId={i.id} action={i.action} variant="outline" />
+                {i.secondary ? (
+                  <ActionButton submissionId={i.id} action={i.secondary} variant="outline" />
+                ) : null}
+              </ListRow>
+            ))}
+          </ListCard>
+        </div>
+
+        <div>
+          <SectionHeading title="Assessments and reviews" />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            {tiles.map((t) => {
+              const accounts = t.includesAccounts ? (dormant ?? []) : [];
+              /**
+               * A tile only opens when there is something to show. A count of
+               * zero that still invites a click would be a promise the panel
+               * cannot keep.
+               */
+              const drillable = t.items.length > 0 || accounts.length > 0;
+              const open = openTile === t.key;
+              const body = (
+                <>
+                  <div className="text-[10.5px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
+                    {t.key}
+                  </div>
+                  <div
+                    className={`mt-1.5 text-[27px] font-extrabold tabular-nums tracking-tight ${
+                      t.alert
+                        ? "text-amber-700 dark:text-amber-300"
+                        : t.value === 0
+                          ? "text-muted-foreground"
+                          : ""
+                    }`}
+                  >
+                    {t.value}
+                  </div>
+                  <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
+                    {t.footnote}
+                  </div>
+                  {drillable ? (
+                    <div className="mt-1 text-[11px] font-semibold text-muted-foreground underline underline-offset-2">
+                      {open ? "hide" : "show"}
+                    </div>
+                  ) : null}
+                </>
+              );
+              const shell = `rounded-xl border p-4 text-center shadow-sm ${
+                t.alert ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-card"
+              }`;
+              return drillable ? (
+                <button
+                  key={t.key}
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() => setOpenTile((v) => (v === t.key ? null : t.key))}
+                  className={`${shell} transition-colors ${
+                    open
+                      ? "border-primary/60 ring-1 ring-primary/30"
+                      : t.alert
+                        ? "hover:border-amber-500"
+                        : "hover:border-primary/50"
                   }`}
                 >
-                  {t.value}
+                  {body}
+                </button>
+              ) : (
+                <div key={t.key} className={shell}>
+                  {body}
                 </div>
-                <div className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">
-                  {t.footnote}
-                </div>
-                {drillable ? (
-                  <div className="mt-1 text-[11px] font-semibold text-muted-foreground underline underline-offset-2">
-                    {open ? "hide" : "show"}
+              );
+            })}
+          </div>
+
+          {tiles.map((t) => {
+            if (openTile !== t.key) return null;
+            const accounts = t.includesAccounts ? (dormant ?? []) : [];
+            return (
+              <div key={t.key} className="mt-3 space-y-3">
+                {t.items.length > 0 ? (
+                  <div>
+                    <p className="mb-1.5 text-[11.5px] text-muted-foreground">
+                      {plural(t.items.length, "assessment", "assessments")} counted in{" "}
+                      <b className="text-foreground">{t.key.toLowerCase()}</b>
+                    </p>
+                    <Queue items={t.items} empty="" />
                   </div>
                 ) : null}
-              </>
-            );
-            const shell = `rounded-xl border p-4 text-center shadow-sm ${
-              t.alert ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-card"
-            }`;
-            return drillable ? (
-              <button
-                key={t.key}
-                type="button"
-                aria-expanded={open}
-                onClick={() => setOpenTile((v) => (v === t.key ? null : t.key))}
-                className={`${shell} transition-colors ${
-                  open
-                    ? "border-primary/60 ring-1 ring-primary/30"
-                    : t.alert
-                      ? "hover:border-amber-500"
-                      : "hover:border-primary/50"
-                }`}
-              >
-                {body}
-              </button>
-            ) : (
-              <div key={t.key} className={shell}>
-                {body}
+                {accounts.length > 0 ? <DormantAccounts accounts={accounts} /> : null}
               </div>
             );
           })}
         </div>
-
-        {tiles.map((t) => {
-          if (openTile !== t.key) return null;
-          const accounts = t.includesAccounts ? (dormant ?? []) : [];
-          return (
-            <div key={t.key} className="mt-3 space-y-3">
-              {t.items.length > 0 ? (
-                <div>
-                  <p className="mb-1.5 text-[11.5px] text-muted-foreground">
-                    {plural(t.items.length, "assessment", "assessments")} counted in{" "}
-                    <b className="text-foreground">{t.key.toLowerCase()}</b>
-                  </p>
-                  <Queue items={t.items} empty="" />
-                </div>
-              ) : null}
-              {accounts.length > 0 ? <DormantAccounts accounts={accounts} /> : null}
-            </div>
-          );
-        })}
-
-        <SectionHeading title="Needs you" note="nothing moves until you act" />
-        <Queue
-          items={needs}
-          empty="Nothing is waiting on you. Genuinely — not a placeholder."
-          emailAction="review_ready"
-        />
-
-        <SectionHeading
-          title="Waiting on the client"
-          note="you are not the blocker, but silence still loses clients"
-        />
-        <Queue items={waiting} empty="No client is mid-assessment." emailAction="nudge" />
-
-        <SectionHeading title="Finished" note="reviews marked final" />
-        <Queue
-          items={done}
-          empty="No review has been marked final yet."
-          emailAction="review_ready"
-        />
 
         {notes.length > 0 ? (
           <>
@@ -349,11 +481,192 @@ function AdvisorDashboard() {
           </>
         ) : null}
       </div>
+
+      <SubmissionSheet
+        submission={openId ? (viewById.get(openId) ?? null) : null}
+        open={openId !== null}
+        onOpenChange={(o) => {
+          if (!o) setOpenId(null);
+        }}
+        admin={dir.admin === true}
+        handlers={handlersFor(openId ?? "")}
+      />
     </BackOfficeShell>
   );
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * One count at the top of the page, linking to the list it counts. "Needs your
+ * advisory" lands on the submissions list's default filter, Needs me.
+ */
+function GlanceTile({
+  label,
+  value,
+  action,
+  filter,
+  clients,
+}: {
+  label: string;
+  /** Null while it is still loading or could not be read. */
+  value: number | null;
+  action: string;
+  filter?: "client" | "final";
+  /** Links to Clients rather than Submissions. */
+  clients?: boolean;
+}) {
+  const inner = (
+    <>
+      <span className="text-[13px] text-muted-foreground">{label}</span>
+      <span className="text-[30px] font-semibold tabular-nums tracking-tight">
+        {value ?? "\u00a0"}
+      </span>
+      <span className="text-xs text-primary underline-offset-2 group-hover:underline">
+        {action}
+      </span>
+    </>
+  );
+  const cls =
+    "group flex flex-col gap-1.5 rounded-[10px] border border-border bg-card px-[18px] py-4 transition-colors hover:border-foreground/30";
+  return clients ? (
+    <Link to="/admin/clients" className={cls}>
+      {inner}
+    </Link>
+  ) : (
+    <Link to="/admin/submissions" search={filter ? { filter } : {}} className={cls}>
+      {inner}
+    </Link>
+  );
+}
+
+/**
+ * A row of "Needs you": its next step as a visible button, and "All actions"
+ * for the submission sheet. Clicking anywhere else on the row opens the sheet
+ * too. Until the submission details load, the queue's own button stands in.
+ */
+function NeedsRow({
+  item,
+  view,
+  onOpen,
+  handlers,
+}: {
+  item: QueueItem;
+  view: SubmissionView | null;
+  onOpen: () => void;
+  handlers: SubmissionActionHandlers;
+}) {
+  return (
+    <tr
+      className="cursor-pointer border-b border-border/60 last:border-b-0 hover:bg-muted/40"
+      onClick={onOpen}
+    >
+      <td className="py-2.5 pl-5 pr-3 align-middle font-medium">{item.company}</td>
+      <td className="px-3 py-2.5 align-middle">
+        {view ? view.ownerName || view.ownerEmail || "No client account" : ""}
+      </td>
+      <td className="px-3 py-2.5 align-middle">
+        {view ? <StagePill stage={view.stage} /> : null}
+        <div className="mt-1 text-xs text-muted-foreground">
+          {item.stage}
+          {item.stageStrong}
+        </div>
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 align-middle">
+        {plural(item.days, "day", "days")}
+      </td>
+      <td
+        className="whitespace-nowrap py-2.5 pl-3 pr-5 text-right align-middle"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="inline-flex gap-2">
+          {view ? (
+            <NextStepButton view={view} handlers={handlers} />
+          ) : (
+            <ActionButton submissionId={item.id} action={item.action} />
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onOpen}
+            aria-label={`All actions for ${item.company}`}
+          >
+            All actions
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * The submission's one next step, from the same rules and the same handlers as
+ * the submissions list: dark for advisory work, outlined otherwise.
+ */
+function NextStepButton({
+  view,
+  handlers,
+}: {
+  view: SubmissionView;
+  handlers: SubmissionActionHandlers;
+}) {
+  const a = useSubmissionActions(view, handlers);
+  const meta = STAGE[view.stage];
+  return (
+    <>
+      <Button
+        size="sm"
+        variant={meta.advisorWork ? "default" : "outline"}
+        onClick={a.runNext}
+        disabled={a.pending !== null}
+      >
+        {a.pending === "final" ? "Marking…" : meta.next}
+      </Button>
+      {a.dialogs}
+    </>
+  );
+}
+
+function ListCard({
+  title,
+  empty,
+  footer,
+  children,
+}: {
+  title: string;
+  empty: string;
+  footer?: React.ReactNode;
+  children: React.ReactNode[];
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-card">
+      <h2 className="px-5 pb-3 pt-[18px] text-base font-semibold">{title}</h2>
+      <div className="px-5 pb-4 pt-1.5">
+        {children.length === 0 ? (
+          <p className="py-3 text-[13px] text-muted-foreground">{empty}</p>
+        ) : (
+          children
+        )}
+      </div>
+      {footer}
+    </section>
+  );
+}
+
+function ListRow({ item, children }: { item: QueueItem; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-t border-border/60 py-2.5">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="font-medium">{item.company}</span>
+        <span className="text-xs text-muted-foreground">
+          {item.stage}
+          {item.stageStrong}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
 
 /**
  * Client accounts with no assessment against them.
@@ -388,9 +701,10 @@ function DormantAccounts({ accounts }: { accounts: ClientAccountRow[] }) {
             key={a.user_id}
             className="grid gap-1 px-4 py-2.5 text-[12.5px] md:grid-cols-[2fr_1fr_1fr] md:items-center"
           >
-            <span className="truncate font-medium">{a.email ?? "—"}</span>
+            <span className="truncate font-medium">{a.email ?? "No email"}</span>
             <span className="text-muted-foreground">
-              signed up {a.created_at ? new Date(a.created_at).toLocaleDateString() : "—"}
+              signed up{" "}
+              {a.created_at ? new Date(a.created_at).toLocaleDateString() : "on an unknown date"}
             </span>
             <span
               className={
@@ -410,11 +724,11 @@ function DormantAccounts({ accounts }: { accounts: ClientAccountRow[] }) {
 
 function SectionHeading({ title, note }: { title: string; note?: string }) {
   return (
-    <h2 className="mb-2.5 mt-7 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground first:mt-1">
+    <h2 className="mb-2.5 mt-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground first:mt-1">
       {title}
       {note ? (
         <span className="ml-2 text-[11px] font-normal normal-case italic tracking-normal text-muted-foreground/70">
-          — {note}
+          ({note})
         </span>
       ) : null}
     </h2>
@@ -562,7 +876,7 @@ function EmailRowButton({ item, action }: { item: QueueItem; action: "nudge" | "
         onOpenChange={setOpen}
         templateKey={action}
         submissionId={item.id}
-        title={`${label} — ${item.company}`}
+        title={`${label}: ${item.company}`}
       />
     </>
   );
