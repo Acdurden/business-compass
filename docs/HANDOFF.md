@@ -11,6 +11,7 @@ Read this file first, then `docs/research-desk/context/conventions.md` (the stan
 | `docs/scoring-and-rating/SCORING-AND-BADGE.md` | Score weighting, the letter-rating discussion and the public badge decision. Discussion and previews only; nothing approved for build |
 | `docs/scoring-and-rating/previews/` | Three HTML previews of the badge seals. Open them in a browser |
 | `docs/scoring-and-rating/scripts/` | The Python models behind every weighting and rating figure in that doc |
+| `docs/admin-shell/admin-shell-preview.html` | The approved back office design (sidebar, submission panel, Ctrl K). Built and live since 12 October; see "Back office rebuild" below |
 
 ## The rules that matter most
 
@@ -31,6 +32,25 @@ The full list is in `conventions.md`. These are the ones a new session breaks fi
 - **Database:** Supabase project "Kriterion", id `lbopzuffyprpbhxdsknv`.
 - **Live and working:** client and advisor portal; per-person invite links (`client_invites` table); the invite email with a Plain or Branded switch on `/admin/emails`; the Founder Questionnaire header; Objective Score and ValScore as two products; the score share card from 18 September.
 - **Data:** every submission in the database is a test. No real client has submitted yet. That makes this the cheapest moment to change anything about scoring.
+
+## Back office rebuild, 12 October (live)
+
+Built in Claude Code from the approved preview `docs/admin-shell/admin-shell-preview.html`, in four steps, each pushed and checked on the live site against the database. Client routes were not touched, except the sign-in page.
+
+- **Shell and sidebar.** `src/components/back-office-shell.tsx` wraps every advisor and admin route: a navy left sidebar (shadcn Sidebar, collapses to icons, a sheet on phones), a breadcrumb top bar, and the page title with its primary button. The old strip `back-office-nav.tsx` is deleted. The role cache, the nav list and the Submissions badge count live in `src/lib/back-office.ts`. The `--sidebar` tokens in `styles.css` are the preview navy and are used only by this shell. Collapsed state is in localStorage (`kr-back-office-collapsed`).
+- **Admin gating.** Research and Settings groups show only to admins, and stay hidden until the role is known. Market data and Insights appear automatically once `/admin/market-data` and `/admin/insights` route files exist (the shell checks the router). Route guards and server `ensureAdmin` checks are unchanged.
+- **Single sign-in.** `/client/auth` is now the one sign-in page for clients, advisors and admins and sends each person on by role, honouring a `redirect` search param for advisors. `/auth` only forwards there, carrying `redirect`. The guards, sign-out and reset page point at `/client/auth`.
+- **Stage rules, one place.** `src/lib/submission-stage.ts` decides each submission's stage (invited, client, needs, advisory, review, final, complete), its label, its next step and the filter it belongs to. The sidebar badge, Submissions chips, dashboard tiles and the palette all use it. Objective-only plans whose client has submitted are "complete", matching `advisor-queue.ts`.
+- **Submissions.** Filter chips (Needs me, Waiting on client, Final, All) with a company or owner filter; each row shows its next step and "All actions". `src/components/submission-sheet.tsx` is the right-side panel with every action, disabled items saying why. `?open=<submissionId>` opens it and `?filter=` picks the chip. The handlers moved unchanged from the old row dropdown into `src/lib/use-submission-actions.tsx`; the data a row needs (owner first name and email, invited date, advisor, test flag) comes from `src/lib/use-submission-directory.ts`. "Resend invite" opens the existing reminder (nudge) email draft, because every submission's client has already used their invite. Delete is admin only.
+- **Dashboard.** Four count tiles linking to the Submissions filters or Clients; "Needs you" rows have their next step and "All actions", which opens the same panel in place; Waiting and Finished side by side. The older breakdown tiles and "Worth a look" notes remain below.
+- **Ctrl K palette.** `src/components/command-palette.tsx`, opened by Ctrl K / Cmd K or the sidebar Search button. Finds clients by company or owner, lists actions when exactly one matches, "Go to" uses the sidebar's own list, admin actions only for admins.
+
+Live counts on 12 October: Needs me 6, Waiting on client 2, Final 4, All 12, accounts with no assessment 13.
+
+**Still open from this work:**
+- Every submission is marked `is_test = true`. Switch Test off for the first real client, or they stay out of Insights.
+- An action started from Ctrl K (for example Mark as final) saves at once, but a list already open behind the palette does not refresh until the page reloads.
+- `listClientInvites` returns the newest 30 invites, so the panel's "Invited" date falls back to "Account created" for older clients.
 
 ## Open work, in priority order
 
