@@ -17,7 +17,7 @@
 
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useState } from "react";
-import { LogOut, Menu, PanelLeft } from "lucide-react";
+import { LogOut, Menu, PanelLeft, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   resetBackOfficeRoleCache,
@@ -52,6 +52,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  CommandPalette,
+  PaletteActionHost,
+  type PaletteSubmissionAction,
+} from "@/components/command-palette";
+import { InviteClientButton } from "@/components/invite-client-button";
+import type { SubmissionView } from "@/lib/use-submission-directory";
 
 /* ------------------------------------------------------------------------ */
 /* Collapsed state                                                            */
@@ -115,13 +122,39 @@ export function BackOfficeShell({
   const labels = sectionLabels(active);
   const trail: Crumb[] = crumbs ?? [{ label: labels.group }, { label: labels.page }];
 
+  const admin = useIsBackOfficeAdmin();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  /** A client action picked in the palette; its dialogs live here once the palette shuts. */
+  const [hosted, setHosted] = useState<{
+    view: SubmissionView;
+    action: PaletteSubmissionAction;
+    nonce: number;
+  } | null>(null);
+
+  /* Ctrl K, or Cmd K on a Mac, from anywhere in the back office. */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <SidebarProvider
       open={open}
       onOpenChange={onOpenChange}
       style={{ "--sidebar-width-icon": "4.5rem" } as React.CSSProperties}
     >
-      <BackOfficeSidebar active={active} needsCount={needsCount} />
+      <BackOfficeSidebar
+        active={active}
+        needsCount={needsCount}
+        onSearch={() => setPaletteOpen(true)}
+      />
       <SidebarInset className="min-w-0">
         <TopBar trail={trail} />
         <div className="flex w-full max-w-[1280px] flex-col gap-6 px-4 pb-14 pt-7 md:px-8">
@@ -137,6 +170,18 @@ export function BackOfficeShell({
           <div className="min-w-0">{children}</div>
         </div>
       </SidebarInset>
+
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        admin={admin}
+        onInvite={() => setInviteOpen(true)}
+        onSubmissionAction={(view, action) => setHosted({ view, action, nonce: Date.now() })}
+      />
+      <InviteClientButton showTrigger={false} open={inviteOpen} onOpenChange={setInviteOpen} />
+      {hosted ? (
+        <PaletteActionHost key={hosted.nonce} view={hosted.view} action={hosted.action} />
+      ) : null}
     </SidebarProvider>
   );
 }
@@ -191,12 +236,20 @@ function TopBar({ trail }: { trail: Crumb[] }) {
   );
 }
 
+/** "Ctrl K", or "⌘ K" on a Mac, where the shortcut is Cmd K. */
+function shortcutLabel(): string {
+  if (typeof navigator === "undefined") return "Ctrl K";
+  return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘ K" : "Ctrl K";
+}
+
 function BackOfficeSidebar({
   active,
   needsCount,
+  onSearch,
 }: {
   active: BackOfficeSection;
   needsCount: number | null | undefined;
+  onSearch: () => void;
 }) {
   const navigate = useNavigate();
   const admin = useIsBackOfficeAdmin();
@@ -249,6 +302,22 @@ function BackOfficeSidebar({
             Back office
           </small>
         </Link>
+        <button
+          type="button"
+          onClick={() => {
+            if (isMobile) setOpenMobile(false);
+            onSearch();
+          }}
+          title={`Search (${shortcutLabel()})`}
+          aria-label="Search"
+          className="mt-[18px] flex h-10 w-full items-center gap-2.5 rounded-lg border border-sidebar-border bg-[oklch(0.262_0.057_265.7)] px-3 text-left text-[13px] text-sidebar-foreground/85 hover:text-sidebar-primary group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1 group-data-[collapsible=icon]:hidden">Search</span>
+          <kbd className="rounded border border-sidebar-border px-[5px] py-px font-mono text-[11px] text-sidebar-foreground/65 group-data-[collapsible=icon]:hidden">
+            {shortcutLabel()}
+          </kbd>
+        </button>
       </SidebarHeader>
 
       <SidebarContent className="gap-[18px] px-1 pt-3">

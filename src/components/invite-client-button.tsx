@@ -243,13 +243,32 @@ function SharedLinkRow({ link }: { link: InviteLink }) {
   );
 }
 
-export function InviteClientButton({ size = "sm" }: { size?: "sm" | "default" }) {
+export function InviteClientButton({
+  size = "sm",
+  open: openProp,
+  onOpenChange,
+  showTrigger = true,
+}: {
+  size?: "sm" | "default";
+  /**
+   * Set by the command palette, which opens this same dialog without its
+   * button. Left out, the dialog keeps its own state as before.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
+}) {
   const loadCodes = useServerFn(getActiveInviteCodes);
   const loadInvites = useServerFn(listClientInvites);
   const create = useServerFn(createClientInvite);
   const revoke = useServerFn(revokeClientInvite);
 
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (next: boolean) => {
+    if (onOpenChange) onOpenChange(next);
+    else setOpenState(next);
+  };
   const [links, setLinks] = useState<InviteLink[] | null>(null);
   const [invites, setInvites] = useState<ClientInvite[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -328,10 +347,12 @@ export function InviteClientButton({ size = "sm" }: { size?: "sm" | "default" })
 
   return (
     <>
-      <Button size={size} onClick={() => setOpen(true)}>
-        <Mail className="mr-1.5 h-3.5 w-3.5" />
-        Invite a client
-      </Button>
+      {showTrigger ? (
+        <Button size={size} onClick={() => setOpen(true)}>
+          <Mail className="mr-1.5 h-3.5 w-3.5" />
+          Invite a client
+        </Button>
+      ) : null}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
