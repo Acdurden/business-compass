@@ -23,6 +23,7 @@ import { Route as AdvisorIndexRouteImport } from './routes/advisor.index'
 import { Route as AdvisorSubmissionIdRouteImport } from './routes/advisor.$submissionId'
 import { Route as AdvisorChangePasswordRouteImport } from './routes/advisor.change-password'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
+import { Route as ClientAdvisorCalibrationRouteImport } from './routes/client.advisor-calibration'
 import { Route as ClientAuthRouteImport } from './routes/client.auth'
 import { Route as ClientChangePasswordRouteImport } from './routes/client.change-password'
 import { Route as ClientObjectiveScoreRouteImport } from './routes/client.objective-score'
@@ -101,6 +102,12 @@ const ClientIndexRoute = ClientIndexRouteImport.update({
   path: '/client/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientAdvisorCalibrationRoute =
+  ClientAdvisorCalibrationRouteImport.update({
+    id: '/client/advisor-calibration',
+    path: '/client/advisor-calibration',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ClientAuthRoute = ClientAuthRouteImport.update({
   id: '/client/auth',
   path: '/client/auth',
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/advisor-calibration': typeof ClientAdvisorCalibrationRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/change-password': typeof ClientChangePasswordRoute
   '/client/objective-score': typeof ClientObjectiveScoreRoute
@@ -174,6 +182,7 @@ export interface FileRoutesByTo {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/advisor-calibration': typeof ClientAdvisorCalibrationRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/change-password': typeof ClientChangePasswordRoute
   '/client/objective-score': typeof ClientObjectiveScoreRoute
@@ -198,6 +207,7 @@ export interface FileRoutesById {
   '/admin/submissions': typeof AdminSubmissionsRoute
   '/advisor/$submissionId': typeof AdvisorSubmissionIdRoute
   '/advisor/change-password': typeof AdvisorChangePasswordRoute
+  '/client/advisor-calibration': typeof ClientAdvisorCalibrationRoute
   '/client/auth': typeof ClientAuthRoute
   '/client/change-password': typeof ClientChangePasswordRoute
   '/client/objective-score': typeof ClientObjectiveScoreRoute
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
+    | '/client/advisor-calibration'
     | '/client/auth'
     | '/client/change-password'
     | '/client/objective-score'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
+    | '/client/advisor-calibration'
     | '/client/auth'
     | '/client/change-password'
     | '/client/objective-score'
@@ -269,6 +281,7 @@ export interface FileRouteTypes {
     | '/admin/submissions'
     | '/advisor/$submissionId'
     | '/advisor/change-password'
+    | '/client/advisor-calibration'
     | '/client/auth'
     | '/client/change-password'
     | '/client/objective-score'
@@ -293,6 +306,7 @@ export interface RootRouteChildren {
   AdminSubmissionsRoute: typeof AdminSubmissionsRoute
   AdvisorSubmissionIdRoute: typeof AdvisorSubmissionIdRoute
   AdvisorChangePasswordRoute: typeof AdvisorChangePasswordRoute
+  ClientAdvisorCalibrationRoute: typeof ClientAdvisorCalibrationRoute
   ClientAuthRoute: typeof ClientAuthRoute
   ClientChangePasswordRoute: typeof ClientChangePasswordRoute
   ClientObjectiveScoreRoute: typeof ClientObjectiveScoreRoute
@@ -404,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/advisor-calibration': {
+      id: '/client/advisor-calibration'
+      path: '/client/advisor-calibration'
+      fullPath: '/client/advisor-calibration'
+      preLoaderRoute: typeof ClientAdvisorCalibrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client/auth': {
       id: '/client/auth'
       path: '/client/auth'
@@ -469,6 +490,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSubmissionsRoute: AdminSubmissionsRoute,
   AdvisorSubmissionIdRoute: AdvisorSubmissionIdRoute,
   AdvisorChangePasswordRoute: AdvisorChangePasswordRoute,
+  ClientAdvisorCalibrationRoute: ClientAdvisorCalibrationRoute,
   ClientAuthRoute: ClientAuthRoute,
   ClientChangePasswordRoute: ClientChangePasswordRoute,
   ClientObjectiveScoreRoute: ClientObjectiveScoreRoute,

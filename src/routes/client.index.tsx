@@ -201,6 +201,14 @@ function ClientHome() {
         const loaded = await loadScoreData(row.submission_id, extraData);
         setScoreData(loaded);
       }
+    } else {
+      // No submission yet: the entry cards still quote the live question count.
+      const { count } = await supabase
+        .from("questions")
+        .select("question_id", { count: "exact", head: true })
+        .eq("active", true)
+        .eq("questionnaire_type", "objective");
+      setTotalQuestions(count ?? null);
     }
     setLoading(false);
   }
@@ -259,6 +267,7 @@ function ClientHome() {
       ) : stage === "new" ? (
         <NotStarted
           plan={plan}
+          totalQuestions={totalQuestions}
           hasSubmission={sub !== null}
           companyName={sub?.company_name ?? companyName}
           setCompanyName={setCompanyName}
@@ -279,6 +288,12 @@ function ClientHome() {
           scoreData={scoreData}
           onViewResults={() => navigate({ to: "/client/objective-score" })}
         />
+      ) : plan === "objective" ? (
+        <Finished
+          companyName={sub?.company_name ?? ""}
+          onViewResults={() => navigate({ to: "/client/objective-score" })}
+          onCalibration={() => navigate({ to: "/client/advisor-calibration" })}
+        />
       ) : (
         <Complete
           plan={plan}
@@ -287,15 +302,10 @@ function ClientHome() {
           extras={extras}
           data={scoreData}
           /*
-           * Two products, two destinations. A reviewed client's result is the
-           * ValScore; an objective-only client's result is the Objective Score,
-           * and the ValScore page holds nothing for them.
+           * Full-service clients only: objective-only clients get <Finished />
+           * above, so a reviewed client's summary here is always the ValScore.
            */
-          onViewSummary={() =>
-            navigate({
-              to: plan === "objective" ? "/client/objective-score" : "/client/valscore",
-            })
-          }
+          onViewSummary={() => navigate({ to: "/client/valscore" })}
         />
       )}
     </ClientShell>
@@ -493,8 +503,46 @@ function Stepper({
 /* Stage: not started                                                  */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The three entry cards, agreed 10 October 2026. The third card names Advisor
+ * Calibration as optional and separately available, styled as inactive so it
+ * never reads as a step the client has to take.
+ */
+function EntryCards({ totalQuestions }: { totalQuestions: number | null }) {
+  return (
+    <div className="mt-5 grid gap-3 text-left sm:grid-cols-3">
+      <Fact
+        title="About 20 minutes"
+        sub="Complete at your own pace. Your progress is saved as you go."
+      />
+      <Fact
+        title={totalQuestions != null ? `${totalQuestions} questions` : "Nine areas"}
+        sub="Explore nine areas that influence the health and strength of your business."
+      />
+      <div
+        className="rounded-[10px] border border-dashed bg-white p-[13px_15px]"
+        style={{ borderColor: "#e4e9ef" }}
+      >
+        <p className="text-[13px] font-bold opacity-60">Advisor Calibration</p>
+        <p
+          className="mt-0.5 text-[11.5px] leading-[1.45] opacity-60"
+          style={{ color: BRAND.muted }}
+        >
+          An optional expert review to explore your findings in greater depth.
+        </p>
+        <span
+          className="mt-2 inline-block rounded-full border px-[7px] py-0.5 text-[9.5px] font-bold uppercase tracking-[0.09em]"
+          style={{ borderColor: "#dde4ea", color: BRAND.muted }}
+        >
+          Available separately
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function NotStarted({
-  plan,
+  totalQuestions,
   hasSubmission,
   companyName,
   setCompanyName,
@@ -503,6 +551,7 @@ function NotStarted({
   onContinue,
 }: {
   plan: Plan;
+  totalQuestions: number | null;
   hasSubmission: boolean;
   companyName: string;
   setCompanyName: (v: string) => void;
@@ -514,41 +563,24 @@ function NotStarted({
     <>
       <PageHead
         eyebrow="Welcome"
-        title="Let's get started"
-        sub="You haven't started your Founder Questionnaire yet."
-        plan={plan}
+        title="Business Health Assessment"
+        sub="You haven't started yet."
       />
       <Card className="text-center">
+        {/* Approved headline and copy, 10 October 2026. */}
         <h2 className="text-[26px] font-semibold tracking-tight">
-          Let&apos;s find out what your business is worth
+          Discover what strengthens, and limits, your business.
         </h2>
         <p
           className="mx-auto mt-2.5 max-w-[620px] text-[14px] leading-[1.65]"
           style={{ color: BRAND.muted }}
         >
-          This assessment scores your business across the areas buyers actually price: financial
-          quality, client concentration, founder dependency, operations, positioning and growth.
-          You&apos;ll get your ValScore and an estimated valuation range at the end.
+          Take a closer look at the underlying health of your business through the factors a
+          sophisticated buyer would consider. The Business Health Assessment helps surface your
+          strengths, potential vulnerabilities, and areas that deserve a deeper look.
         </p>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <Fact
-            title="About 20 minutes"
-            sub="Saves as you go, so you can leave and come back anytime"
-          />
-          <Fact title="24 questions" sub="Across nine areas, eight of them scored" />
-          {plan === "full" ? (
-            <Fact
-              title="Then an advisor review"
-              sub="Your answers validated by an experienced advisor"
-            />
-          ) : (
-            <Fact
-              title="Results immediately"
-              sub="Your score and valuation as soon as you finish"
-            />
-          )}
-        </div>
+        <EntryCards totalQuestions={totalQuestions} />
 
         {hasSubmission ? (
           <div className="mx-auto mt-6 max-w-md">
@@ -559,7 +591,7 @@ function NotStarted({
               </span>
             </p>
             <Button size="lg" className="mt-4" onClick={onContinue}>
-              Begin your Founder Questionnaire
+              Begin your assessment
             </Button>
           </div>
         ) : (
@@ -575,7 +607,7 @@ function NotStarted({
               className="mt-2"
             />
             <Button type="submit" size="lg" className="mt-5" disabled={busy || !companyName.trim()}>
-              {busy ? "Starting…" : "Begin your Founder Questionnaire"}
+              {busy ? "Starting…" : "Begin your assessment"}
             </Button>
           </form>
         )}
@@ -587,9 +619,9 @@ function NotStarted({
           <span className="font-medium" style={{ color: BRAND.ink }}>
             What happens next:
           </span>{" "}
-          {plan === "full"
-            ? "you complete the assessment, your advisor reviews it and restates your ValScore, then your full summary and action plan unlock here."
-            : "you complete the assessment and your score, valuation range and target planner are ready immediately. An advisor review is available later as an add-on if you want it."}
+          when you finish, your Kriterion rating and findings are ready right away under My Rating
+          &amp; Findings. Advisor Calibration is available separately if you want an expert to go
+          deeper.
         </p>
       </Card>
     </>
@@ -619,7 +651,7 @@ function InProgress({
     <>
       <PageHead
         eyebrow="In progress"
-        title="Your assessment"
+        title="Business Health Assessment"
         sub={`${companyName} · pick up where you left off.`}
       />
       <Card>
@@ -657,17 +689,23 @@ function InProgress({
             </p>
           </div>
           <Button size="lg" className="shrink-0" onClick={onContinue}>
-            Continue where you left off
+            Continue your assessment
           </Button>
         </div>
       </Card>
 
-      <Card title="What you'll get">
-        <p className="text-sm font-medium">Your ValScore unlocks when you finish</p>
-        <p className="mt-1 text-[13px] leading-[1.6]" style={{ color: BRAND.muted }}>
-          Complete all the questions and your ValScore, valuation range and biggest opportunities
-          all appear here.
+      <Card className="text-center">
+        <h2 className="text-[20px] font-semibold tracking-tight">
+          Discover what strengthens, and limits, your business.
+        </h2>
+        <p
+          className="mx-auto mt-2 max-w-[620px] text-[13px] leading-[1.6]"
+          style={{ color: BRAND.muted }}
+        >
+          When you finish, your Kriterion rating and findings are ready right away under My Rating
+          &amp; Findings.
         </p>
+        <EntryCards totalQuestions={total} />
       </Card>
     </>
   );
@@ -799,6 +837,83 @@ function AwaitingReview({
           We&apos;ll let you know the moment your results are ready. Most reviews complete within a
           few business days.
         </p>
+      </Card>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Stage: finished, objective plan (Product 1)                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The finished dashboard for the Business Health Assessment, approved
+ * 13 October 2026. It points to the rating and findings and offers Advisor
+ * Calibration as optional. Deliberately no score, valuation or range here:
+ * the results live on My Rating & Findings, and Kriterion is not a valuation
+ * calculator.
+ */
+function Finished({
+  companyName,
+  onViewResults,
+  onCalibration,
+}: {
+  companyName: string;
+  onViewResults: () => void;
+  onCalibration: () => void;
+}) {
+  return (
+    <>
+      <PageHead
+        eyebrow="Complete"
+        title="Business Health Assessment"
+        sub={`${companyName} · finished.`}
+      />
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0">
+            <span
+              className="inline-block rounded-full px-[9px] py-[3px] text-[10px] font-extrabold uppercase tracking-[0.09em]"
+              style={{ background: "#dcefec", color: BRAND.tealDark }}
+            >
+              Ready
+            </span>
+            <p className="mt-2 text-[18px] font-semibold">Your rating and findings are ready</p>
+            <p
+              className="mt-1 max-w-[520px] text-[13.5px] leading-[1.55]"
+              style={{ color: BRAND.muted }}
+            >
+              See your Kriterion rating, the strengths in your business, and the vulnerabilities a
+              buyer would look at first.
+            </p>
+          </div>
+          <Button size="lg" style={{ background: BRAND.teal }} onClick={onViewResults}>
+            View my rating &amp; findings
+          </Button>
+        </div>
+      </Card>
+      <Card style={{ background: "#f6f8fa" }}>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3.5">
+          <div className="min-w-0">
+            <p
+              className="text-[10px] font-extrabold uppercase tracking-[0.09em]"
+              style={{ color: BRAND.muted }}
+            >
+              Optional · Available separately
+            </p>
+            <p className="mt-1.5 text-[16px] font-semibold">Advisor Calibration</p>
+            <p
+              className="mt-1 max-w-[520px] text-[13px] leading-[1.55]"
+              style={{ color: BRAND.muted }}
+            >
+              An experienced advisor reviews your findings with you, adds context the questions
+              can&apos;t capture, and goes deeper where it matters.
+            </p>
+          </div>
+          <Button variant="outline" onClick={onCalibration}>
+            Learn more
+          </Button>
+        </div>
       </Card>
     </>
   );

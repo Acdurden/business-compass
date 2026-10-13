@@ -12,14 +12,18 @@
 
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
-import { toast } from "sonner";
 import { BRAND } from "@/lib/score-display";
+import { KRITERION_LOGO } from "@/assets/kriterionLogo";
 
 export type ClientPlan = "objective" | "full";
 export type ClientStage = "new" | "progress" | "awaiting" | "complete";
 
 export type NavTarget =
-  "/client" | "/client/objective-score" | "/client/questionnaire" | "/client/valscore";
+  | "/client"
+  | "/client/objective-score"
+  | "/client/questionnaire"
+  | "/client/valscore"
+  | "/client/advisor-calibration";
 
 type NavItem = {
   label: string;
@@ -28,7 +32,8 @@ type NavItem = {
   locked?: boolean;
   /** Why it's greyed out, shown on hover. */
   reason?: string;
-  upgrade?: boolean;
+  /** Marked "Optional" in the rail: a separate service, never a required step. */
+  optional?: boolean;
   onClick?: () => void;
 };
 
@@ -55,49 +60,55 @@ function navItems(
    * does not exist, which is a fact about our roadmap and not about their
    * business. They come back as real items when they are real.
    */
+  /*
+   * Navigation agreed 13 October 2026 (Adam, Dan, Andrew session of 10
+   * October): Dashboard / Business Health Assessment / My Rating & Findings /
+   * Advisor Calibration / Sign out.
+   *
+   * The rating and findings are part of the assessment itself (Product 1), so
+   * they open the moment the client submits, with no advisor step. Advisor
+   * Calibration is a separate, optional service: it is never locked and never
+   * presented as the thing that unlocks results. Only one item is ever locked,
+   * so the rail does not read as a list of withheld features.
+   */
   return [
     { label: "Dashboard", to: "/client", active: active === "/client" },
     {
-      /*
-       * The nav is named after the two products, 2026-09-18. It used to read
-       * "My assessment" and "Score & valuation", which described the screens
-       * rather than what the client has.
-       *
-       * This page is the Objective Score: what the client's own answers
-       * produce, finished on submission. It also carries the record of those
-       * answers and the route back into the questionnaire, so it opens as soon
-       * as they start rather than when they finish.
-       */
-      label: "Objective Score",
-      to: "/client/objective-score",
-      active: active === "/client/objective-score",
-      locked: !hasSubmission,
-      reason: "Starts when you begin your assessment",
+      label: "Business Health Assessment",
+      // Before a submission exists, the company name is asked for on the dashboard.
+      to: hasSubmission ? "/client/questionnaire" : "/client",
+      active: active === "/client/questionnaire",
     },
     {
-      /*
-       * The ValScore is the advisor's product and holds nothing the Objective
-       * Score page already shows. It exists only once a review does, so it is
-       * locked rather than empty for everyone else.
-       */
-      label: "ValScore",
-      to: "/client/valscore",
-      active: active === "/client/valscore",
-      locked: !done || plan === "objective",
-      reason:
-        plan === "objective"
-          ? "Not part of your assessment. Ask us about adding one."
-          : "Available when your advisor's review is complete",
+      label: "My Rating & Findings",
+      to: "/client/objective-score",
+      active: active === "/client/objective-score",
+      locked: !hasResults,
+      reason: "Ready when you finish your assessment",
     },
-    ...(plan === "objective" && done
+    ...(plan === "full" && hasSubmission
       ? [
           {
-            label: "Upgrade: Advisor review",
-            upgrade: true,
-            onClick: () => toast.info("We'll be in touch about adding an advisor review."),
+            /*
+             * Full-service clients with a submission only. Pages default the
+             * plan to "full" before a submission exists, so the check on
+             * hasSubmission keeps a second locked item out of a new client's
+             * rail. The pilot is objective-only and never sees this item.
+             */
+            label: "ValScore",
+            to: "/client/valscore",
+            active: active === "/client/valscore",
+            locked: !done,
+            reason: "Available when your advisor's review is complete",
           } satisfies NavItem,
         ]
       : []),
+    {
+      label: "Advisor Calibration",
+      to: "/client/advisor-calibration",
+      active: active === "/client/advisor-calibration",
+      optional: true,
+    },
     { label: "Sign out", onClick: onSignOut },
   ];
 }
@@ -132,8 +143,16 @@ export function ClientShell({
         className="hidden w-[214px] shrink-0 flex-col py-[18px] md:flex"
         style={{ background: BRAND.navy, color: "#c3d2df" }}
       >
-        <div className="px-[18px] pb-[18px] text-[15px] font-bold tracking-wide text-white">
-          KRITERION
+        <div className="px-[18px] pb-[18px]">
+          <img
+            src={KRITERION_LOGO}
+            alt="Kriterion"
+            className="block h-auto w-[150px]"
+            style={{ filter: "brightness(0) invert(1)" }}
+          />
+          <div className="mt-1.5 text-[11px] tracking-[0.04em]" style={{ color: "#6f8698" }}>
+            kriterionbvi.com
+          </div>
         </div>
         <nav className="flex flex-col">
           {items.map((item) =>
@@ -156,12 +175,20 @@ export function ClientShell({
                 style={{
                   borderLeftColor: item.active ? BRAND.teal : "transparent",
                   background: item.active ? "#16293a" : "transparent",
-                  color: item.active ? "#ffffff" : item.upgrade ? "#7fd3ce" : "#a8bccd",
+                  color: item.active ? "#ffffff" : "#a8bccd",
                   fontWeight: item.active ? 600 : 400,
                 }}
               >
                 <span className="h-[7px] w-[7px] shrink-0 rounded-[2px] bg-current opacity-60" />
                 {item.label}
+                {item.optional ? (
+                  <span
+                    className="ml-auto rounded-full border px-1.5 py-px text-[9.5px] uppercase tracking-[0.08em]"
+                    style={{ borderColor: "#1e3549", color: "#6f8698" }}
+                  >
+                    Optional
+                  </span>
+                ) : null}
               </button>
             ),
           )}
@@ -182,7 +209,12 @@ export function ClientShell({
           className="flex items-center justify-between px-5 py-3 md:hidden"
           style={{ background: BRAND.navy }}
         >
-          <span className="text-[15px] font-bold tracking-wide text-white">KRITERION</span>
+          <img
+            src={KRITERION_LOGO}
+            alt="Kriterion"
+            className="block h-auto w-[120px]"
+            style={{ filter: "brightness(0) invert(1)" }}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -193,6 +225,32 @@ export function ClientShell({
             Sign out
           </Button>
         </header>
+        {/* Phones get the same destinations as a scrolling row under the header. */}
+        <nav
+          className="flex gap-1.5 overflow-x-auto px-4 pb-3 md:hidden"
+          style={{ background: BRAND.navy }}
+          aria-label="Sections"
+        >
+          {items
+            .filter((item) => item.to)
+            .map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                disabled={item.locked}
+                title={item.locked ? item.reason : undefined}
+                onClick={() => item.to && onNavigate(item.to)}
+                className="shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-[12px] disabled:opacity-40"
+                style={{
+                  borderColor: item.active ? BRAND.teal : "#1e3549",
+                  background: item.active ? BRAND.teal : "transparent",
+                  color: item.active ? "#ffffff" : "#a8bccd",
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+        </nav>
         <main className="min-w-0 flex-1 px-5 py-6 md:px-8 md:py-7">
           <div className="mx-auto max-w-[1400px]">{children}</div>
         </main>
