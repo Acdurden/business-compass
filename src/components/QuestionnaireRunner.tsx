@@ -24,6 +24,7 @@ type Question = {
   question_text: string;
   sort_order: number;
   max_score: number | null;
+  help_text?: string | null;
 };
 type AnswerOption = {
   id: string;
@@ -204,7 +205,7 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
           .order("sort_order"),
         supabase
           .from("questions")
-          .select("question_id,section_id,question_text,sort_order,max_score")
+          .select("question_id,section_id,question_text,sort_order,max_score,help_text")
           .eq("questionnaire_type", questionnaireType)
           .eq("active", true)
           .order("sort_order"),
@@ -614,6 +615,11 @@ export function QuestionnaireRunner(props: QuestionnaireRunnerProps) {
                     <span className="text-[11px] text-muted-foreground shrink-0 mt-1">saving…</span>
                   )}
                 </div>
+                {q.help_text ? (
+                  <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">
+                    {q.help_text}
+                  </p>
+                ) : null}
                 <div className="mt-4 grid gap-2">
                   {opts.map((o) => {
                     const isSelected = selected === o.id;

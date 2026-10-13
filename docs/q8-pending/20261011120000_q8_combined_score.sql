@@ -23,10 +23,6 @@ alter table public.questions add column if not exists modifies_question_id text
 comment on column public.questions.modifies_question_id is
   'Set on a modifier question (Q8B). Its answer points adjust the named base question, capped between 0 and the base question''s max_score. A modifier question has max_score 0.';
 
-alter table public.questions add column if not exists help_text text;
-comment on column public.questions.help_text is
-  'Optional explanatory line shown beneath the question.';
-
 create or replace function public.apply_score_modifier()
 returns trigger
 language plpgsql

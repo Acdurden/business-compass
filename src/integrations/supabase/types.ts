@@ -772,6 +772,7 @@ export type Database = {
       questions: {
         Row: {
           active: boolean;
+          help_text: string | null;
           max_score: number | null;
           question_id: string;
           question_number: number;
@@ -783,6 +784,7 @@ export type Database = {
         };
         Insert: {
           active?: boolean;
+          help_text?: string | null;
           max_score?: number | null;
           question_id: string;
           question_number: number;
@@ -794,6 +796,7 @@ export type Database = {
         };
         Update: {
           active?: boolean;
+          help_text?: string | null;
           max_score?: number | null;
           question_id?: string;
           question_number?: number;
